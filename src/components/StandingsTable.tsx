@@ -34,10 +34,10 @@ export function StandingsTable({
               Δ
             </th>
             <th>Verein</th>
-            <th className="num">Sp</th>
-            <th className="num">S</th>
-            <th className="num">U</th>
-            <th className="num">N</th>
+            <th className="num col-form">Sp</th>
+            <th className="num col-form">S</th>
+            <th className="num col-form">U</th>
+            <th className="num col-form">N</th>
             <th className="num">Tore</th>
             <th className="num">Diff</th>
             <th className="num">Pkt</th>
@@ -82,10 +82,10 @@ export function StandingsTable({
                   <span className="full">{row.teamName}</span>
                   <span className="short">{row.shortName || row.teamName}</span>
                 </td>
-                <td className="num">{row.played}</td>
-                <td className="num">{row.won}</td>
-                <td className="num">{row.draw}</td>
-                <td className="num">{row.lost}</td>
+                <td className="num col-form">{row.played}</td>
+                <td className="num col-form">{row.won}</td>
+                <td className="num col-form">{row.draw}</td>
+                <td className="num col-form">{row.lost}</td>
                 <td className="num">
                   {row.goalsFor}:{row.goalsAgainst}
                 </td>

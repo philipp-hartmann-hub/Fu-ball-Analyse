@@ -55,6 +55,18 @@ src/
 
 ## Änderungsprotokoll
 
+### 2026-08-01 — Prompt 25
+
+**User:** Smartphone-Darstellung optimieren, Desktop nicht verschlechtern.
+
+**Aktion:**
+- Responsive CSS: engere Abstände, Toolbar stapeln, Tabelle ohne Sp/S/U/N auf Mobile
+- Szenario-Grob: Vollbreiten-Grid (2+1), tippfreundlichere Score-Felder
+- Desktop-Layout unverändert (Regeln nur in Media Queries)
+- Push auf `main`
+
+**Status:** erledigt
+
 ### 2026-08-01 — Prompt 24
 
 **User:** Feinmodus: Ergebnis tippen, keine Pfeileingabe.
