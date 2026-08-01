@@ -9,16 +9,18 @@ const RANKS = ['18.', '12.', '7.', '3.', '1.'] as const
 
 export function Intro({ onDone }: Props) {
   const [phase, setPhase] = useState<'play' | 'out'>('play')
+  const [reduced, setReduced] = useState(false)
 
   useEffect(() => {
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    if (reduced) {
-      onDone()
-      return
-    }
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
+    setReduced(mq.matches)
 
-    const exitTimer = window.setTimeout(() => setPhase('out'), 3200)
-    const doneTimer = window.setTimeout(onDone, 3900)
+    // Auch bei reduced motion kurz zeigen – sonst wirkt die Seite „kaputt“ ohne Intro.
+    const playMs = mq.matches ? 1800 : 3400
+    const doneMs = mq.matches ? 2300 : 4100
+
+    const exitTimer = window.setTimeout(() => setPhase('out'), playMs)
+    const doneTimer = window.setTimeout(onDone, doneMs)
     return () => {
       window.clearTimeout(exitTimer)
       window.clearTimeout(doneTimer)
@@ -27,14 +29,15 @@ export function Intro({ onDone }: Props) {
 
   const finish = () => {
     setPhase('out')
-    window.setTimeout(onDone, 450)
+    window.setTimeout(onDone, 400)
   }
 
   return (
     <div
-      className={`intro ${phase === 'out' ? 'intro-out' : ''}`}
+      className={`intro ${phase === 'out' ? 'intro-out' : ''} ${reduced ? 'intro-reduced' : ''}`}
       role="dialog"
-      aria-label="Intro"
+      aria-modal="true"
+      aria-label="Tabellenblick Intro"
       onClick={finish}
     >
       <div className="intro-pitch" aria-hidden>
@@ -72,7 +75,14 @@ export function Intro({ onDone }: Props) {
         ))}
       </div>
 
-      <button type="button" className="intro-skip" onClick={(e) => (e.stopPropagation(), finish())}>
+      <button
+        type="button"
+        className="intro-skip"
+        onClick={(e) => {
+          e.stopPropagation()
+          finish()
+        }}
+      >
         Überspringen
       </button>
     </div>

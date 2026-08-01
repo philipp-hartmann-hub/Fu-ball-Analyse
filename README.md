@@ -55,6 +55,17 @@ src/
 
 ## Änderungsprotokoll
 
+### 2026-08-01 — Prompt 17
+
+**User:** Intro erscheint auf Vercel nicht; Seite zeigt sofort die Tabelle. Prüfung nur noch über Vercel.
+
+**Aktion:**
+- Intro überspringt `prefers-reduced-motion` nicht mehr (stattdessen kürzere, statische Variante)
+- App hinter Intro komplett unsichtbar, bis Intro fertig
+- Fix auf `main` gepusht für Vercel-Redeploy
+
+**Status:** erledigt
+
 ### 2026-08-01 — Prompt 16
 
 **User:** Intro-Änderungen pushen.
