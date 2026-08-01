@@ -55,6 +55,16 @@ src/
 
 ## Änderungsprotokoll
 
+### 2026-08-01 — Prompt 18
+
+**User:** In der Vereinsanalyse zwei Varianten sichtbar: gesamte Saison und nächster Spieltag.
+
+**Aktion:**
+- Umschalter entfernt; beide Spannen gleichzeitig: „Variante A · Nach Spieltag N“ und „Variante B · Gesamte Saison“
+- Auf `main` gepusht für Vercel
+
+**Status:** erledigt
+
 ### 2026-08-01 — Prompt 17
 
 **User:** Intro erscheint auf Vercel nicht; Seite zeigt sofort die Tabelle. Prüfung nur noch über Vercel.
