@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { defaultSeason } from './api/dataSource'
+import { Intro } from './components/Intro'
 import { LeagueSwitcher } from './components/LeagueSwitcher'
 import { ScenarioPanel } from './components/ScenarioPanel'
 import { StandingsTable } from './components/StandingsTable'
@@ -22,6 +23,9 @@ function seasonOptions(base: number): number[] {
 }
 
 export default function App() {
+  const [showIntro, setShowIntro] = useState(true)
+  const dismissIntro = useCallback(() => setShowIntro(false), [])
+
   const baseSeason = defaultSeason()
   const [leagueId, setLeagueId] = useState<LeagueId>('bl1')
   const [season, setSeason] = useState(baseSeason)
@@ -124,7 +128,8 @@ export default function App() {
   }
 
   return (
-    <div className="app">
+    <div className={`app ${showIntro ? 'app-behind-intro' : 'app-revealed'}`}>
+      {showIntro && <Intro onDone={dismissIntro} />}
       <header className="hero">
         <div className="hero-copy">
           <p className="brand">Tabellenblick</p>

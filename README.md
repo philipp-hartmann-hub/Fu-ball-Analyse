@@ -17,6 +17,7 @@ Echtzeit-Analyse für die **1. und 2. Bundesliga**: Tabelle, Restprogramm und m�
 
 ### Features
 
+- Intro-Animation beim Seitenaufruf (Spielfeld, Ball, Tabellenblick; überspringbar)
 - Live-Tabelle mit Zonen (BL1: CL/EL/Abstieg · BL2: Aufstieg/Abstieg)
 - Spalte **Möglich**: Best-/Schlechtfall bis Saisonende
 - Vereinsanalyse: **nach nächstem Spieltag** (exakt) und **Saisonende** (heuristisch)
@@ -41,19 +42,38 @@ Build: `npm run build`
 
 ```
 src/
-  leagues.ts               # bl1 / bl2
-  api/openliga.ts          # OpenLigaDB
-  api/dataSource.ts        # Liga-Laden
-  hooks/useLeagueData.ts   # 60s-Polling
-  lib/table.ts             # Tabelle, Ranking, Zonen
-  lib/scenarios.ts         # Saison-Heuristik + exakter nächster Spieltag
-  components/              # UI
+  leagues.ts
+  api/openliga.ts / dataSource.ts
+  hooks/useLeagueData.ts
+  lib/table.ts / scenarios.ts
+  components/Intro.tsx     # Splash-Animation
+  components/…             # UI
   App.tsx
 ```
 
 ---
 
 ## Änderungsprotokoll
+
+### 2026-08-01 — Prompt 16
+
+**User:** Intro-Änderungen pushen.
+
+**Aktion:**
+- Intro-Animation committed und auf Feature-Branch sowie `main` gepusht (Vercel)
+
+**Status:** erledigt
+
+### 2026-08-01 — Prompt 15
+
+**User:** Beim Aufrufen der Seite eine thematisch passende, spektakuläre Intro-Animation.
+
+**Aktion:**
+- `Intro`-Overlay: animiertes Spielfeld, Ballflug, Platzziffern, Marken-Reveal, Mini-Tabelle
+- Überspringen per Klick/Button; `prefers-reduced-motion` überspringt komplett
+- App blendet danach ein
+
+**Status:** erledigt
 
 ### 2026-08-01 — Prompt 14
 

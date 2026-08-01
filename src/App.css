@@ -4,6 +4,26 @@
   padding: 1.5rem 1.25rem 3rem;
 }
 
+.app-behind-intro {
+  filter: blur(2px);
+  pointer-events: none;
+}
+
+.app-revealed {
+  animation: app-reveal 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes app-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .hero {
   display: grid;
   gap: 1.5rem;
