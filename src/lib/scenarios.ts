@@ -1,9 +1,7 @@
 import type {
   Match,
   NextMatchdayOutlook,
-  PathwayStep,
   PositionRange,
-  ScenarioPathway,
   ScenarioResult,
   SeasonOutlook,
   StandingRow,
@@ -12,30 +10,6 @@ import { buildStandings, compareStandings, remainingMatches } from './table'
 
 function cloneRow(row: StandingRow): StandingRow {
   return { ...row }
-}
-
-function tipFor(homeGoals: number, awayGoals: number): '1' | 'X' | '2' {
-  if (homeGoals > awayGoals) return '1'
-  if (homeGoals < awayGoals) return '2'
-  return 'X'
-}
-
-function stepFrom(
-  match: Match,
-  homeGoals: number,
-  awayGoals: number,
-  focusId: number,
-): PathwayStep {
-  return {
-    matchId: match.matchID,
-    homeName: match.team1.shortName || match.team1.teamName,
-    awayName: match.team2.shortName || match.team2.teamName,
-    homeGoals,
-    awayGoals,
-    tip: tipFor(homeGoals, awayGoals),
-    involvesFocus:
-      match.team1.teamId === focusId || match.team2.teamId === focusId,
-  }
 }
 
 function applyOutcome(
@@ -85,14 +59,14 @@ const OUTCOMES: Array<[number, number]> = [
   [0, 1],
 ]
 
-function simulateExtremeWithPath(
+/** Heuristische Extreme über Restspiele (nur Rang). */
+function simulateExtremeRank(
   baseStandings: StandingRow[],
   remaining: Match[],
   focusId: number,
   mode: 'best' | 'worst',
-): ScenarioPathway {
+): number {
   const map = new Map(baseStandings.map((s) => [s.teamId, cloneRow(s)]))
-  const steps: PathwayStep[] = []
 
   for (const match of remaining) {
     const homeId = match.team1.teamId
@@ -135,15 +109,11 @@ function simulateExtremeWithPath(
     }
 
     applyOutcome(map, homeId, awayId, homeGoals, awayGoals)
-    steps.push(stepFrom(match, homeGoals, awayGoals, focusId))
   }
 
-  return { rank: rankOf([...map.values()], focusId), steps, ways: null }
+  return rankOf([...map.values()], focusId)
 }
 
-/**
- * Saison-Rest: Best-/Schlechtfall heuristisch + Pathways.
- */
 export function computeSeasonOutlook(
   baseStandings: StandingRow[],
   remaining: Match[],
@@ -152,23 +122,17 @@ export function computeSeasonOutlook(
   if (!remaining.length) {
     const row = baseStandings.find((s) => s.teamId === teamId)
     if (!row) return null
-    return {
-      range: { teamId, bestRank: row.rank, worstRank: row.rank },
-      bestPathway: { rank: row.rank, steps: [], ways: null },
-      worstPathway: { rank: row.rank, steps: [], ways: null },
-    }
+    return { range: { teamId, bestRank: row.rank, worstRank: row.rank } }
   }
 
-  const best = simulateExtremeWithPath(baseStandings, remaining, teamId, 'best')
-  const worst = simulateExtremeWithPath(baseStandings, remaining, teamId, 'worst')
+  const best = simulateExtremeRank(baseStandings, remaining, teamId, 'best')
+  const worst = simulateExtremeRank(baseStandings, remaining, teamId, 'worst')
   return {
     range: {
       teamId,
-      bestRank: Math.min(best.rank, worst.rank),
-      worstRank: Math.max(best.rank, worst.rank),
+      bestRank: Math.min(best, worst),
+      worstRank: Math.max(best, worst),
     },
-    bestPathway: best.rank <= worst.rank ? best : worst,
-    worstPathway: best.rank >= worst.rank ? best : worst,
   }
 }
 
@@ -198,24 +162,7 @@ export function matchesOnMatchday(remaining: Match[], matchday: number): Match[]
   return remaining.filter((m) => m.group.groupOrderID === matchday)
 }
 
-function pathwayFromMask(
-  fixtures: Match[],
-  mask: number,
-  focusId: number,
-): PathwayStep[] {
-  const steps: PathwayStep[] = []
-  let x = mask
-  for (const match of fixtures) {
-    const outcome = OUTCOMES[x % 3]!
-    x = Math.floor(x / 3)
-    steps.push(stepFrom(match, outcome[0], outcome[1], focusId))
-  }
-  return steps
-}
-
-/**
- * Exakte Best-/Schlechtfall-Platzierung nach dem nächsten Spieltag + Pathways.
- */
+/** Exakte Best-/Schlechtfall-Platzierung nach dem nächsten Spieltag. */
 export function computeNextMatchdayOutlook(
   baseStandings: StandingRow[],
   remaining: Match[],
@@ -238,31 +185,23 @@ export function computeNextMatchdayOutlook(
     : null
 
   if (fixtures.length > 12) {
-    const best = simulateExtremeWithPath(baseStandings, fixtures, teamId, 'best')
-    const worst = simulateExtremeWithPath(baseStandings, fixtures, teamId, 'worst')
-    const totalConstellations = 3 ** fixtures.length
+    const best = simulateExtremeRank(baseStandings, fixtures, teamId, 'best')
+    const worst = simulateExtremeRank(baseStandings, fixtures, teamId, 'worst')
     return {
       matchday,
       fixtureCount: fixtures.length,
-      totalConstellations,
       plays,
       opponentName,
       range: {
         teamId,
-        bestRank: Math.min(best.rank, worst.rank),
-        worstRank: Math.max(best.rank, worst.rank),
+        bestRank: Math.min(best, worst),
+        worstRank: Math.max(best, worst),
       },
-      bestPathway: best.rank <= worst.rank ? best : worst,
-      worstPathway: best.rank >= worst.rank ? best : worst,
     }
   }
 
   let bestRank = baseStandings.length
   let worstRank = 1
-  let bestMask = 0
-  let worstMask = 0
-  let bestWays = 0
-  let worstWays = 0
   const total = 3 ** fixtures.length
 
   for (let mask = 0; mask < total; mask++) {
@@ -280,39 +219,16 @@ export function computeNextMatchdayOutlook(
       )
     }
     const rank = rankOf([...map.values()], teamId)
-    if (rank < bestRank) {
-      bestRank = rank
-      bestMask = mask
-      bestWays = 1
-    } else if (rank === bestRank) {
-      bestWays += 1
-    }
-    if (rank > worstRank) {
-      worstRank = rank
-      worstMask = mask
-      worstWays = 1
-    } else if (rank === worstRank) {
-      worstWays += 1
-    }
+    if (rank < bestRank) bestRank = rank
+    if (rank > worstRank) worstRank = rank
   }
 
   return {
     matchday,
     fixtureCount: fixtures.length,
-    totalConstellations: total,
     plays,
     opponentName,
     range: { teamId, bestRank, worstRank },
-    bestPathway: {
-      rank: bestRank,
-      steps: pathwayFromMask(fixtures, bestMask, teamId),
-      ways: bestWays,
-    },
-    worstPathway: {
-      rank: worstRank,
-      steps: pathwayFromMask(fixtures, worstMask, teamId),
-      ways: worstWays,
-    },
   }
 }
 

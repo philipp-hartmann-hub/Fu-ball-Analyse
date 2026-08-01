@@ -17,13 +17,12 @@ Echtzeit-Analyse für die **1. und 2. Bundesliga**: Tabelle, Restprogramm und m�
 
 ### Features
 
-- Intro-Animation beim Seitenaufruf (Spielfeld, Ball, Tabellenblick; überspringbar)
 - Live-Tabelle mit Zonen (BL1: CL/EL/Abstieg · BL2: Aufstieg/Abstieg)
 - Spalte **Möglich**: Best-/Schlechtfall bis Saisonende
 - Vereinsanalyse: **nach nächstem Spieltag** (exakt) und **Saisonende** (heuristisch)
 - Spalte **Δ**: Platzveränderung durch gesetzte Szenarien
-- **Szenario-Simulator**: 1/X/2, optional nur Fokusverein
-- **Stand nach Spieltag**: Slider für historische Konstellation
+- **Szenario-Simulator**: Grob/Fein je Spieltag (Default: nächster)
+- **Stand nach Spieltag**: Slider für historischen Stand
 
 ---
 
@@ -55,6 +54,17 @@ src/
 
 ## Änderungsprotokoll
 
+### 2026-08-01 — Prompt 31
+
+**User:** Intro entfernen; Pathways und Konstellationen entfernen (verwirren).
+
+**Aktion:**
+- Intro komplett entfernt
+- Pathways/Konstellations-Zähler entfernt; Best-/Schlechtfall nur noch als Platzangabe
+- Push auf `main`
+
+**Status:** erledigt
+
 ### 2026-08-01 — Prompt 30
 
 **User:** Intro nur langes Grün, keine sichtbare Animation bis zur Karte.
@@ -64,7 +74,7 @@ src/
 - Gesamtdauer kürzer (~4s)
 - Push auf `main`
 
-**Status:** erledigt
+**Status:** erledigt (später entfernt in Prompt 31)
 
 ### 2026-08-01 — Prompt 29
 

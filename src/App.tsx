@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { defaultSeason } from './api/dataSource'
-import { Intro } from './components/Intro'
 import { LeagueSwitcher } from './components/LeagueSwitcher'
 import { ScenarioPanel } from './components/ScenarioPanel'
 import { StandingsTable } from './components/StandingsTable'
@@ -23,9 +22,6 @@ function seasonOptions(base: number): number[] {
 }
 
 export default function App() {
-  const [showIntro, setShowIntro] = useState(true)
-  const dismissIntro = useCallback(() => setShowIntro(false), [])
-
   const baseSeason = defaultSeason()
   const [leagueId, setLeagueId] = useState<LeagueId>('bl1')
   const [season, setSeason] = useState(baseSeason)
@@ -132,8 +128,7 @@ export default function App() {
   }
 
   return (
-    <div className={`app ${showIntro ? 'app-behind-intro' : 'app-revealed'}`}>
-      {showIntro && <Intro onDone={dismissIntro} />}
+    <div className="app">
       <header className="hero">
         <div className="hero-copy">
           <p className="brand">Tabellenblick</p>
@@ -143,8 +138,7 @@ export default function App() {
             <span className="hero-sub">Tabellen-Szenarien</span>
           </h1>
           <p className="lead">
-            Wo landet dein Verein noch? Restprogramm setzen, Konstellationen prüfen – live aus
-            OpenLigaDB.
+            Wo landet dein Verein noch? Restprogramm setzen, Tabelle live aus OpenLigaDB.
           </p>
         </div>
         <div className="hero-meta">
