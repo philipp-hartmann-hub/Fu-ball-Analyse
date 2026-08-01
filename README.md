@@ -55,6 +55,16 @@ src/
 
 ## Änderungsprotokoll
 
+### 2026-08-01 — Prompt 14
+
+**User:** Screenshot der Vereinsanalyse – Spieltag-Spanne fehlt weiterhin.
+
+**Aktion:**
+- Ursache: Vercel zeigte veraltetes `main` (ohne Feature); aktueller Stand auf `main` gepusht für Redeploy
+- Lokal/Feature-Branch hatte die UI bereits
+
+**Status:** erledigt
+
 ### 2026-08-01 — Prompt 13
 
 **User:** Änderungen committen und pushen.
