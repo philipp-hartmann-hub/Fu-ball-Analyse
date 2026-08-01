@@ -55,6 +55,17 @@ src/
 
 ## Änderungsprotokoll
 
+### 2026-08-01 — Prompt 28
+
+**User:** Szenario: Spieltag wählbar (Default nächster), nicht alle durchscrollen.
+
+**Aktion:**
+- Spieltag-Picker (‹ Select ›), Default erster offener Spieltag
+- Nur Spiele des gewählten Spieltags anzeigen
+- Push auf `main`
+
+**Status:** erledigt
+
 ### 2026-08-01 — Prompt 27
 
 **User:** Intro neu: Kamerflug ins Stadion zum Tor, Zoom auf Ball, Tabelle öffnet.

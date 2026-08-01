@@ -996,6 +996,39 @@
   overflow-y: auto;
 }
 
+.matchday-list.single-day {
+  max-height: none;
+  overflow: visible;
+}
+
+.matchday-picker {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.75rem 0 0.25rem;
+}
+
+.matchday-nav {
+  min-width: 2.25rem;
+  padding: 0.35rem 0.5rem;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.matchday-select-wrap {
+  flex: 1;
+  min-width: 0;
+}
+
+.matchday-select-wrap select {
+  width: 100%;
+  background: var(--bg-elevated);
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  padding: 0.45rem 0.65rem;
+  color: var(--text);
+}
+
 .matchday-block h3 {
   margin: 0 0 0.45rem;
   font-size: 0.8rem;
