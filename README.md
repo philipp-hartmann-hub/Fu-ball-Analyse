@@ -55,6 +55,27 @@ src/
 
 ## Änderungsprotokoll
 
+### 2026-08-01 — Prompt 13
+
+**User:** Änderungen committen und pushen.
+
+**Aktion:**
+- Vereinsanalyse-Spieltag-Umschalter und Auto-Cutoff committed und gepusht
+
+**Status:** erledigt
+
+### 2026-08-01 — Prompt 12
+
+**User:** Spieltag-Best-/Schlechtfall in der Vereinsanalyse nicht sichtbar.
+
+**Aktion:**
+- Umschalter „Nächster Spieltag“ / „Saisonende“ (Standard: nächster Spieltag)
+- Bei abgeschlossener Saison automatisch „Stand nach Spieltag“ vor dem letzten Spieltag
+- Leerer Zustand mit Button zum Setzen des Spieltag-Stands
+- Sticky Vereinsanalyse-Spalte
+
+**Status:** erledigt
+
 ### 2026-08-01 — Prompt 11
 
 **User:** Änderungen committen und pushen.

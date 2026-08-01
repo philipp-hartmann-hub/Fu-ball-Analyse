@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { defaultSeason } from './api/dataSource'
 import { LeagueSwitcher } from './components/LeagueSwitcher'
 import { ScenarioPanel } from './components/ScenarioPanel'
@@ -29,6 +29,7 @@ export default function App() {
   const [scenarios, setScenarios] = useState<ScenarioResult[]>([])
   const [asOfMatchday, setAsOfMatchday] = useState<number | null>(null)
   const [useCutoff, setUseCutoff] = useState(false)
+  const autoCutoffKey = useRef<string | null>(null)
 
   const { matches, league, loading, error, updatedAt, refreshing, reload } = useLeagueData(
     leagueId,
@@ -42,6 +43,25 @@ export default function App() {
   const liveMatchday = useMemo(() => currentMatchday(matches), [matches])
   const maxDay = days[days.length - 1] ?? 34
   const cutoff = useCutoff ? (asOfMatchday ?? liveMatchday) : null
+
+  const finishedCount = useMemo(
+    () => matches.filter((m) => m.matchIsFinished).length,
+    [matches],
+  )
+  const seasonComplete = matches.length > 0 && finishedCount === matches.length
+
+  // Abgeschlossene Saison: automatisch Stand vor dem letzten Spieltag,
+  // damit „Nächster Spieltag“ sofort eine Spanne hat.
+  useEffect(() => {
+    const key = `${leagueId}-${season}`
+    if (!matches.length || autoCutoffKey.current === key) return
+    if (seasonComplete) {
+      setUseCutoff(true)
+      setAsOfMatchday(Math.max(0, maxDay - 1))
+      setScenarios([])
+    }
+    autoCutoffKey.current = key
+  }, [matches, leagueId, season, seasonComplete, maxDay])
 
   const baseStandings = useMemo(
     () => buildStandings(matches, { maxMatchday: cutoff }),
@@ -73,10 +93,11 @@ export default function App() {
 
   const leaderPoints = projectedStandings[0]?.points ?? 0
   const relegLine = projectedStandings.find((s) => s.rank === 16)?.points ?? 0
-
-  const finishedCount = matches.filter((m) => m.matchIsFinished).length
   const seasonProgress =
     matches.length > 0 ? Math.round((finishedCount / matches.length) * 100) : 0
+
+  const suggestedCutoff =
+    seasonComplete || openMatches.length === 0 ? Math.max(0, maxDay - 1) : null
 
   const onLeagueChange = (next: LeagueId) => {
     setLeagueId(next)
@@ -84,6 +105,7 @@ export default function App() {
     setScenarios([])
     setUseCutoff(false)
     setAsOfMatchday(null)
+    autoCutoffKey.current = null
   }
 
   const onSeasonChange = (next: number) => {
@@ -92,6 +114,13 @@ export default function App() {
     setScenarios([])
     setUseCutoff(false)
     setAsOfMatchday(null)
+    autoCutoffKey.current = null
+  }
+
+  const enableMatchdayCutoff = (day: number) => {
+    setUseCutoff(true)
+    setAsOfMatchday(day)
+    setScenarios([])
   }
 
   return (
@@ -168,6 +197,9 @@ export default function App() {
           {openMatches.length} offene Spiele
           {scenarios.length > 0 ? ` · ${scenarios.length} Szenarien` : ''}
           {!useCutoff && liveMatchday ? ` · Spieltag ${liveMatchday}` : ''}
+          {useCutoff && nextMatchdayOutlook
+            ? ` · Analyse → ST ${nextMatchdayOutlook.matchday}`
+            : ''}
         </span>
       </section>
 
@@ -201,6 +233,8 @@ export default function App() {
               seasonRange={selectedRange}
               nextMatchday={nextMatchdayOutlook}
               league={leagueId}
+              suggestedCutoff={suggestedCutoff}
+              onEnableMatchdayCutoff={enableMatchdayCutoff}
               pointsToFirst={
                 selectedTeam ? leaderPoints - selectedTeam.points : null
               }
