@@ -26,12 +26,6 @@ function formatDate(iso: string): string {
   return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })
 }
 
-const COARSE_OPTIONS: { key: Coarse; label: string }[] = [
-  { key: 'home', label: 'Sieg' },
-  { key: 'draw', label: 'Unentschieden' },
-  { key: 'away', label: 'Niederlage' },
-]
-
 export function ScenarioPanel({ matches, scenarios, onChange, focusTeamId }: Props) {
   const [onlyFocus, setOnlyFocus] = useState(false)
   const [mode, setMode] = useState<DetailMode>('grob')
@@ -124,7 +118,7 @@ export function ScenarioPanel({ matches, scenarios, onChange, focusTeamId }: Pro
       </div>
       <p className="hint">
         {mode === 'grob'
-          ? 'Aus Sicht der Heimmannschaft: Sieg, Unentschieden oder Niederlage.'
+          ? 'Sieg Verein 1, Sieg Verein 2 oder Unentschieden.'
           : 'Konkretes Ergebnis eingeben (Tore Heim : Auswärts). Ohne Auswahl gilt 0:0 beim Fokus der Felder.'}
       </p>
 
@@ -166,7 +160,19 @@ export function ScenarioPanel({ matches, scenarios, onChange, focusTeamId }: Pro
 
                     {mode === 'grob' ? (
                       <div className="outcome-btns coarse" role="group" aria-label="Grob-Ergebnis">
-                        {COARSE_OPTIONS.map(({ key, label }) => (
+                        {(
+                          [
+                            {
+                              key: 'home' as const,
+                              label: `Sieg ${match.team1.shortName || match.team1.teamName}`,
+                            },
+                            {
+                              key: 'away' as const,
+                              label: `Sieg ${match.team2.shortName || match.team2.teamName}`,
+                            },
+                            { key: 'draw' as const, label: 'Unentschieden' },
+                          ] as const
+                        ).map(({ key, label }) => (
                           <button
                             key={key}
                             type="button"

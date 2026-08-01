@@ -55,6 +55,16 @@ src/
 
 ## Änderungsprotokoll
 
+### 2026-08-01 — Prompt 23
+
+**User:** Grob-Anzeige: Sieg Verein 1, Sieg Verein 2, Unentschieden.
+
+**Aktion:**
+- Grob-Buttons mit Vereinsnamen statt Sieg/Niederlage
+- Push auf `main`
+
+**Status:** erledigt
+
 ### 2026-08-01 — Prompt 22
 
 **User:** Szenario-Simulator: Grob (Sieg/Unentschieden/Niederlage) und Fein (konkretes Ergebnis); kein 1/X/2.
