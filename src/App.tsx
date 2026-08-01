@@ -266,7 +266,8 @@ export default function App() {
       )}
 
       <footer className="footer">
-        Daten: OpenLigaDB · Aktualisierung alle 60 Sekunden · Keine Wettberatung
+        Daten: OpenLigaDB · Aktualisierung alle 60 Sekunden · Keine Wettberatung · Build{' '}
+        <code>{__APP_BUILD__}</code>
       </footer>
     </div>
   )

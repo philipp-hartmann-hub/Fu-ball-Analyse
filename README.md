@@ -55,6 +55,17 @@ src/
 
 ## Änderungsprotokoll
 
+### 2026-08-01 — Prompt 20
+
+**User:** Screenshot – Vereinsanalyse zeigt weiter nur eine Spanne (Vercel).
+
+**Aktion:**
+- Ursache: URL `…-b6r8knoes-…` ist ein **fixes Preview-Deployment**, aktualisiert sich nicht mit `main`
+- Build-Hash im Footer ergänzt zur Versionsprüfung
+- Hinweis: Production-URL in Vercel öffnen (nicht alte Preview-URL)
+
+**Status:** erledigt
+
 ### 2026-08-01 — Prompt 19
 
 **User:** Beide Varianten getrennt, jederzeit zwei Versionen direkt untereinander in der Vereinsanalyse.
