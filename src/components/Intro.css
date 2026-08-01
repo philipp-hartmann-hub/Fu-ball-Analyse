@@ -4,149 +4,128 @@
   z-index: 1000;
   overflow: hidden;
   cursor: pointer;
-  background: #050d09;
+  background: #07110c;
   color: var(--text);
-  animation: intro-fade-in 0.3s ease-out both;
+  animation: intro-fade-in 0.25s ease-out both;
 }
 
 .intro-out {
-  animation: intro-fade-out 0.55s ease-in forwards;
+  animation: intro-fade-out 0.45s ease-in forwards;
   pointer-events: none;
 }
 
-/* —— Bühne / Kamera —— */
-.intro-stage {
+.intro-scene {
   position: absolute;
   inset: 0;
-  perspective: 900px;
-  perspective-origin: 50% 42%;
   overflow: hidden;
-}
-
-.intro-camera {
-  position: absolute;
-  inset: 0;
-  transform-style: preserve-3d;
-  animation: intro-cam 3.4s cubic-bezier(0.33, 0.1, 0.2, 1) both;
-}
-
-.intro-world {
-  position: absolute;
-  inset: -20% -10% -30%;
-  transform-style: preserve-3d;
-  transform-origin: 50% 70%;
-  animation: intro-world 3.4s cubic-bezier(0.33, 0.1, 0.2, 1) both;
 }
 
 .intro-sky {
   position: absolute;
-  inset: 0 0 42%;
+  inset: 0;
   background:
-    radial-gradient(ellipse 70% 50% at 50% 100%, rgba(196, 240, 97, 0.08), transparent 55%),
-    linear-gradient(180deg, #0b1520 0%, #12241b 55%, #0a1610 100%);
+    radial-gradient(ellipse 90% 55% at 50% 18%, #1a3a28 0%, transparent 55%),
+    radial-gradient(ellipse 50% 40% at 20% 10%, rgba(255, 230, 160, 0.12), transparent 50%),
+    radial-gradient(ellipse 50% 40% at 80% 10%, rgba(255, 230, 160, 0.1), transparent 50%),
+    linear-gradient(180deg, #0c1a22 0%, #0f2418 42%, #07110c 100%);
 }
 
-.intro-flood {
+.intro-rim {
   position: absolute;
-  top: 8%;
-  width: 18%;
-  height: 28%;
-  background: radial-gradient(ellipse at center, rgba(255, 245, 200, 0.22), transparent 70%);
-  filter: blur(18px);
+  left: -10%;
+  right: -10%;
+  top: 12%;
+  height: 22%;
+  border-radius: 50%;
+  border: 3px solid rgba(196, 240, 97, 0.18);
+  box-shadow: 0 0 40px rgba(196, 240, 97, 0.08);
   opacity: 0;
-  animation: intro-flood 0.8s ease 0.35s forwards;
+  animation: intro-rim-in 0.7s ease 0.1s forwards;
 }
 
-.flood-l {
-  left: 12%;
-}
-.flood-r {
-  right: 12%;
-}
-
-/* —— Stadion-Schale —— */
-.intro-bowl {
+/* Kameraflug: weit → Tor → Ball */
+.intro-flight {
   position: absolute;
-  left: 5%;
-  right: 5%;
-  top: 18%;
-  bottom: 8%;
-  transform-style: preserve-3d;
+  left: 50%;
+  top: 46%;
+  width: min(920px, 140vw);
+  height: min(640px, 105vh);
+  margin-left: calc(min(920px, 140vw) / -2);
+  margin-top: calc(min(640px, 105vh) / -2);
+  transform-origin: 50% 28%;
+  animation: intro-fly 2.35s cubic-bezier(0.4, 0.05, 0.2, 1) both;
+}
+
+.intro-stands {
+  position: absolute;
+  inset: 0;
   pointer-events: none;
 }
 
-.intro-stand {
+.seat-band {
   position: absolute;
-  background:
-    repeating-linear-gradient(
-      180deg,
-      rgba(40, 52, 48, 0.95) 0 10px,
-      rgba(28, 38, 34, 0.98) 10px 20px
-    );
-  box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.55);
-}
-
-.stand-far {
-  left: 12%;
-  right: 12%;
-  top: 0;
-  height: 28%;
-  border-radius: 40% 40% 0 0 / 100% 100% 0 0;
-  transform: rotateX(62deg) translateZ(-40px);
-  transform-origin: center bottom;
+  display: block;
   background:
     repeating-linear-gradient(
       90deg,
-      rgba(55, 70, 62, 0.9) 0 8px,
-      rgba(30, 40, 36, 0.95) 8px 16px
+      #3a4a42 0 6px,
+      #2a3630 6px 12px,
+      #4a5c52 12px 13px
     );
-  opacity: 0.85;
+  box-shadow: inset 0 -12px 24px rgba(0, 0, 0, 0.45);
 }
 
-.stand-left,
-.stand-right {
-  top: 10%;
-  bottom: 18%;
-  width: 22%;
-  transform-origin: center center;
-}
-
-.stand-left {
-  left: 0;
-  transform: rotateY(58deg) rotateX(8deg) translateZ(-20px);
-  border-radius: 0 1rem 1rem 0;
-}
-
-.stand-right {
-  right: 0;
-  transform: rotateY(-58deg) rotateX(8deg) translateZ(-20px);
-  border-radius: 1rem 0 0 1rem;
-}
-
-/* —— Rasen in Perspektive —— */
-.intro-pitch-plane {
-  position: absolute;
+.seat-far {
   left: 18%;
   right: 18%;
-  top: 32%;
-  bottom: 6%;
-  transform: rotateX(68deg);
-  transform-origin: center top;
-  transform-style: preserve-3d;
+  top: 6%;
+  height: 16%;
+  border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+  transform: perspective(400px) rotateX(48deg);
+  transform-origin: center bottom;
 }
 
-.intro-turf {
+.seat-left {
+  left: 2%;
+  top: 14%;
+  bottom: 22%;
+  width: 18%;
+  clip-path: polygon(40% 0, 100% 8%, 100% 100%, 0 92%);
+  transform: perspective(500px) rotateY(42deg);
+  transform-origin: right center;
+}
+
+.seat-right {
+  right: 2%;
+  top: 14%;
+  bottom: 22%;
+  width: 18%;
+  clip-path: polygon(0 8%, 60% 0, 100% 92%, 0 100%);
+  transform: perspective(500px) rotateY(-42deg);
+  transform-origin: left center;
+}
+
+/* Trapez-Rasen Richtung Tor */
+.intro-pitch {
+  position: absolute;
+  left: 50%;
+  top: 18%;
+  width: 72%;
+  height: 72%;
+  margin-left: -36%;
+  transform: perspective(700px) rotateX(58deg);
+  transform-origin: center top;
+  filter: drop-shadow(0 30px 40px rgba(0, 0, 0, 0.55));
+}
+
+.intro-pitch-inner {
   position: relative;
   width: 100%;
   height: 100%;
-  border: 2px solid rgba(232, 220, 190, 0.35);
-  border-radius: 4px;
+  border: 2px solid rgba(240, 230, 200, 0.55);
+  background: linear-gradient(180deg, #1f7a42 0%, #168a48 45%, #0f6b38 100%);
   overflow: hidden;
-  background:
-    linear-gradient(180deg, #1a5c32 0%, #14703a 40%, #0f5a2e 100%);
-  box-shadow:
-    0 40px 80px rgba(0, 0, 0, 0.55),
-    inset 0 0 60px rgba(0, 0, 0, 0.25);
+  clip-path: polygon(12% 0, 88% 0, 100% 100%, 0 100%);
 }
 
 .intro-stripes {
@@ -154,123 +133,119 @@
   inset: 0;
   background: repeating-linear-gradient(
     90deg,
-    transparent 0 7%,
-    rgba(255, 255, 255, 0.04) 7% 14%
+    transparent 0 8%,
+    rgba(255, 255, 255, 0.06) 8% 16%
   );
 }
 
-.intro-midline {
+.intro-line.mid {
   position: absolute;
   left: 0;
   right: 0;
-  top: 50%;
+  top: 48%;
   height: 2px;
-  margin-top: -1px;
-  background: rgba(232, 220, 190, 0.4);
+  background: rgba(240, 230, 200, 0.55);
 }
 
 .intro-circle {
   position: absolute;
-  top: 50%;
+  top: 48%;
   left: 50%;
-  width: 22%;
+  width: 26%;
   aspect-ratio: 1;
-  border: 2px solid rgba(232, 220, 190, 0.4);
+  border: 2px solid rgba(240, 230, 200, 0.5);
   border-radius: 50%;
   transform: translate(-50%, -50%);
 }
 
-.intro-penalty {
+.intro-box {
   position: absolute;
-  left: 22%;
-  right: 22%;
-  bottom: 0;
-  height: 28%;
-  border: 2px solid rgba(232, 220, 190, 0.4);
-  border-bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 2px solid rgba(240, 230, 200, 0.5);
+  border-top: 0;
 }
 
-.intro-sixyard {
-  position: absolute;
-  left: 34%;
-  right: 34%;
+.intro-box.pen {
   bottom: 0;
+  width: 52%;
+  height: 26%;
+}
+
+.intro-box.six {
+  bottom: 0;
+  width: 28%;
   height: 10%;
-  border: 2px solid rgba(232, 220, 190, 0.35);
-  border-bottom: 0;
 }
 
 .intro-spot {
   position: absolute;
   left: 50%;
-  bottom: 18%;
-  width: 7px;
-  height: 7px;
-  margin-left: -3.5px;
+  bottom: 17%;
+  width: 8px;
+  height: 8px;
+  margin-left: -4px;
   border-radius: 50%;
-  background: rgba(232, 220, 190, 0.7);
+  background: rgba(240, 230, 200, 0.85);
 }
 
-/* —— Tor —— */
 .intro-goal {
   position: absolute;
-  left: 38%;
-  right: 38%;
+  left: 50%;
   bottom: 0;
-  height: 16%;
-  transform: translateZ(1px);
-  transform-style: preserve-3d;
+  width: 22%;
+  height: 14%;
+  margin-left: -11%;
+  z-index: 2;
 }
 
-.intro-post {
+.intro-goal .post {
   position: absolute;
   bottom: 0;
-  width: 4px;
+  width: 5px;
   height: 100%;
-  background: linear-gradient(180deg, #f3efe4, #c8c0b0);
-  box-shadow: 0 0 8px rgba(255, 255, 255, 0.25);
+  background: #f5f0e6;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.35);
 }
 
-.post-l {
+.intro-goal .post.left {
   left: 0;
 }
-.post-r {
+.intro-goal .post.right {
   right: 0;
 }
 
-.intro-crossbar {
+.intro-goal .bar {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
-  height: 4px;
-  background: #f3efe4;
-  box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+  height: 5px;
+  background: #f5f0e6;
 }
 
-.intro-net {
+.intro-goal .net {
   position: absolute;
-  inset: 4px 4px 0;
+  inset: 5px 5px 0;
   background:
-    linear-gradient(rgba(232, 220, 190, 0.2) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(232, 220, 190, 0.2) 1px, transparent 1px);
-  background-size: 10px 10px;
-  opacity: 0.55;
-  clip-path: polygon(0 0, 100% 0, 92% 100%, 8% 100%);
+    linear-gradient(rgba(240, 230, 200, 0.28) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(240, 230, 200, 0.28) 1px, transparent 1px);
+  background-size: 8px 8px;
+  opacity: 0.7;
+  clip-path: polygon(0 0, 100% 0, 94% 100%, 6% 100%);
 }
 
-/* —— Ball (Zoom-Ziel) —— */
 .intro-ball {
   position: absolute;
   left: 50%;
-  bottom: 17%;
-  width: 18px;
-  height: 18px;
-  margin-left: -9px;
-  z-index: 3;
+  bottom: 16%;
+  width: 28px;
+  height: 28px;
+  margin-left: -14px;
+  z-index: 4;
   transform-origin: center center;
-  animation: intro-ball-zoom 3.4s cubic-bezier(0.22, 0.61, 0.2, 1) both;
-  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.5));
+  animation: intro-ball 2.35s cubic-bezier(0.35, 0.1, 0.2, 1) both;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.55));
 }
 
 .intro-ball-core {
@@ -279,117 +254,124 @@
   height: 100%;
   border-radius: 50%;
   background:
-    radial-gradient(circle at 32% 28%, #fff 0 14%, transparent 15%),
-    radial-gradient(circle at 50% 50%, #f3efe4 0 42%, #c8c0b0 55%, #8a8478 100%);
+    radial-gradient(circle at 30% 28%, #fff 0 16%, transparent 17%),
+    radial-gradient(circle at 50% 50%, #f3efe4 0 42%, #bdb5a6 58%, #7a7468 100%);
   position: relative;
-  animation: intro-ball-spin 3.4s linear both;
+  animation: intro-spin 2.35s linear both;
 }
 
 .intro-ball-core::before {
   content: '';
   position: absolute;
-  inset: 18%;
+  inset: 16%;
   border-radius: 50%;
-  border: 1.5px solid rgba(30, 30, 30, 0.4);
+  border: 2px solid rgba(30, 30, 30, 0.4);
   clip-path: polygon(50% 0, 100% 38%, 82% 100%, 18% 100%, 0 38%);
 }
 
-/* —— Tabelle öffnet sich aus dem Zoom —— */
+.intro-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 40%, rgba(0, 0, 0, 0.45) 100%);
+  pointer-events: none;
+  animation: intro-vignette 2.35s ease both;
+}
+
+/* Tabelle aus dem Zoom */
 .intro-bloom {
   position: absolute;
   inset: 0;
-  z-index: 4;
+  z-index: 5;
   display: grid;
   place-items: center;
   pointer-events: none;
 }
 
-.intro-bloom-ring {
+.intro-flash {
   position: absolute;
-  width: 12px;
-  height: 12px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
-  border: 2px solid rgba(196, 240, 97, 0.55);
+  background: radial-gradient(circle, rgba(243, 239, 228, 0.95), rgba(196, 240, 97, 0.4) 40%, transparent 70%);
   opacity: 0;
-  animation: intro-ring 1.4s cubic-bezier(0.16, 1, 0.3, 1) 2.55s both;
+  animation: intro-flash 0.7s ease-out 2s both;
 }
 
 .intro-table {
-  width: min(320px, 78vw);
-  padding: 1rem 1.1rem 1.15rem;
+  width: min(300px, 82vw);
+  padding: 1rem 1.1rem 1.1rem;
   border-radius: 1rem;
-  background: rgba(15, 31, 23, 0.82);
-  border: 1px solid rgba(196, 240, 97, 0.28);
-  backdrop-filter: blur(14px);
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+  background: rgba(12, 28, 20, 0.9);
+  border: 1px solid rgba(196, 240, 97, 0.35);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.5);
   opacity: 0;
-  transform: scale(0.35);
-  animation: intro-table-open 1.1s cubic-bezier(0.16, 1, 0.3, 1) 2.85s both;
+  transform: scale(0.4) translateY(20px);
+  animation: intro-table 0.75s cubic-bezier(0.16, 1, 0.3, 1) 2.15s both;
 }
 
 .intro-table-head {
-  margin: 0 0 0.65rem;
+  margin: 0 0 0.55rem;
   font-family: var(--font-display);
-  font-size: 0.85rem;
-  letter-spacing: 0.12em;
+  font-size: 0.8rem;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--accent);
 }
 
 .intro-table-row {
   display: grid;
-  grid-template-columns: 1.6rem 1fr 2rem;
-  gap: 0.45rem;
+  grid-template-columns: 1.5rem 1fr 2rem;
+  gap: 0.4rem;
   align-items: center;
-  margin-bottom: 0.4rem;
+  margin-bottom: 0.35rem;
   opacity: 0;
-  transform: translateY(14px);
-  animation: intro-row-open 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  animation-delay: calc(3.05s + var(--i) * 0.09s);
+  transform: translateY(10px);
+  animation: intro-row 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: calc(2.3s + var(--i) * 0.07s);
 }
 
 .intro-table-rank {
   font-family: var(--font-display);
   font-weight: 600;
   color: var(--accent);
-  font-size: 0.9rem;
+  font-size: 0.88rem;
 }
 
 .intro-table-bar {
-  height: 9px;
+  height: 8px;
   border-radius: 999px;
-  background: linear-gradient(90deg, rgba(196, 240, 97, 0.7), rgba(196, 240, 97, 0.12));
+  background: linear-gradient(90deg, rgba(196, 240, 97, 0.75), rgba(196, 240, 97, 0.12));
+  width: var(--w);
   transform-origin: left center;
   transform: scaleX(0);
-  animation: intro-bar-open 0.65s ease forwards;
-  animation-delay: calc(3.15s + var(--i) * 0.09s);
-  width: var(--w);
+  animation: intro-bar 0.55s ease forwards;
+  animation-delay: calc(2.4s + var(--i) * 0.07s);
 }
 
 .intro-table-pts {
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   color: var(--muted);
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-/* —— Branding —— */
 .intro-copy {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 8%;
-  z-index: 5;
+  bottom: 7%;
+  z-index: 6;
   text-align: center;
   padding: 1rem;
   opacity: 0;
-  transform: translateY(16px);
-  animation: intro-copy-in 0.85s cubic-bezier(0.16, 1, 0.3, 1) 3.35s forwards;
+  transform: translateY(12px);
+  animation: intro-copy 0.65s cubic-bezier(0.16, 1, 0.3, 1) 2.65s forwards;
 }
 
 .intro-eyebrow {
-  margin: 0 0 0.35rem;
-  font-size: 0.75rem;
+  margin: 0 0 0.3rem;
+  font-size: 0.72rem;
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--accent);
@@ -398,35 +380,35 @@
 .intro-brand {
   margin: 0;
   font-family: var(--font-display);
-  font-size: clamp(2.4rem, 8vw, 4.2rem);
+  font-size: clamp(2.3rem, 8vw, 4rem);
   font-weight: 700;
   letter-spacing: -0.04em;
   line-height: 0.95;
   color: var(--accent);
-  text-shadow: 0 0 50px rgba(196, 240, 97, 0.28);
+  text-shadow: 0 0 40px rgba(196, 240, 97, 0.3);
 }
 
 .intro-tag {
-  margin: 0.7rem auto 0;
+  margin: 0.65rem auto 0;
   max-width: 26ch;
   color: var(--muted);
-  font-size: clamp(0.95rem, 2.2vw, 1.1rem);
+  font-size: clamp(0.92rem, 2.2vw, 1.05rem);
 }
 
 .intro-skip {
   position: absolute;
-  right: 1.25rem;
-  bottom: 1.25rem;
-  z-index: 6;
+  right: 1.1rem;
+  bottom: 1.1rem;
+  z-index: 7;
   border: 1px solid var(--line);
-  background: rgba(15, 31, 23, 0.65);
+  background: rgba(15, 31, 23, 0.7);
   color: var(--muted);
   border-radius: 999px;
   padding: 0.4rem 0.85rem;
   font-size: 0.8rem;
   backdrop-filter: blur(8px);
   opacity: 0;
-  animation: intro-fade-in 0.4s ease 0.8s forwards;
+  animation: intro-fade-in 0.35s ease 0.5s forwards;
 }
 
 .intro-skip:hover {
@@ -434,7 +416,6 @@
   border-color: var(--accent);
 }
 
-/* —— Keyframes: Kamerflug —— */
 @keyframes intro-fade-in {
   from {
     opacity: 0;
@@ -447,115 +428,115 @@
 @keyframes intro-fade-out {
   to {
     opacity: 0;
-    transform: scale(1.04);
+    transform: scale(1.03);
   }
 }
 
-@keyframes intro-flood {
+@keyframes intro-rim-in {
+  from {
+    opacity: 0;
+    transform: scale(1.08);
+  }
   to {
     opacity: 1;
+    transform: scale(1);
   }
 }
 
-/* Weit draußen → ins Stadion → aufs Tor */
-@keyframes intro-cam {
+/* Weit: ganzes Stadion → heran zum Tor → Ball füllt */
+@keyframes intro-fly {
   0% {
-    transform: scale(0.72) translateY(-6%);
-    filter: blur(2px);
+    transform: scale(0.55) translateY(8%);
+    filter: brightness(0.85);
   }
   35% {
-    transform: scale(1) translateY(0);
-    filter: blur(0);
+    transform: scale(0.85) translateY(2%);
+    filter: brightness(1);
   }
-  70% {
-    transform: scale(1.35) translateY(8%);
+  65% {
+    transform: scale(1.35) translateY(-4%);
   }
   100% {
-    transform: scale(2.4) translateY(22%);
-    filter: blur(1px);
+    transform: scale(3.2) translateY(-18%);
+    filter: brightness(1.05);
   }
 }
 
-@keyframes intro-world {
-  0% {
-    transform: translateY(18%) rotateX(4deg) scale(1.15);
-  }
-  40% {
-    transform: translateY(0) rotateX(0deg) scale(1);
-  }
-  100% {
-    transform: translateY(-8%) rotateX(-2deg) scale(0.92);
-  }
-}
-
-@keyframes intro-ball-zoom {
+@keyframes intro-ball {
   0%,
-  40% {
+  30% {
     transform: scale(1);
     opacity: 1;
   }
-  70% {
-    transform: scale(3.2);
+  55% {
+    transform: scale(1.8);
     opacity: 1;
   }
-  88% {
-    transform: scale(14);
-    opacity: 0.85;
+  78% {
+    transform: scale(6);
+    opacity: 1;
   }
   100% {
-    transform: scale(28);
+    transform: scale(22);
     opacity: 0;
   }
 }
 
-@keyframes intro-ball-spin {
+@keyframes intro-spin {
   from {
     transform: rotate(0deg);
   }
   to {
-    transform: rotate(540deg);
+    transform: rotate(480deg);
   }
 }
 
-@keyframes intro-ring {
-  0% {
-    opacity: 0;
-    transform: scale(1);
-  }
-  30% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-    transform: scale(40);
-  }
-}
-
-@keyframes intro-table-open {
-  0% {
-    opacity: 0;
-    transform: scale(0.35);
+@keyframes intro-vignette {
+  0%,
+  50% {
+    opacity: 0.7;
   }
   100% {
     opacity: 1;
-    transform: scale(1);
   }
 }
 
-@keyframes intro-row-open {
+@keyframes intro-flash {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(8);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(28);
+  }
+}
+
+@keyframes intro-table {
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes intro-row {
   to {
     opacity: 1;
     transform: translateY(0);
   }
 }
 
-@keyframes intro-bar-open {
+@keyframes intro-bar {
   to {
     transform: scaleX(1);
   }
 }
 
-@keyframes intro-copy-in {
+@keyframes intro-copy {
   to {
     opacity: 1;
     transform: translateY(0);
@@ -563,60 +544,46 @@
 }
 
 @media (max-width: 720px) {
-  .intro-pitch-plane {
-    left: 8%;
-    right: 8%;
+  .intro-flight {
+    width: 160vw;
+    height: 90vh;
+    margin-left: -80vw;
+    margin-top: -45vh;
   }
 
-  .stand-left,
-  .stand-right {
-    width: 16%;
+  .seat-left,
+  .seat-right {
+    width: 14%;
   }
 
   .intro-copy {
-    bottom: 12%;
-  }
-
-  @keyframes intro-cam {
-    0% {
-      transform: scale(0.78) translateY(-4%);
-      filter: blur(1.5px);
-    }
-    35% {
-      transform: scale(1) translateY(0);
-      filter: blur(0);
-    }
-    100% {
-      transform: scale(2.1) translateY(18%);
-      filter: blur(1px);
-    }
+    bottom: 11%;
   }
 }
 
-/* Reduced motion: kurzer Stand statt Flug */
-.intro-reduced .intro-camera,
-.intro-reduced .intro-world,
+.intro-reduced .intro-flight,
 .intro-reduced .intro-ball,
 .intro-reduced .intro-ball-core,
-.intro-reduced .intro-bloom-ring,
+.intro-reduced .intro-flash,
 .intro-reduced .intro-table,
 .intro-reduced .intro-table-row,
 .intro-reduced .intro-table-bar,
 .intro-reduced .intro-copy,
 .intro-reduced .intro-skip,
-.intro-reduced .intro-flood {
+.intro-reduced .intro-rim,
+.intro-reduced .intro-vignette {
   animation: none !important;
   opacity: 1 !important;
   transform: none !important;
   filter: none !important;
 }
 
-.intro-reduced .intro-camera {
-  transform: scale(1.1) translateY(6%);
+.intro-reduced .intro-flight {
+  transform: scale(1.05) translateY(-2%);
 }
 
 .intro-reduced .intro-ball {
-  transform: scale(2);
+  transform: scale(2.2);
 }
 
 .intro-reduced .intro-table {
@@ -625,8 +592,4 @@
 
 .intro-reduced .intro-table-bar {
   transform: scaleX(1);
-}
-
-.intro-reduced .intro-copy {
-  transform: translateY(0);
 }

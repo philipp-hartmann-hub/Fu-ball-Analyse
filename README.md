@@ -55,6 +55,17 @@ src/
 
 ## Änderungsprotokoll
 
+### 2026-08-01 — Prompt 30
+
+**User:** Intro nur langes Grün, keine sichtbare Animation bis zur Karte.
+
+**Aktion:**
+- Intro neu: klarer Stadionflug (Tribünen + Trapez-Rasen + Tor), Ball-Zoom, früher Tabellen-Bloom (~2.1s)
+- Gesamtdauer kürzer (~4s)
+- Push auf `main`
+
+**Status:** erledigt
+
 ### 2026-08-01 — Prompt 29
 
 **User:** Pathway unterkomplex – Anzahl Bestfall-Konstellationen + Gesamtzahl anzeigen.

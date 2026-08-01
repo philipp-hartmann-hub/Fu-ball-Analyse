@@ -22,9 +22,8 @@ export function Intro({ onDone }: Props) {
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
     setReduced(mq.matches)
 
-    // Flug → Ball-Zoom → Tabelle öffnen
-    const playMs = mq.matches ? 2000 : 4800
-    const doneMs = mq.matches ? 2500 : 5400
+    const playMs = mq.matches ? 1600 : 3600
+    const doneMs = mq.matches ? 2100 : 4100
 
     const exitTimer = window.setTimeout(() => setPhase('out'), playMs)
     const doneTimer = window.setTimeout(onDone, doneMs)
@@ -36,7 +35,7 @@ export function Intro({ onDone }: Props) {
 
   const finish = () => {
     setPhase('out')
-    window.setTimeout(onDone, 450)
+    window.setTimeout(onDone, 400)
   }
 
   return (
@@ -47,46 +46,45 @@ export function Intro({ onDone }: Props) {
       aria-label="Tabellenblick Intro"
       onClick={finish}
     >
-      <div className="intro-stage" aria-hidden>
-        <div className="intro-camera">
-          <div className="intro-world">
-            <div className="intro-sky" />
-            <div className="intro-flood flood-l" />
-            <div className="intro-flood flood-r" />
+      <div className="intro-scene" aria-hidden>
+        <div className="intro-sky" />
+        <div className="intro-rim" />
 
-            <div className="intro-bowl">
-              <div className="intro-stand stand-far" />
-              <div className="intro-stand stand-left" />
-              <div className="intro-stand stand-right" />
-            </div>
+        <div className="intro-flight">
+          <div className="intro-stands">
+            <span className="seat-band seat-far" />
+            <span className="seat-band seat-left" />
+            <span className="seat-band seat-right" />
+          </div>
 
-            <div className="intro-pitch-plane">
-              <div className="intro-turf">
-                <div className="intro-stripes" />
-                <div className="intro-midline" />
-                <div className="intro-circle" />
-                <div className="intro-penalty" />
-                <div className="intro-sixyard" />
-                <div className="intro-spot" />
+          <div className="intro-pitch">
+            <div className="intro-pitch-inner">
+              <div className="intro-stripes" />
+              <div className="intro-line mid" />
+              <div className="intro-circle" />
+              <div className="intro-box pen" />
+              <div className="intro-box six" />
+              <div className="intro-spot" />
 
-                <div className="intro-goal">
-                  <div className="intro-post post-l" />
-                  <div className="intro-post post-r" />
-                  <div className="intro-crossbar" />
-                  <div className="intro-net" />
-                </div>
+              <div className="intro-goal">
+                <span className="post left" />
+                <span className="post right" />
+                <span className="bar" />
+                <span className="net" />
+              </div>
 
-                <div className="intro-ball">
-                  <span className="intro-ball-core" />
-                </div>
+              <div className="intro-ball">
+                <span className="intro-ball-core" />
               </div>
             </div>
           </div>
         </div>
+
+        <div className="intro-vignette" />
       </div>
 
       <div className="intro-bloom" aria-hidden>
-        <div className="intro-bloom-ring" />
+        <div className="intro-flash" />
         <div className="intro-table">
           <div className="intro-table-head">Tabelle</div>
           {TABLE_ROWS.map((row, i) => (
