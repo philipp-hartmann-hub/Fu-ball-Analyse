@@ -26,6 +26,13 @@ function formatDate(iso: string): string {
   return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })
 }
 
+/** Nur Ziffern, max. 20; leeres Feld → 0 */
+function parseGoals(raw: string): number {
+  const digits = raw.replace(/\D/g, '')
+  if (!digits) return 0
+  return Math.min(20, Number(digits))
+}
+
 export function ScenarioPanel({ matches, scenarios, onChange, focusTeamId }: Props) {
   const [onlyFocus, setOnlyFocus] = useState(false)
   const [mode, setMode] = useState<DetailMode>('grob')
@@ -119,7 +126,7 @@ export function ScenarioPanel({ matches, scenarios, onChange, focusTeamId }: Pro
       <p className="hint">
         {mode === 'grob'
           ? 'Sieg Verein 1, Sieg Verein 2 oder Unentschieden.'
-          : 'Konkretes Ergebnis eingeben (Tore Heim : Auswärts). Ohne Auswahl gilt 0:0 beim Fokus der Felder.'}
+          : 'Tore tippen (Heim : Auswärts). Ohne Auswahl gilt 0:0 beim Fokus der Felder.'}
       </p>
 
       <label className="toggle compact">
@@ -191,15 +198,18 @@ export function ScenarioPanel({ matches, scenarios, onChange, focusTeamId }: Pro
                         <label>
                           <span className="sr-only">Tore Heim</span>
                           <input
-                            type="number"
-                            min={0}
-                            max={20}
-                            value={homeGoals}
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            autoComplete="off"
+                            maxLength={2}
+                            value={scenario ? String(homeGoals) : ''}
+                            placeholder="0"
                             onChange={(e) =>
                               setFine(
                                 match.matchID,
-                                Number(e.target.value),
-                                awayGoals,
+                                parseGoals(e.target.value),
+                                scenario ? awayGoals : 0,
                               )
                             }
                             onFocus={() => {
@@ -211,15 +221,18 @@ export function ScenarioPanel({ matches, scenarios, onChange, focusTeamId }: Pro
                         <label>
                           <span className="sr-only">Tore Auswärts</span>
                           <input
-                            type="number"
-                            min={0}
-                            max={20}
-                            value={awayGoals}
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            autoComplete="off"
+                            maxLength={2}
+                            value={scenario ? String(awayGoals) : ''}
+                            placeholder="0"
                             onChange={(e) =>
                               setFine(
                                 match.matchID,
-                                homeGoals,
-                                Number(e.target.value),
+                                scenario ? homeGoals : 0,
+                                parseGoals(e.target.value),
                               )
                             }
                             onFocus={() => {

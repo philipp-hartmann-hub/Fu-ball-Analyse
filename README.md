@@ -55,6 +55,16 @@ src/
 
 ## Änderungsprotokoll
 
+### 2026-08-01 — Prompt 24
+
+**User:** Feinmodus: Ergebnis tippen, keine Pfeileingabe.
+
+**Aktion:**
+- Number-Spinner durch Textfelder (`inputMode=numeric`) ersetzt
+- Push auf `main`
+
+**Status:** erledigt
+
 ### 2026-08-01 — Prompt 23
 
 **User:** Grob-Anzeige: Sieg Verein 1, Sieg Verein 2, Unentschieden.
