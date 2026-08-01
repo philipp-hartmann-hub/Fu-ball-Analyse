@@ -1,0 +1,32 @@
+---
+description: README nach jedem Prompt als Living Documentation aktualisieren
+alwaysApply: true
+---
+
+# README-Dokumentation
+
+Nach **jedem** User-Prompt zwingend [`README.md`](README.md) aktualisieren — bevor die Antwort abgeschlossen wird.
+
+## Pflicht
+
+1. Neuen Eintrag unter **Änderungsprotokoll** ganz oben (nach der Überschrift), Format:
+
+```markdown
+### YYYY-MM-DD — Prompt N
+
+**User:** <kurz paraphrasierter Prompt>
+
+**Aktion:**
+- <konkrete Änderungen / Dateien / Entscheidungen>
+
+**Status:** erledigt | teilweise | offen
+```
+
+2. Prompt-Nummer fortlaufend erhöhen.
+3. Abschnitte **Überblick**, **Features**, **Architektur**, **Start** anpassen, wenn sich Produkt, Stack oder Struktur geändert haben.
+4. Keine Secrets, Tokens oder privaten URLs ins README schreiben.
+
+## Nicht tun
+
+- Protokoll-Einträge löschen oder umschreiben (nur korrigieren bei faktischen Fehlern)
+- README-Update weglassen, weil die Änderung „klein“ wirkte
