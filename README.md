@@ -55,6 +55,16 @@ src/
 
 ## Änderungsprotokoll
 
+### 2026-08-01 — Prompt 26
+
+**User:** Zonen-Linien in der Tabelle verrutscht.
+
+**Aktion:**
+- `border-left` von `<tr>` auf erste Zelle (Safari/`border-collapse`-Bug)
+- Push auf `main`
+
+**Status:** erledigt
+
 ### 2026-08-01 — Prompt 25
 
 **User:** Smartphone-Darstellung optimieren, Desktop nicht verschlechtern.

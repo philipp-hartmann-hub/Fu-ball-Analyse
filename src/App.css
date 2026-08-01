@@ -583,7 +583,8 @@
 
 .standings {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   font-size: 0.92rem;
 }
 
@@ -597,6 +598,13 @@
   letter-spacing: 0.04em;
   border-bottom: 1px solid var(--line);
   white-space: nowrap;
+  vertical-align: middle;
+}
+
+.standings th:first-child,
+.standings td:first-child {
+  padding-left: 0.65rem;
+  border-left: 3px solid transparent;
 }
 
 .standings td {
@@ -612,32 +620,31 @@
 .standings tbody tr {
   cursor: pointer;
   transition: background 0.15s;
-  border-left: 3px solid transparent;
 }
 
-.standings tbody tr:hover {
+.standings tbody tr:hover td {
   background: rgba(196, 240, 97, 0.05);
 }
 
-.standings tbody tr.selected {
+.standings tbody tr.selected td {
   background: rgba(196, 240, 97, 0.1);
 }
 
-.standings tbody tr.zone-champion {
+.standings tbody tr.zone-champion td:first-child {
   border-left-color: var(--accent);
 }
 
-.standings tbody tr.zone-cl {
+.standings tbody tr.zone-cl td:first-child {
   border-left-color: var(--cl);
 }
 
-.standings tbody tr.zone-el,
-.standings tbody tr.zone-ecl {
+.standings tbody tr.zone-el td:first-child,
+.standings tbody tr.zone-ecl td:first-child {
   border-left-color: var(--el);
 }
 
-.standings tbody tr.zone-relegation,
-.standings tbody tr.zone-direct-relegation {
+.standings tbody tr.zone-relegation td:first-child,
+.standings tbody tr.zone-direct-relegation td:first-child {
   border-left-color: var(--releg);
 }
 
