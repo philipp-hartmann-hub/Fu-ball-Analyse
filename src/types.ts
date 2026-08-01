@@ -1,5 +1,3 @@
-export type LeagueShortcut = 'bl1' | 'bl2'
-
 export interface TeamInfo {
   teamId: number
   teamName: string
@@ -83,8 +81,3 @@ export interface PositionRange {
   worstRank: number
 }
 
-export interface LeagueMeta {
-  shortcut: LeagueShortcut
-  label: string
-  season: number
-}

@@ -59,29 +59,7 @@
   align-items: center;
 }
 
-.segmented {
-  display: inline-flex;
-  padding: 0.2rem;
-  background: var(--bg-elevated);
-  border: 1px solid var(--line);
-  border-radius: 999px;
-}
-
-.segmented button {
-  border: 0;
-  background: transparent;
-  padding: 0.45rem 0.9rem;
-  border-radius: 999px;
-  color: var(--muted);
-  transition: background 0.2s, color 0.2s;
-}
-
-.segmented button.active {
-  background: var(--accent);
-  color: #132016;
-  font-weight: 600;
-}
-
+.comp-label,
 .season-label {
   display: flex;
   align-items: center;
@@ -90,12 +68,45 @@
   font-size: 0.9rem;
 }
 
+.comp-label select,
 .season-label select,
 .cutoff input {
   background: var(--bg-elevated);
   border: 1px solid var(--line);
   border-radius: 0.5rem;
   padding: 0.4rem 0.6rem;
+  max-width: min(100%, 16rem);
+}
+
+.banner.warn {
+  border-color: rgba(201, 162, 39, 0.55);
+  color: #f0e0a8;
+  margin-bottom: 0.5rem;
+}
+
+.banner.warn a {
+  color: var(--accent);
+}
+
+.banner.warn code {
+  font-size: 0.85em;
+  background: rgba(0, 0, 0, 0.25);
+  padding: 0.1rem 0.35rem;
+  border-radius: 0.25rem;
+}
+
+.crest-fallback {
+  display: inline-block;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(196, 240, 97, 0.2);
+  flex-shrink: 0;
+}
+
+.crest-fallback.large {
+  width: 40px;
+  height: 40px;
 }
 
 .status-row {

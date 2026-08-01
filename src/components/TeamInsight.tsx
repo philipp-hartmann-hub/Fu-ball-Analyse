@@ -1,28 +1,22 @@
+import type { CompetitionKind } from '../competitions'
 import type { PositionRange, StandingRow } from '../types'
+import { zoneLabelFor } from '../lib/table'
 
 interface Props {
   team: StandingRow | null
   range: PositionRange | null
   remainingCount: number
+  kind: CompetitionKind
+  leagueSize: number
 }
 
-const ZONE_LABELS: Record<number, string> = {
-  1: 'Meister',
-  2: 'Champions League',
-  3: 'Champions League',
-  4: 'Champions League',
-  5: 'Europa League',
-  6: 'Conference League',
-}
-
-function zoneLabel(rank: number, size: number): string {
-  if (ZONE_LABELS[rank]) return ZONE_LABELS[rank]!
-  if (rank === size - 2) return 'Relegation'
-  if (rank >= size - 1) return 'Abstieg'
-  return 'Mittelfeld'
-}
-
-export function TeamInsight({ team, range, remainingCount }: Props) {
+export function TeamInsight({
+  team,
+  range,
+  remainingCount,
+  kind,
+  leagueSize,
+}: Props) {
   if (!team) {
     return (
       <div className="panel insight">
@@ -32,11 +26,15 @@ export function TeamInsight({ team, range, remainingCount }: Props) {
     )
   }
 
-  const size = 18
+  const size = leagueSize || 18
   return (
     <div className="panel insight">
       <div className="insight-head">
-        <img src={team.teamIconUrl} alt="" width={40} height={40} />
+        {team.teamIconUrl ? (
+          <img src={team.teamIconUrl} alt="" width={40} height={40} />
+        ) : (
+          <span className="crest-fallback large" aria-hidden />
+        )}
         <div>
           <h2>{team.teamName}</h2>
           <p className="meta">
@@ -49,13 +47,13 @@ export function TeamInsight({ team, range, remainingCount }: Props) {
           <div>
             <span className="label">Bestfall</span>
             <strong>{range.bestRank}.</strong>
-            <span className="sub">{zoneLabel(range.bestRank, size)}</span>
+            <span className="sub">{zoneLabelFor(range.bestRank, size, kind)}</span>
           </div>
           <div className="divider" />
           <div>
             <span className="label">Schlechtfall</span>
             <strong>{range.worstRank}.</strong>
-            <span className="sub">{zoneLabel(range.worstRank, size)}</span>
+            <span className="sub">{zoneLabelFor(range.worstRank, size, kind)}</span>
           </div>
         </div>
       )}

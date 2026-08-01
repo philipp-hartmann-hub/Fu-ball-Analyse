@@ -1,3 +1,4 @@
+import type { CompetitionKind } from '../competitions'
 import type { PositionRange, StandingRow } from '../types'
 import { zoneForRank } from '../lib/table'
 
@@ -7,6 +8,7 @@ interface Props {
   selectedTeamId: number | null
   onSelectTeam: (teamId: number) => void
   highlightScenarios: boolean
+  kind: CompetitionKind
 }
 
 export function StandingsTable({
@@ -15,6 +17,7 @@ export function StandingsTable({
   selectedTeamId,
   onSelectTeam,
   highlightScenarios,
+  kind,
 }: Props) {
   const rangeMap = new Map(ranges.map((r) => [r.teamId, r]))
   const size = standings.length
@@ -39,7 +42,7 @@ export function StandingsTable({
         <tbody>
           {standings.map((row) => {
             const range = rangeMap.get(row.teamId)
-            const zone = zoneForRank(row.rank, size)
+            const zone = zoneForRank(row.rank, size, kind)
             const selected = selectedTeamId === row.teamId
             return (
               <tr
@@ -55,7 +58,11 @@ export function StandingsTable({
               >
                 <td className="num rank">{row.rank}</td>
                 <td className="team">
-                  <img src={row.teamIconUrl} alt="" width={22} height={22} loading="lazy" />
+                  {row.teamIconUrl ? (
+                    <img src={row.teamIconUrl} alt="" width={22} height={22} loading="lazy" />
+                  ) : (
+                    <span className="crest-fallback" aria-hidden />
+                  )}
                   <span className="full">{row.teamName}</span>
                   <span className="short">{row.shortName || row.teamName}</span>
                 </td>

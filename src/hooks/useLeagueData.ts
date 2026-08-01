@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { fetchLeagueBundle } from '../api/openliga'
-import type { LeagueShortcut, Match } from '../types'
+import { fetchCompetitionMatches } from '../api/dataSource'
+import type { Competition } from '../competitions'
+import type { Match } from '../types'
 
 const POLL_MS = 60_000
 
-export function useLeagueData(league: LeagueShortcut, season: number) {
+export function useLeagueData(competitionId: string, season: number) {
   const [matches, setMatches] = useState<Match[]>([])
+  const [competition, setCompetition] = useState<Competition | null>(null)
+  const [provider, setProvider] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null)
@@ -23,12 +26,15 @@ export function useLeagueData(league: LeagueShortcut, season: number) {
       setError(null)
 
       try {
-        const { matches: next } = await fetchLeagueBundle(league, season)
+        const next = await fetchCompetitionMatches(competitionId, season)
         if (ac.signal.aborted) return
-        setMatches(next)
+        setMatches(next.matches)
+        setCompetition(next.competition)
+        setProvider(next.provider)
         setUpdatedAt(new Date())
       } catch (e) {
         if (ac.signal.aborted) return
+        setMatches([])
         setError(e instanceof Error ? e.message : 'Laden fehlgeschlagen')
       } finally {
         if (!ac.signal.aborted) {
@@ -37,7 +43,7 @@ export function useLeagueData(league: LeagueShortcut, season: number) {
         }
       }
     },
-    [league, season],
+    [competitionId, season],
   )
 
   useEffect(() => {
@@ -49,5 +55,14 @@ export function useLeagueData(league: LeagueShortcut, season: number) {
     }
   }, [load])
 
-  return { matches, loading, error, updatedAt, refreshing, reload: () => load(false) }
+  return {
+    matches,
+    competition,
+    provider,
+    loading,
+    error,
+    updatedAt,
+    refreshing,
+    reload: () => load(false),
+  }
 }

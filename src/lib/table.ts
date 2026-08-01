@@ -163,7 +163,24 @@ export function currentMatchday(matches: Match[]): number {
   return Math.min(...unfinished.map((m) => m.group.groupOrderID))
 }
 
-export function zoneForRank(rank: number, leagueSize: number): string {
+export type ZoneKind = 'domestic' | 'europe' | 'nations'
+
+export function zoneForRank(
+  rank: number,
+  leagueSize: number,
+  kind: ZoneKind = 'domestic',
+): string {
+  if (kind === 'europe') {
+    if (rank <= 8) return 'champion'
+    if (rank <= 24) return 'cl'
+    return 'mid'
+  }
+  if (kind === 'nations') {
+    if (rank <= 4) return 'champion'
+    if (rank >= leagueSize - 3) return 'direct-relegation'
+    return 'mid'
+  }
+  // domestic Top-5 style
   if (rank === 1) return 'champion'
   if (rank <= 4) return 'cl'
   if (rank === 5) return 'el'
@@ -173,4 +190,28 @@ export function zoneForRank(rank: number, leagueSize: number): string {
     if (rank >= leagueSize - 1) return 'direct-relegation'
   }
   return 'mid'
+}
+
+export function zoneLabelFor(
+  rank: number,
+  leagueSize: number,
+  kind: ZoneKind = 'domestic',
+): string {
+  if (kind === 'europe') {
+    if (rank <= 8) return 'Direkt Achtelfinale'
+    if (rank <= 24) return 'Zwischenrunde'
+    return 'Ausgeschieden (Ligaphase)'
+  }
+  if (kind === 'nations') {
+    if (rank <= 4) return 'Viertelfinale / Spitzengruppe'
+    if (rank >= leagueSize - 3) return 'Abstieg / Abstiegszone'
+    return 'Mittelfeld'
+  }
+  if (rank === 1) return 'Meister'
+  if (rank <= 4) return 'Champions League'
+  if (rank === 5) return 'Europa League'
+  if (rank === 6) return 'Conference League'
+  if (rank === leagueSize - 2) return 'Relegation'
+  if (rank >= leagueSize - 1) return 'Abstieg'
+  return 'Mittelfeld'
 }

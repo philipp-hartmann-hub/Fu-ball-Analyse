@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react'
-import { defaultSeason, LEAGUES } from './api/openliga'
+import { defaultSeason } from './api/dataSource'
 import { LeagueSwitcher } from './components/LeagueSwitcher'
 import { ScenarioPanel } from './components/ScenarioPanel'
 import { StandingsTable } from './components/StandingsTable'
 import { TeamInsight } from './components/TeamInsight'
+import { getCompetition, hasFootballDataToken } from './competitions'
 import { useLeagueData } from './hooks/useLeagueData'
 import { computePositionRanges } from './lib/scenarios'
 import {
@@ -12,7 +13,7 @@ import {
   matchdays,
   remainingMatches,
 } from './lib/table'
-import type { LeagueShortcut, ScenarioResult } from './types'
+import type { ScenarioResult } from './types'
 import './App.css'
 
 function seasonOptions(base: number): number[] {
@@ -21,38 +22,32 @@ function seasonOptions(base: number): number[] {
 
 export default function App() {
   const baseSeason = defaultSeason()
-  const [league, setLeague] = useState<LeagueShortcut>('bl1')
+  const [competitionId, setCompetitionId] = useState('bl1')
   const [season, setSeason] = useState(baseSeason)
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null)
   const [scenarios, setScenarios] = useState<ScenarioResult[]>([])
   const [asOfMatchday, setAsOfMatchday] = useState<number | null>(null)
   const [useCutoff, setUseCutoff] = useState(false)
 
-  const { matches, loading, error, updatedAt, refreshing, reload } = useLeagueData(
-    league,
-    season,
-  )
+  const { matches, competition, provider, loading, error, updatedAt, refreshing, reload } =
+    useLeagueData(competitionId, season)
 
   const days = useMemo(() => matchdays(matches), [matches])
   const liveMatchday = useMemo(() => currentMatchday(matches), [matches])
-
   const cutoff = useCutoff ? (asOfMatchday ?? liveMatchday) : null
 
   const baseStandings = useMemo(
     () => buildStandings(matches, { maxMatchday: cutoff }),
     [matches, cutoff],
   )
-
   const openMatches = useMemo(
     () => remainingMatches(matches, cutoff),
     [matches, cutoff],
   )
-
   const projectedStandings = useMemo(
     () => buildStandings(matches, { maxMatchday: cutoff, scenarios }),
     [matches, cutoff, scenarios],
   )
-
   const ranges = useMemo(
     () => computePositionRanges(baseStandings, openMatches),
     [baseStandings, openMatches],
@@ -62,12 +57,14 @@ export default function App() {
     projectedStandings.find((s) => s.teamId === selectedTeamId) ??
     baseStandings.find((s) => s.teamId === selectedTeamId) ??
     null
-
   const selectedRange = ranges.find((r) => r.teamId === selectedTeamId) ?? null
-  const leagueLabel = LEAGUES.find((l) => l.shortcut === league)?.label ?? league
 
-  const onLeagueChange = (next: LeagueShortcut) => {
-    setLeague(next)
+  const meta = competition ?? getCompetition(competitionId)
+  const kind = meta?.kind ?? 'domestic'
+  const leagueLabel = meta?.label ?? competitionId
+
+  const onCompetitionChange = (next: string) => {
+    setCompetitionId(next)
     setSelectedTeamId(null)
     setScenarios([])
     setUseCutoff(false)
@@ -93,16 +90,16 @@ export default function App() {
             {leagueLabel}
           </h1>
           <p className="lead">
-            Tabellenkonstellationen, Restprogramm und mögliche Endplätze – live aus
-            OpenLigaDB.
+            Top-5-Ligen, UEFA-Wettbewerbe und Nations League – Tabellenkonstellationen und
+            mögliche Endplätze.
           </p>
         </div>
         <div className="hero-meta">
           <LeagueSwitcher
-            league={league}
+            competitionId={competitionId}
             season={season}
             seasons={seasonOptions(baseSeason)}
-            onLeagueChange={onLeagueChange}
+            onCompetitionChange={onCompetitionChange}
             onSeasonChange={onSeasonChange}
           />
           <div className="status-row">
@@ -111,6 +108,7 @@ export default function App() {
               {updatedAt
                 ? `Aktualisiert ${updatedAt.toLocaleTimeString('de-DE')}`
                 : 'Lade…'}
+              {provider ? ` · ${provider}` : ''}
             </span>
             <button type="button" className="ghost" onClick={() => void reload()}>
               Neu laden
@@ -118,6 +116,18 @@ export default function App() {
           </div>
         </div>
       </header>
+
+      {!hasFootballDataToken() && (
+        <div className="banner warn">
+          Ohne <code>VITE_FOOTBALL_DATA_TOKEN</code> laufen Bundesliga und Nations League über
+          OpenLigaDB. Für Premier League, La Liga, Serie A, Ligue 1 sowie Champions-/Europa-/Conference
+          League einen kostenlosen Token von{' '}
+          <a href="https://www.football-data.org/client/register" target="_blank" rel="noreferrer">
+            football-data.org
+          </a>{' '}
+          in <code>.env</code> eintragen.
+        </div>
+      )}
 
       <section className="toolbar">
         <label className="toggle">
@@ -140,7 +150,7 @@ export default function App() {
             <input
               type="number"
               min={0}
-              max={days[days.length - 1] ?? 34}
+              max={days[days.length - 1] ?? 38}
               value={asOfMatchday ?? 0}
               onChange={(e) => {
                 setAsOfMatchday(Number(e.target.value))
@@ -161,8 +171,10 @@ export default function App() {
         </div>
       )}
 
-      {loading && matches.length === 0 ? (
-        <div className="banner">Lade Ligadaten…</div>
+      {loading && matches.length === 0 && !error ? (
+        <div className="banner">Lade Wettbewerbsdaten…</div>
+      ) : matches.length === 0 && !loading ? (
+        <div className="banner">Keine Spieldaten für diese Saison gefunden.</div>
       ) : (
         <main className="layout">
           <div className="main-col">
@@ -172,12 +184,15 @@ export default function App() {
               selectedTeamId={selectedTeamId}
               onSelectTeam={setSelectedTeamId}
               highlightScenarios={scenarios.length > 0}
+              kind={kind}
             />
           </div>
           <aside className="side-col">
             <TeamInsight
               team={selectedTeam}
               range={selectedRange}
+              kind={kind}
+              leagueSize={projectedStandings.length}
               remainingCount={
                 openMatches.filter(
                   (m) =>
@@ -198,7 +213,8 @@ export default function App() {
       )}
 
       <footer className="footer">
-        Daten: OpenLigaDB · Aktualisierung alle 60 Sekunden · Keine Wettberatung
+        Daten: OpenLigaDB / football-data.org · Aktualisierung alle 60 Sekunden · Keine
+        Wettberatung
       </footer>
     </div>
   )
