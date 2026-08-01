@@ -38,9 +38,15 @@
   line-height: 1.15;
 }
 
+.hero-sub {
+  color: var(--muted);
+  font-weight: 400;
+  font-size: 0.85em;
+}
+
 .lead {
   margin: 0.85rem 0 0;
-  max-width: 34ch;
+  max-width: 36ch;
   color: var(--muted);
   font-size: 1.05rem;
 }
@@ -59,7 +65,29 @@
   align-items: center;
 }
 
-.comp-label,
+.segmented {
+  display: inline-flex;
+  padding: 0.2rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+
+.segmented button {
+  border: 0;
+  background: transparent;
+  padding: 0.45rem 0.95rem;
+  border-radius: 999px;
+  color: var(--muted);
+  transition: background 0.2s, color 0.2s;
+}
+
+.segmented button.active {
+  background: var(--accent);
+  color: #132016;
+  font-weight: 600;
+}
+
 .season-label {
   display: flex;
   align-items: center;
@@ -68,31 +96,11 @@
   font-size: 0.9rem;
 }
 
-.comp-label select,
-.season-label select,
-.cutoff input {
+.season-label select {
   background: var(--bg-elevated);
   border: 1px solid var(--line);
   border-radius: 0.5rem;
   padding: 0.4rem 0.6rem;
-  max-width: min(100%, 16rem);
-}
-
-.banner.warn {
-  border-color: rgba(201, 162, 39, 0.55);
-  color: #f0e0a8;
-  margin-bottom: 0.5rem;
-}
-
-.banner.warn a {
-  color: var(--accent);
-}
-
-.banner.warn code {
-  font-size: 0.85em;
-  background: rgba(0, 0, 0, 0.25);
-  padding: 0.1rem 0.35rem;
-  border-radius: 0.25rem;
 }
 
 .crest-fallback {
@@ -149,13 +157,63 @@
   cursor: default;
 }
 
-.toolbar {
+.group-tabs {
   display: flex;
   flex-wrap: wrap;
-  gap: 1rem;
-  align-items: center;
-  padding: 1rem 0;
-  animation: rise 0.7s ease-out 0.1s both;
+  gap: 0.4rem;
+  padding: 0.85rem 0 0.25rem;
+  animation: rise 0.7s ease-out 0.08s both;
+}
+
+.group-tabs button {
+  border: 1px solid var(--line);
+  background: var(--bg-elevated);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 0.4rem 0.85rem;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.group-tabs button.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #132016;
+  font-weight: 600;
+}
+
+.group-hint {
+  margin: 0 0 0.75rem;
+}
+
+.ko-panel {
+  margin-top: 1rem;
+}
+
+.ko-list {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.ko-list li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: 0.5rem;
+  background: rgba(15, 31, 23, 0.45);
+  font-size: 0.9rem;
+}
+
+.ko-round {
+  color: var(--muted);
+  min-width: 10rem;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .toggle {
@@ -168,12 +226,115 @@
 .cutoff {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.55rem;
+  color: var(--muted);
+  flex: 1;
+  min-width: 12rem;
+}
+
+.cutoff input[type='range'] {
+  flex: 1;
+  accent-color: var(--accent);
+}
+
+.cutoff-value {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  min-width: 1.5rem;
+}
+
+.zone-legend {
+  list-style: none;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem 0.9rem;
+  font-size: 0.78rem;
   color: var(--muted);
 }
 
-.cutoff input {
-  width: 4.5rem;
+.zone-legend .swatch {
+  display: inline-block;
+  width: 0.55rem;
+  height: 0.85rem;
+  border-radius: 1px;
+  margin-right: 0.35rem;
+  vertical-align: middle;
+  border-left: 3px solid transparent;
+}
+
+.zone-legend .zone-champion {
+  border-left-color: var(--accent);
+  background: rgba(196, 240, 97, 0.2);
+}
+.zone-legend .zone-cl {
+  border-left-color: var(--cl);
+  background: rgba(61, 126, 255, 0.2);
+}
+.zone-legend .zone-el,
+.zone-legend .zone-ecl {
+  border-left-color: var(--el);
+  background: rgba(201, 162, 39, 0.2);
+}
+.zone-legend .zone-relegation,
+.zone-legend .zone-direct-relegation {
+  border-left-color: var(--releg);
+  background: rgba(196, 92, 58, 0.2);
+}
+
+.delta {
+  text-align: center;
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  width: 2.2rem;
+}
+
+.delta .up {
+  color: var(--accent);
+}
+.delta .down {
+  color: var(--releg);
+}
+.delta .flat {
+  color: var(--muted);
+  opacity: 0.5;
+}
+
+.stat-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.stat-row .label {
+  display: block;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  margin-bottom: 0.2rem;
+}
+
+.stat-row strong {
+  font-size: 0.95rem;
+}
+
+.toggle.compact {
+  margin: 0.65rem 0 0.35rem;
+  font-size: 0.85rem;
+}
+
+.fixture-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.fixture-date {
+  font-size: 0.72rem;
+  color: var(--muted);
 }
 
 .toolbar-note {
@@ -397,6 +558,28 @@
   border-radius: 0.75rem;
   background: rgba(15, 31, 23, 0.55);
   border: 1px solid var(--line);
+}
+
+.outlook-block {
+  margin-bottom: 1rem;
+}
+
+.outlook-block:last-of-type {
+  margin-bottom: 0.35rem;
+}
+
+.outlook-title {
+  margin: 0 0 0.45rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.hint.tight {
+  margin-top: 0.4rem;
+  font-size: 0.8rem;
 }
 
 .range-card .label {

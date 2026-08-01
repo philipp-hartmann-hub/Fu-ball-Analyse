@@ -1,48 +1,36 @@
-import {
-  COMPETITION_GROUPS,
-  COMPETITIONS,
-  hasFootballDataToken,
-  type Competition,
-} from '../competitions'
+import { LEAGUES, type LeagueId } from '../leagues'
 
 interface Props {
-  competitionId: string
+  leagueId: LeagueId
   season: number
   seasons: number[]
-  onCompetitionChange: (id: string) => void
+  onLeagueChange: (id: LeagueId) => void
   onSeasonChange: (season: number) => void
 }
 
 export function LeagueSwitcher({
-  competitionId,
+  leagueId,
   season,
   seasons,
-  onCompetitionChange,
+  onLeagueChange,
   onSeasonChange,
 }: Props) {
-  const needsToken = !hasFootballDataToken()
-
   return (
     <div className="switcher">
-      <label className="comp-label">
-        Wettbewerb
-        <select
-          value={competitionId}
-          onChange={(e) => onCompetitionChange(e.target.value)}
-          aria-label="Wettbewerb"
-        >
-          {COMPETITION_GROUPS.map((group) => (
-            <optgroup key={group.kind} label={group.label}>
-              {COMPETITIONS.filter((c) => c.kind === group.kind).map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.label}
-                  {optionSuffix(c, needsToken)}
-                </option>
-              ))}
-            </optgroup>
-          ))}
-        </select>
-      </label>
+      <div className="segmented" role="tablist" aria-label="Liga">
+        {LEAGUES.map((l) => (
+          <button
+            key={l.id}
+            type="button"
+            role="tab"
+            aria-selected={leagueId === l.id}
+            className={leagueId === l.id ? 'active' : ''}
+            onClick={() => onLeagueChange(l.id)}
+          >
+            {l.shortLabel}
+          </button>
+        ))}
+      </div>
       <label className="season-label">
         Saison
         <select
@@ -59,15 +47,4 @@ export function LeagueSwitcher({
       </label>
     </div>
   )
-}
-
-function optionSuffix(c: Competition, needsToken: boolean): string {
-  if (!needsToken) return ''
-  if (c.preferredProvider === 'football-data' && !c.openligaShortcut) {
-    return ' (Token nötig)'
-  }
-  if (c.preferredProvider === 'football-data') {
-    return ' (Token empfohlen)'
-  }
-  return ''
 }

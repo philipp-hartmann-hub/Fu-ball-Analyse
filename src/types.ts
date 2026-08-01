@@ -81,3 +81,14 @@ export interface PositionRange {
   worstRank: number
 }
 
+/** Best-/Schlechtfall nach dem nächsten Spieltag */
+export interface NextMatchdayOutlook {
+  matchday: number
+  range: PositionRange
+  fixtureCount: number
+  /** Gegner des Fokusvereins an diesem Spieltag, falls vorhanden */
+  opponentName: string | null
+  plays: boolean
+}
+
+

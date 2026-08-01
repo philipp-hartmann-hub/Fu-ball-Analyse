@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { Match, ScenarioResult } from '../types'
 import { scenarioFromOutcome } from '../lib/scenarios'
 
@@ -15,7 +16,15 @@ function outcomeOf(s: ScenarioResult | undefined): 'home' | 'draw' | 'away' | nu
   return 'draw'
 }
 
+function formatDate(iso: string): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })
+}
+
 export function ScenarioPanel({ matches, scenarios, onChange, focusTeamId }: Props) {
+  const [onlyFocus, setOnlyFocus] = useState(false)
   const map = new Map(scenarios.map((s) => [s.matchId, s]))
 
   const setOutcome = (matchId: number, outcome: 'home' | 'draw' | 'away' | null) => {
@@ -24,23 +33,29 @@ export function ScenarioPanel({ matches, scenarios, onChange, focusTeamId }: Pro
     onChange(next)
   }
 
+  const filtered =
+    onlyFocus && focusTeamId != null
+      ? matches.filter(
+          (m) => m.team1.teamId === focusTeamId || m.team2.teamId === focusTeamId,
+        )
+      : matches
+
   const byMatchday = new Map<number, Match[]>()
-  for (const m of matches) {
+  for (const m of filtered) {
     const day = m.group.groupOrderID
     if (!byMatchday.has(day)) byMatchday.set(day, [])
     byMatchday.get(day)!.push(m)
   }
 
   const days = [...byMatchday.keys()].sort((a, b) => a - b)
-  const visibleDays = days.slice(0, 6)
 
   if (matches.length === 0) {
     return (
       <div className="panel empty">
-        <p>Keine offenen Spiele – die Saison ist abgeschlossen oder noch nicht gestartet.</p>
+        <p>Keine offenen Spiele – Saison abgeschlossen oder noch nicht gestartet.</p>
         <p className="hint">
-          Nutze „Stand nach Spieltag“, um aus einer früheren Tabellenkonstellation zu
-          analysieren.
+          Aktiviere „Stand nach Spieltag“, um Restspiele ab einem früheren Stand zu
+          simulieren.
         </p>
       </div>
     )
@@ -50,16 +65,29 @@ export function ScenarioPanel({ matches, scenarios, onChange, focusTeamId }: Pro
     <div className="panel scenario-panel">
       <div className="panel-head">
         <h2>Szenario-Simulator</h2>
-        <button type="button" className="ghost" onClick={() => onChange([])} disabled={!scenarios.length}>
+        <button
+          type="button"
+          className="ghost"
+          onClick={() => onChange([])}
+          disabled={!scenarios.length}
+        >
           Zurücksetzen
         </button>
       </div>
       <p className="hint">
-        Tippe Ergebnisse für offene Spiele – die Tabelle aktualisiert sich sofort. Fokusverein
-        ist hervorgehoben.
+        1 / X / 2 setzen – die Tabelle und Δ-Spalte aktualisieren sich sofort.
       </p>
+      <label className="toggle compact">
+        <input
+          type="checkbox"
+          checked={onlyFocus}
+          disabled={focusTeamId == null}
+          onChange={(e) => setOnlyFocus(e.target.checked)}
+        />
+        Nur Spiele des Fokusvereins
+      </label>
       <div className="matchday-list">
-        {visibleDays.map((day) => (
+        {days.map((day) => (
           <section key={day} className="matchday-block">
             <h3>{day}. Spieltag</h3>
             <ul className="fixture-list">
@@ -70,10 +98,13 @@ export function ScenarioPanel({ matches, scenarios, onChange, focusTeamId }: Pro
                   (match.team1.teamId === focusTeamId || match.team2.teamId === focusTeamId)
                 return (
                   <li key={match.matchID} className={involvesFocus ? 'focus' : ''}>
-                    <div className="fixture-teams">
-                      <span>{match.team1.shortName || match.team1.teamName}</span>
-                      <span className="vs">–</span>
-                      <span>{match.team2.shortName || match.team2.teamName}</span>
+                    <div className="fixture-meta">
+                      <span className="fixture-date">{formatDate(match.matchDateTime)}</span>
+                      <div className="fixture-teams">
+                        <span>{match.team1.shortName || match.team1.teamName}</span>
+                        <span className="vs">–</span>
+                        <span>{match.team2.shortName || match.team2.teamName}</span>
+                      </div>
                     </div>
                     <div className="outcome-btns" role="group" aria-label="Ergebnis">
                       {(
@@ -102,11 +133,8 @@ export function ScenarioPanel({ matches, scenarios, onChange, focusTeamId }: Pro
           </section>
         ))}
       </div>
-      {days.length > visibleDays.length && (
-        <p className="hint">
-          Zeige die nächsten {visibleDays.length} von {days.length} Spieltagen. Weitere folgen,
-          sobald frühere gesetzt oder gespielt sind.
-        </p>
+      {filtered.length === 0 && (
+        <p className="hint">Kein Restspiel für den gewählten Verein – anderen Verein wählen.</p>
       )}
     </div>
   )

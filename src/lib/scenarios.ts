@@ -1,4 +1,10 @@
-import type { Match, PositionRange, ScenarioResult, StandingRow } from '../types'
+import type {
+  Match,
+  NextMatchdayOutlook,
+  PositionRange,
+  ScenarioResult,
+  StandingRow,
+} from '../types'
 import { buildStandings, compareStandings, remainingMatches } from './table'
 
 function cloneRow(row: StandingRow): StandingRow {
@@ -46,11 +52,14 @@ function rankOf(standings: StandingRow[], teamId: number): number {
   return sorted.findIndex((s) => s.teamId === teamId) + 1
 }
 
+const OUTCOMES: Array<[number, number]> = [
+  [1, 0],
+  [1, 1],
+  [0, 1],
+]
+
 /**
- * Approximate best/worst final ranks for each team.
- * Focus team: wins/loses all remaining games.
- * Other matches: outcomes chosen to help (best) or hurt (worst) the focus team
- * via simple points heuristics (not full combinatorial search).
+ * Saison-Rest: Best-/Schlechtfall heuristisch über alle offenen Spiele.
  */
 export function computePositionRanges(
   baseStandings: StandingRow[],
@@ -90,12 +99,9 @@ function simulateExtreme(
       continue
     }
 
-    // Other fixtures: hurt rivals when seeking best rank for focus,
-    // help rivals when seeking worst rank.
     if (mode === 'best') {
-      applyOutcome(map, homeId, awayId, 1, 1) // draw: minimize points distributed
+      applyOutcome(map, homeId, awayId, 1, 1)
     } else {
-      // Give 3 points to whoever is closer to catching the focus team
       const home = map.get(homeId)!
       const away = map.get(awayId)!
       const focus = map.get(focusId)!
@@ -109,6 +115,88 @@ function simulateExtreme(
   }
 
   return rankOf([...map.values()], focusId)
+}
+
+export function nextOpenMatchday(remaining: Match[]): number | null {
+  if (!remaining.length) return null
+  return Math.min(...remaining.map((m) => m.group.groupOrderID))
+}
+
+export function matchesOnMatchday(remaining: Match[], matchday: number): Match[] {
+  return remaining.filter((m) => m.group.groupOrderID === matchday)
+}
+
+/**
+ * Exakte Best-/Schlechtfall-Platzierung nach nur dem nächsten Spieltag
+ * (alle 1/X/2-Kombinationen der Spiele dieses Spieltags).
+ */
+export function computeNextMatchdayOutlook(
+  baseStandings: StandingRow[],
+  remaining: Match[],
+  teamId: number,
+): NextMatchdayOutlook | null {
+  const matchday = nextOpenMatchday(remaining)
+  if (matchday == null) return null
+
+  const fixtures = matchesOnMatchday(remaining, matchday)
+  if (!fixtures.length) return null
+
+  const own = fixtures.find(
+    (m) => m.team1.teamId === teamId || m.team2.teamId === teamId,
+  )
+  const plays = Boolean(own)
+  const opponentName = own
+    ? own.team1.teamId === teamId
+      ? own.team2.shortName || own.team2.teamName
+      : own.team1.shortName || own.team1.teamName
+    : null
+
+  if (fixtures.length > 12) {
+    const bestRank = simulateExtreme(baseStandings, fixtures, teamId, 'best')
+    const worstRank = simulateExtreme(baseStandings, fixtures, teamId, 'worst')
+    return {
+      matchday,
+      fixtureCount: fixtures.length,
+      plays,
+      opponentName,
+      range: {
+        teamId,
+        bestRank: Math.min(bestRank, worstRank),
+        worstRank: Math.max(bestRank, worstRank),
+      },
+    }
+  }
+
+  let bestRank = baseStandings.length
+  let worstRank = 1
+  const total = 3 ** fixtures.length
+
+  for (let mask = 0; mask < total; mask++) {
+    const map = new Map(baseStandings.map((s) => [s.teamId, cloneRow(s)]))
+    let x = mask
+    for (const match of fixtures) {
+      const outcome = OUTCOMES[x % 3]!
+      x = Math.floor(x / 3)
+      applyOutcome(
+        map,
+        match.team1.teamId,
+        match.team2.teamId,
+        outcome[0],
+        outcome[1],
+      )
+    }
+    const rank = rankOf([...map.values()], teamId)
+    if (rank < bestRank) bestRank = rank
+    if (rank > worstRank) worstRank = rank
+  }
+
+  return {
+    matchday,
+    fixtureCount: fixtures.length,
+    plays,
+    opponentName,
+    range: { teamId, bestRank, worstRank },
+  }
 }
 
 export function applyScenariosToStandings(

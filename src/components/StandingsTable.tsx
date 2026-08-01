@@ -1,26 +1,28 @@
-import type { CompetitionKind } from '../competitions'
+import type { LeagueZoneId } from '../lib/table'
 import type { PositionRange, StandingRow } from '../types'
 import { zoneForRank } from '../lib/table'
 
 interface Props {
   standings: StandingRow[]
+  baseline?: StandingRow[] | null
   ranges: PositionRange[]
   selectedTeamId: number | null
   onSelectTeam: (teamId: number) => void
   highlightScenarios: boolean
-  kind: CompetitionKind
+  league: LeagueZoneId
 }
 
 export function StandingsTable({
   standings,
+  baseline,
   ranges,
   selectedTeamId,
   onSelectTeam,
   highlightScenarios,
-  kind,
+  league,
 }: Props) {
   const rangeMap = new Map(ranges.map((r) => [r.teamId, r]))
-  const size = standings.length
+  const baseRank = new Map((baseline ?? []).map((r) => [r.teamId, r.rank]))
 
   return (
     <div className="table-wrap">
@@ -28,6 +30,9 @@ export function StandingsTable({
         <thead>
           <tr>
             <th className="num">#</th>
+            <th className="delta" title="Veränderung zum Ist-Stand">
+              Δ
+            </th>
             <th>Verein</th>
             <th className="num">Sp</th>
             <th className="num">S</th>
@@ -42,8 +47,10 @@ export function StandingsTable({
         <tbody>
           {standings.map((row) => {
             const range = rangeMap.get(row.teamId)
-            const zone = zoneForRank(row.rank, size, kind)
+            const zone = zoneForRank(row.rank, league)
             const selected = selectedTeamId === row.teamId
+            const prev = baseRank.get(row.teamId)
+            const delta = prev != null ? prev - row.rank : 0
             return (
               <tr
                 key={row.teamId}
@@ -57,6 +64,15 @@ export function StandingsTable({
                 onClick={() => onSelectTeam(row.teamId)}
               >
                 <td className="num rank">{row.rank}</td>
+                <td className="delta">
+                  {delta > 0 ? (
+                    <span className="up">↑{delta}</span>
+                  ) : delta < 0 ? (
+                    <span className="down">↓{-delta}</span>
+                  ) : (
+                    <span className="flat">·</span>
+                  )}
+                </td>
                 <td className="team">
                   {row.teamIconUrl ? (
                     <img src={row.teamIconUrl} alt="" width={22} height={22} loading="lazy" />
