@@ -1,11 +1,18 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import type { LeagueZoneId } from '../lib/table'
-import type { NextMatchdayOutlook, PositionRange, StandingRow } from '../types'
+import type {
+  NextMatchdayOutlook,
+  PathwayStep,
+  PositionRange,
+  ScenarioPathway,
+  SeasonOutlook,
+  StandingRow,
+} from '../types'
 import { zoneLabelFor } from '../lib/table'
 
 interface Props {
   team: StandingRow | null
-  seasonRange: PositionRange | null
+  seasonOutlook: SeasonOutlook | null
   nextMatchday: NextMatchdayOutlook | null
   remainingCount: number
   league: LeagueZoneId
@@ -15,6 +22,29 @@ interface Props {
   suggestedCutoff?: number | null
 }
 
+type PathKind = 'best' | 'worst' | null
+
+function PathwayList({ steps }: { steps: PathwayStep[] }) {
+  if (!steps.length) {
+    return <p className="hint tight">Keine Spiele in diesem Pathway.</p>
+  }
+  return (
+    <ul className="pathway-list">
+      {steps.map((s) => (
+        <li key={s.matchId} className={s.involvesFocus ? 'focus' : ''}>
+          <span className={`pathway-tip tip-${s.tip}`}>{s.tip}</span>
+          <span className="pathway-match">
+            {s.homeName} – {s.awayName}
+          </span>
+          <span className="pathway-score">
+            {s.homeGoals}:{s.awayGoals}
+          </span>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
 function VariantPanel({
   heading,
   range,
@@ -22,6 +52,9 @@ function VariantPanel({
   note,
   empty,
   emptyAction,
+  bestPathway,
+  worstPathway,
+  pathwaysEnabled,
 }: {
   heading: string
   range: PositionRange | null
@@ -29,25 +62,70 @@ function VariantPanel({
   note?: string
   empty?: string
   emptyAction?: ReactNode
+  bestPathway?: ScenarioPathway | null
+  worstPathway?: ScenarioPathway | null
+  pathwaysEnabled?: boolean
 }) {
+  const [open, setOpen] = useState<PathKind>(null)
+
+  const toggle = (kind: 'best' | 'worst') => {
+    if (!pathwaysEnabled) return
+    setOpen((prev) => (prev === kind ? null : kind))
+  }
+
+  const active = open === 'best' ? bestPathway : open === 'worst' ? worstPathway : null
+
   return (
     <div className="panel insight-variant">
       <h2 className="variant-heading">{heading}</h2>
       {range ? (
         <>
           <div className="range-card">
-            <div>
+            <button
+              type="button"
+              className={`range-side ${open === 'best' ? 'open' : ''} ${pathwaysEnabled ? 'clickable' : ''}`}
+              onClick={() => toggle('best')}
+              disabled={!pathwaysEnabled || !bestPathway}
+              aria-expanded={open === 'best'}
+            >
               <span className="label">Bestfall</span>
               <strong>{range.bestRank}.</strong>
               <span className="sub">{zoneLabelFor(range.bestRank, league)}</span>
-            </div>
+              {pathwaysEnabled && bestPathway && (
+                <span className="path-hint">
+                  {open === 'best' ? 'Pathway ausblenden' : 'Pathway anzeigen'}
+                </span>
+              )}
+            </button>
             <div className="divider" />
-            <div>
+            <button
+              type="button"
+              className={`range-side ${open === 'worst' ? 'open' : ''} ${pathwaysEnabled ? 'clickable' : ''}`}
+              onClick={() => toggle('worst')}
+              disabled={!pathwaysEnabled || !worstPathway}
+              aria-expanded={open === 'worst'}
+            >
               <span className="label">Schlechtfall</span>
               <strong>{range.worstRank}.</strong>
               <span className="sub">{zoneLabelFor(range.worstRank, league)}</span>
-            </div>
+              {pathwaysEnabled && worstPathway && (
+                <span className="path-hint">
+                  {open === 'worst' ? 'Pathway ausblenden' : 'Pathway anzeigen'}
+                </span>
+              )}
+            </button>
           </div>
+
+          {active && (
+            <div className="pathway-panel">
+              <p className="pathway-title">
+                {open === 'best' ? 'Best-Case-Pathway' : 'Worst-Case-Pathway'} → Platz{' '}
+                {active.rank}.
+              </p>
+              <PathwayList steps={active.steps} />
+            </div>
+          )}
+
           {range.bestRank === range.worstRank && (
             <p className="hint tight">Platz in dieser Sicht bereits fest.</p>
           )}
@@ -65,7 +143,7 @@ function VariantPanel({
 
 export function TeamInsight({
   team,
-  seasonRange,
+  seasonOutlook,
   nextMatchday,
   remainingCount,
   league,
@@ -79,8 +157,8 @@ export function TeamInsight({
       <div className="panel insight">
         <h2>Vereinsanalyse</h2>
         <p className="hint">
-          Verein in der Tabelle wählen – rechts erscheinen dann zwei getrennte Analysen:
-          nächster Spieltag und gesamte Saison.
+          Verein wählen – dann siehst du zwei Analysen. Beim Best-/Schlechtfall des nächsten
+          Spieltags kannst du den Pathway per Klick öffnen.
         </p>
       </div>
     )
@@ -137,11 +215,14 @@ export function TeamInsight({
         }
         range={nextMatchday?.range ?? null}
         league={league}
+        pathwaysEnabled
+        bestPathway={nextMatchday?.bestPathway}
+        worstPathway={nextMatchday?.worstPathway}
         note={
           nextMatchday
             ? nextMatchday.plays
-              ? `Gegner: ${nextMatchday.opponentName}. Nur dieser eine Spieltag.`
-              : `Kein eigenes Spiel – nur die anderen ${nextMatchday.fixtureCount} Partien.`
+              ? `Gegner: ${nextMatchday.opponentName}. Tippe auf Best-/Schlechtfall für den Pathway.`
+              : `Kein eigenes Spiel. Tippe auf Best-/Schlechtfall für den Pathway.`
             : undefined
         }
         empty="Kein offener Folgespieltag in dieser Sicht."
@@ -160,9 +241,10 @@ export function TeamInsight({
 
       <VariantPanel
         heading="Gesamte Saison"
-        range={seasonRange}
+        range={seasonOutlook?.range ?? null}
         league={league}
-        note="Alle Restspiele bis Saisonende."
+        pathwaysEnabled={false}
+        note="Heuristisch über alle Restspiele (Pathway folgt später)."
         empty="Keine Saison-Spanne berechenbar."
       />
     </div>

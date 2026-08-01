@@ -81,14 +81,36 @@ export interface PositionRange {
   worstRank: number
 }
 
-/** Best-/Schlechtfall nach dem nächsten Spieltag */
+export interface PathwayStep {
+  matchId: number
+  homeName: string
+  awayName: string
+  homeGoals: number
+  awayGoals: number
+  /** Tippschein-Notation */
+  tip: '1' | 'X' | '2'
+  involvesFocus: boolean
+}
+
+export interface ScenarioPathway {
+  rank: number
+  steps: PathwayStep[]
+}
+
+/** Best-/Schlechtfall nach dem nächsten Spieltag inkl. Pathways */
 export interface NextMatchdayOutlook {
   matchday: number
   range: PositionRange
   fixtureCount: number
-  /** Gegner des Fokusvereins an diesem Spieltag, falls vorhanden */
   opponentName: string | null
   plays: boolean
+  bestPathway: ScenarioPathway
+  worstPathway: ScenarioPathway
 }
 
-
+/** Saison-Spanne inkl. heuristischer Pathways */
+export interface SeasonOutlook {
+  range: PositionRange
+  bestPathway: ScenarioPathway
+  worstPathway: ScenarioPathway
+}

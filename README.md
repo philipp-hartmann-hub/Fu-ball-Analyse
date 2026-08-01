@@ -55,6 +55,17 @@ src/
 
 ## Änderungsprotokoll
 
+### 2026-08-01 — Prompt 21
+
+**User:** Best-/Worst-Case-Pathways in der Vereinsanalyse; bei Saison ggf. erst nur nächster Spieltag; Pathway nur per Klick.
+
+**Aktion:**
+- Nächster Spieltag: exakte Best-/Worst-Pathways (1/X/2 je Spiel), per Klick auf Bestfall/Schlechtfall einblendbar
+- Gesamte Saison: weiterhin Spanne ohne Pathway (zu komplex)
+- Build-Hash im Footer; Push auf `main`
+
+**Status:** erledigt
+
 ### 2026-08-01 — Prompt 20
 
 **User:** Screenshot – Vereinsanalyse zeigt weiter nur eine Spanne (Vercel).

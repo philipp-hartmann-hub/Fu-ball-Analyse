@@ -8,7 +8,7 @@ import { TeamInsight } from './components/TeamInsight'
 import { ZoneLegend } from './components/ZoneLegend'
 import { getLeague, type LeagueId } from './leagues'
 import { useLeagueData } from './hooks/useLeagueData'
-import { computeNextMatchdayOutlook, computePositionRanges } from './lib/scenarios'
+import { computeNextMatchdayOutlook, computePositionRanges, computeSeasonOutlook } from './lib/scenarios'
 import {
   buildStandings,
   currentMatchday,
@@ -88,11 +88,15 @@ export default function App() {
     projectedStandings.find((s) => s.teamId === selectedTeamId) ??
     baseStandings.find((s) => s.teamId === selectedTeamId) ??
     null
-  const selectedRange = ranges.find((r) => r.teamId === selectedTeamId) ?? null
 
   const nextMatchdayOutlook = useMemo(() => {
     if (selectedTeamId == null) return null
     return computeNextMatchdayOutlook(baseStandings, openMatches, selectedTeamId)
+  }, [baseStandings, openMatches, selectedTeamId])
+
+  const seasonOutlook = useMemo(() => {
+    if (selectedTeamId == null) return null
+    return computeSeasonOutlook(baseStandings, openMatches, selectedTeamId)
   }, [baseStandings, openMatches, selectedTeamId])
 
   const leaderPoints = projectedStandings[0]?.points ?? 0
@@ -235,7 +239,7 @@ export default function App() {
           <aside className="side-col">
             <TeamInsight
               team={selectedTeam}
-              seasonRange={selectedRange}
+              seasonOutlook={seasonOutlook}
               nextMatchday={nextMatchdayOutlook}
               league={leagueId}
               suggestedCutoff={suggestedCutoff}
