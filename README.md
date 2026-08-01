@@ -55,6 +55,17 @@ src/
 
 ## Änderungsprotokoll
 
+### 2026-08-01 — Prompt 29
+
+**User:** Pathway unterkomplex – Anzahl Bestfall-Konstellationen + Gesamtzahl anzeigen.
+
+**Aktion:**
+- Exakte Zählung bei ≤12 Spielen: ways zum Best-/Schlechtfall + totalConstellations
+- UI: „X von Y“ und Gesamtzeile
+- Push auf `main`
+
+**Status:** erledigt
+
 ### 2026-08-01 — Prompt 28
 
 **User:** Szenario: Spieltag wählbar (Default nächster), nicht alle durchscrollen.

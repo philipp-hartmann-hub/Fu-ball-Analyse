@@ -138,7 +138,7 @@ function simulateExtremeWithPath(
     steps.push(stepFrom(match, homeGoals, awayGoals, focusId))
   }
 
-  return { rank: rankOf([...map.values()], focusId), steps }
+  return { rank: rankOf([...map.values()], focusId), steps, ways: null }
 }
 
 /**
@@ -154,8 +154,8 @@ export function computeSeasonOutlook(
     if (!row) return null
     return {
       range: { teamId, bestRank: row.rank, worstRank: row.rank },
-      bestPathway: { rank: row.rank, steps: [] },
-      worstPathway: { rank: row.rank, steps: [] },
+      bestPathway: { rank: row.rank, steps: [], ways: null },
+      worstPathway: { rank: row.rank, steps: [], ways: null },
     }
   }
 
@@ -240,9 +240,11 @@ export function computeNextMatchdayOutlook(
   if (fixtures.length > 12) {
     const best = simulateExtremeWithPath(baseStandings, fixtures, teamId, 'best')
     const worst = simulateExtremeWithPath(baseStandings, fixtures, teamId, 'worst')
+    const totalConstellations = 3 ** fixtures.length
     return {
       matchday,
       fixtureCount: fixtures.length,
+      totalConstellations,
       plays,
       opponentName,
       range: {
@@ -259,6 +261,8 @@ export function computeNextMatchdayOutlook(
   let worstRank = 1
   let bestMask = 0
   let worstMask = 0
+  let bestWays = 0
+  let worstWays = 0
   const total = 3 ** fixtures.length
 
   for (let mask = 0; mask < total; mask++) {
@@ -279,26 +283,35 @@ export function computeNextMatchdayOutlook(
     if (rank < bestRank) {
       bestRank = rank
       bestMask = mask
+      bestWays = 1
+    } else if (rank === bestRank) {
+      bestWays += 1
     }
     if (rank > worstRank) {
       worstRank = rank
       worstMask = mask
+      worstWays = 1
+    } else if (rank === worstRank) {
+      worstWays += 1
     }
   }
 
   return {
     matchday,
     fixtureCount: fixtures.length,
+    totalConstellations: total,
     plays,
     opponentName,
     range: { teamId, bestRank, worstRank },
     bestPathway: {
       rank: bestRank,
       steps: pathwayFromMask(fixtures, bestMask, teamId),
+      ways: bestWays,
     },
     worstPathway: {
       rank: worstRank,
       steps: pathwayFromMask(fixtures, worstMask, teamId),
+      ways: worstWays,
     },
   }
 }

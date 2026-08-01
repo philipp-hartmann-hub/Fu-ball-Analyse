@@ -95,6 +95,8 @@ export interface PathwayStep {
 export interface ScenarioPathway {
   rank: number
   steps: PathwayStep[]
+  /** Anzahl Grobergebnis-Konstellationen, die genau diesen Platz ergeben (null = nicht exakt gezählt) */
+  ways: number | null
 }
 
 /** Best-/Schlechtfall nach dem nächsten Spieltag inkl. Pathways */
@@ -102,6 +104,8 @@ export interface NextMatchdayOutlook {
   matchday: number
   range: PositionRange
   fixtureCount: number
+  /** 3^fixtureCount – alle groben Ergebnis-Konstellationen des Spieltags */
+  totalConstellations: number
   opponentName: string | null
   plays: boolean
   bestPathway: ScenarioPathway

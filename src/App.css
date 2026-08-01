@@ -505,6 +505,24 @@
   letter-spacing: 0;
 }
 
+.constellation-total {
+  margin: 0 0 0.65rem;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.pathway-stats {
+  margin: 0 0 0.65rem;
+  font-size: 0.82rem;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.pathway-stats strong {
+  color: var(--accent);
+  font-weight: 600;
+}
+
 .pathway-panel {
   margin-top: 0.75rem;
   padding: 0.75rem 0.85rem;

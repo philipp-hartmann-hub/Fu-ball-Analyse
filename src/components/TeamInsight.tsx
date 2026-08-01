@@ -55,6 +55,7 @@ function VariantPanel({
   bestPathway,
   worstPathway,
   pathwaysEnabled,
+  totalConstellations,
 }: {
   heading: string
   range: PositionRange | null
@@ -65,6 +66,7 @@ function VariantPanel({
   bestPathway?: ScenarioPathway | null
   worstPathway?: ScenarioPathway | null
   pathwaysEnabled?: boolean
+  totalConstellations?: number | null
 }) {
   const [open, setOpen] = useState<PathKind>(null)
 
@@ -74,12 +76,24 @@ function VariantPanel({
   }
 
   const active = open === 'best' ? bestPathway : open === 'worst' ? worstPathway : null
+  const totalLabel =
+    totalConstellations != null
+      ? totalConstellations.toLocaleString('de-DE')
+      : null
 
   return (
     <div className="panel insight-variant">
       <h2 className="variant-heading">{heading}</h2>
       {range ? (
         <>
+          {totalLabel && (
+            <p className="constellation-total">
+              {totalLabel} Ergebnis-Konstellationen insgesamt
+              {totalConstellations != null && bestPathway?.ways == null
+                ? ' (exakte Zählung nur bis 12 Spiele)'
+                : ''}
+            </p>
+          )}
           <div className="range-card">
             <button
               type="button"
@@ -93,7 +107,11 @@ function VariantPanel({
               <span className="sub">{zoneLabelFor(range.bestRank, league)}</span>
               {pathwaysEnabled && bestPathway && (
                 <span className="path-hint">
-                  {open === 'best' ? 'Pathway ausblenden' : 'Pathway anzeigen'}
+                  {bestPathway.ways != null && totalLabel
+                    ? `${bestPathway.ways.toLocaleString('de-DE')} von ${totalLabel}`
+                    : open === 'best'
+                      ? 'Pathway ausblenden'
+                      : 'Pathway anzeigen'}
                 </span>
               )}
             </button>
@@ -110,7 +128,11 @@ function VariantPanel({
               <span className="sub">{zoneLabelFor(range.worstRank, league)}</span>
               {pathwaysEnabled && worstPathway && (
                 <span className="path-hint">
-                  {open === 'worst' ? 'Pathway ausblenden' : 'Pathway anzeigen'}
+                  {worstPathway.ways != null && totalLabel
+                    ? `${worstPathway.ways.toLocaleString('de-DE')} von ${totalLabel}`
+                    : open === 'worst'
+                      ? 'Pathway ausblenden'
+                      : 'Pathway anzeigen'}
                 </span>
               )}
             </button>
@@ -122,6 +144,21 @@ function VariantPanel({
                 {open === 'best' ? 'Best-Case-Pathway' : 'Worst-Case-Pathway'} → Platz{' '}
                 {active.rank}.
               </p>
+              {active.ways != null && totalLabel ? (
+                <p className="pathway-stats">
+                  <strong>{active.ways.toLocaleString('de-DE')}</strong> von{' '}
+                  <strong>{totalLabel}</strong> Konstellationen führen zu Platz{' '}
+                  {active.rank}.
+                  {open === 'best' && active.ways > 1
+                    ? ' Unten ein Beispiel-Pfad.'
+                    : ''}
+                </p>
+              ) : totalLabel ? (
+                <p className="pathway-stats">
+                  Von {totalLabel} möglichen Konstellationen – Beispiel-Pfad (nicht
+                  exhaustiv gezählt).
+                </p>
+              ) : null}
               <PathwayList steps={active.steps} />
             </div>
           )}
@@ -218,6 +255,7 @@ export function TeamInsight({
         pathwaysEnabled
         bestPathway={nextMatchday?.bestPathway}
         worstPathway={nextMatchday?.worstPathway}
+        totalConstellations={nextMatchday?.totalConstellations}
         note={
           nextMatchday
             ? nextMatchday.plays
