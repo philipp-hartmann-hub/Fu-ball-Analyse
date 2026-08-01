@@ -55,6 +55,16 @@ src/
 
 ## Änderungsprotokoll
 
+### 2026-08-01 — Prompt 19
+
+**User:** Beide Varianten getrennt, jederzeit zwei Versionen direkt untereinander in der Vereinsanalyse.
+
+**Aktion:**
+- Drei getrennte Panels rechts: Verein · Nächster Spieltag · Gesamte Saison
+- Auf `main` für Vercel gepusht
+
+**Status:** erledigt
+
 ### 2026-08-01 — Prompt 18
 
 **User:** In der Vereinsanalyse zwei Varianten sichtbar: gesamte Saison und nächster Spieltag.

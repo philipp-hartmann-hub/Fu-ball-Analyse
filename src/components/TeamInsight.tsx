@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { LeagueZoneId } from '../lib/table'
 import type { NextMatchdayOutlook, PositionRange, StandingRow } from '../types'
 import { zoneLabelFor } from '../lib/table'
@@ -14,39 +15,51 @@ interface Props {
   suggestedCutoff?: number | null
 }
 
-function RangeCard({
-  title,
+function VariantPanel({
+  heading,
   range,
   league,
   note,
+  empty,
+  emptyAction,
 }: {
-  title: string
-  range: PositionRange
+  heading: string
+  range: PositionRange | null
   league: LeagueZoneId
   note?: string
+  empty?: string
+  emptyAction?: ReactNode
 }) {
-  const same = range.bestRank === range.worstRank
   return (
-    <section className="outlook-block">
-      <h3 className="outlook-title">{title}</h3>
-      <div className="range-card">
-        <div>
-          <span className="label">Bestfall</span>
-          <strong>{range.bestRank}.</strong>
-          <span className="sub">{zoneLabelFor(range.bestRank, league)}</span>
+    <div className="panel insight-variant">
+      <h2 className="variant-heading">{heading}</h2>
+      {range ? (
+        <>
+          <div className="range-card">
+            <div>
+              <span className="label">Bestfall</span>
+              <strong>{range.bestRank}.</strong>
+              <span className="sub">{zoneLabelFor(range.bestRank, league)}</span>
+            </div>
+            <div className="divider" />
+            <div>
+              <span className="label">Schlechtfall</span>
+              <strong>{range.worstRank}.</strong>
+              <span className="sub">{zoneLabelFor(range.worstRank, league)}</span>
+            </div>
+          </div>
+          {range.bestRank === range.worstRank && (
+            <p className="hint tight">Platz in dieser Sicht bereits fest.</p>
+          )}
+          {note && <p className="hint tight">{note}</p>}
+        </>
+      ) : (
+        <div className="outlook-empty">
+          <p>{empty ?? 'Keine Daten.'}</p>
+          {emptyAction}
         </div>
-        <div className="divider" />
-        <div>
-          <span className="label">Schlechtfall</span>
-          <strong>{range.worstRank}.</strong>
-          <span className="sub">{zoneLabelFor(range.worstRank, league)}</span>
-        </div>
-      </div>
-      {same && (
-        <p className="hint tight">Platz in dieser Sicht bereits fest.</p>
       )}
-      {note && <p className="hint tight">{note}</p>}
-    </section>
+    </div>
   )
 }
 
@@ -66,94 +79,92 @@ export function TeamInsight({
       <div className="panel insight">
         <h2>Vereinsanalyse</h2>
         <p className="hint">
-          Verein in der Tabelle wählen – du siehst dann Best-/Schlechtfall für den{' '}
-          <strong>nächsten Spieltag</strong> und für die <strong>gesamte Saison</strong>.
+          Verein in der Tabelle wählen – rechts erscheinen dann zwei getrennte Analysen:
+          nächster Spieltag und gesamte Saison.
         </p>
       </div>
     )
   }
 
   return (
-    <div className="panel insight">
-      <div className="insight-head">
-        {team.teamIconUrl ? (
-          <img src={team.teamIconUrl} alt="" width={40} height={40} />
-        ) : (
-          <span className="crest-fallback large" aria-hidden />
-        )}
-        <div>
-          <h2>{team.teamName}</h2>
-          <p className="meta">
-            Platz {team.rank} · {team.points} Pkt. · {team.won}S {team.draw}U {team.lost}N ·{' '}
-            {remainingCount} Restspiele
-          </p>
+    <div className="insight-column">
+      <div className="panel insight">
+        <div className="insight-head">
+          {team.teamIconUrl ? (
+            <img src={team.teamIconUrl} alt="" width={40} height={40} />
+          ) : (
+            <span className="crest-fallback large" aria-hidden />
+          )}
+          <div>
+            <h2>{team.teamName}</h2>
+            <p className="meta">
+              Platz {team.rank} · {team.points} Pkt. · {team.won}S {team.draw}U {team.lost}N ·{' '}
+              {remainingCount} Restspiele
+            </p>
+          </div>
+        </div>
+
+        <div className="stat-row">
+          <div>
+            <span className="label">Aktuelle Zone</span>
+            <strong>{zoneLabelFor(team.rank, league)}</strong>
+          </div>
+          {pointsToFirst != null && pointsToFirst > 0 && (
+            <div>
+              <span className="label">Rückstand Platz 1</span>
+              <strong>{pointsToFirst} Pkt.</strong>
+            </div>
+          )}
+          {pointsAboveRelegation != null && (
+            <div>
+              <span className="label">Vorsprung Platz 16</span>
+              <strong>
+                {pointsAboveRelegation >= 0
+                  ? `+${pointsAboveRelegation}`
+                  : pointsAboveRelegation}{' '}
+                Pkt.
+              </strong>
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="stat-row">
-        <div>
-          <span className="label">Aktuelle Zone</span>
-          <strong>{zoneLabelFor(team.rank, league)}</strong>
-        </div>
-        {pointsToFirst != null && pointsToFirst > 0 && (
-          <div>
-            <span className="label">Rückstand Platz 1</span>
-            <strong>{pointsToFirst} Pkt.</strong>
-          </div>
-        )}
-        {pointsAboveRelegation != null && (
-          <div>
-            <span className="label">Vorsprung Platz 16</span>
-            <strong>
-              {pointsAboveRelegation >= 0 ? `+${pointsAboveRelegation}` : pointsAboveRelegation}{' '}
-              Pkt.
-            </strong>
-          </div>
-        )}
-      </div>
+      <VariantPanel
+        heading={
+          nextMatchday
+            ? `Nächster Spieltag (${nextMatchday.matchday}.)`
+            : 'Nächster Spieltag'
+        }
+        range={nextMatchday?.range ?? null}
+        league={league}
+        note={
+          nextMatchday
+            ? nextMatchday.plays
+              ? `Gegner: ${nextMatchday.opponentName}. Nur dieser eine Spieltag.`
+              : `Kein eigenes Spiel – nur die anderen ${nextMatchday.fixtureCount} Partien.`
+            : undefined
+        }
+        empty="Kein offener Folgespieltag in dieser Sicht."
+        emptyAction={
+          suggestedCutoff != null && onEnableMatchdayCutoff ? (
+            <button
+              type="button"
+              className="ghost"
+              onClick={() => onEnableMatchdayCutoff(suggestedCutoff)}
+            >
+              Stand nach Spieltag {suggestedCutoff} setzen
+            </button>
+          ) : null
+        }
+      />
 
-      <div className="outlook-stack">
-        {nextMatchday ? (
-          <RangeCard
-            title={`Variante A · Nach Spieltag ${nextMatchday.matchday}`}
-            range={nextMatchday.range}
-            league={league}
-            note={
-              nextMatchday.plays
-                ? `Gegner: ${nextMatchday.opponentName}. Exakt über alle ${nextMatchday.fixtureCount} Ergebnisse dieses Spieltags.`
-                : `Kein eigenes Spiel – Platz nur über die anderen ${nextMatchday.fixtureCount} Partien.`
-            }
-          />
-        ) : (
-          <section className="outlook-block outlook-empty">
-            <h3 className="outlook-title">Variante A · Nächster Spieltag</h3>
-            <p>Aktuell kein offener Folgespieltag in dieser Sicht.</p>
-            {suggestedCutoff != null && onEnableMatchdayCutoff && (
-              <button
-                type="button"
-                className="ghost"
-                onClick={() => onEnableMatchdayCutoff(suggestedCutoff)}
-              >
-                Stand nach Spieltag {suggestedCutoff} setzen
-              </button>
-            )}
-          </section>
-        )}
-
-        {seasonRange ? (
-          <RangeCard
-            title="Variante B · Gesamte Saison (Restprogramm)"
-            range={seasonRange}
-            league={league}
-            note="Eigener Verein gewinnt bzw. verliert alle Restspiele; übrige Partien heuristisch."
-          />
-        ) : (
-          <section className="outlook-block outlook-empty">
-            <h3 className="outlook-title">Variante B · Gesamte Saison</h3>
-            <p>Keine Saison-Spanne berechenbar.</p>
-          </section>
-        )}
-      </div>
+      <VariantPanel
+        heading="Gesamte Saison"
+        range={seasonRange}
+        league={league}
+        note="Alle Restspiele bis Saisonende."
+        empty="Keine Saison-Spanne berechenbar."
+      />
     </div>
   )
 }
