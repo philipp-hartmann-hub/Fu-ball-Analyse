@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { Match, ScenarioResult } from '../types'
-import { scenarioFromOutcome } from '../lib/scenarios'
+import { scenarioFromOutcome, scenarioFromScore } from '../lib/scenarios'
 
 interface Props {
   matches: Match[]
@@ -9,7 +9,10 @@ interface Props {
   focusTeamId: number | null
 }
 
-function outcomeOf(s: ScenarioResult | undefined): 'home' | 'draw' | 'away' | null {
+type DetailMode = 'grob' | 'fein'
+type Coarse = 'home' | 'draw' | 'away'
+
+function outcomeOf(s: ScenarioResult | undefined): Coarse | null {
   if (!s) return null
   if (s.homeGoals > s.awayGoals) return 'home'
   if (s.homeGoals < s.awayGoals) return 'away'
@@ -23,14 +26,38 @@ function formatDate(iso: string): string {
   return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })
 }
 
+const COARSE_OPTIONS: { key: Coarse; label: string }[] = [
+  { key: 'home', label: 'Sieg' },
+  { key: 'draw', label: 'Unentschieden' },
+  { key: 'away', label: 'Niederlage' },
+]
+
 export function ScenarioPanel({ matches, scenarios, onChange, focusTeamId }: Props) {
   const [onlyFocus, setOnlyFocus] = useState(false)
+  const [mode, setMode] = useState<DetailMode>('grob')
   const map = new Map(scenarios.map((s) => [s.matchId, s]))
 
-  const setOutcome = (matchId: number, outcome: 'home' | 'draw' | 'away' | null) => {
+  const upsert = (result: ScenarioResult | null, matchId: number) => {
     const next = scenarios.filter((s) => s.matchId !== matchId)
-    if (outcome) next.push(scenarioFromOutcome(matchId, outcome))
+    if (result) next.push(result)
     onChange(next)
+  }
+
+  const setCoarse = (matchId: number, outcome: Coarse | null) => {
+    if (!outcome) {
+      upsert(null, matchId)
+      return
+    }
+    const existing = map.get(matchId)
+    // Bestehendes Feinergebnis behalten, wenn es zur Grob-Wahl passt
+    if (existing && outcomeOf(existing) === outcome) {
+      return
+    }
+    upsert(scenarioFromOutcome(matchId, outcome), matchId)
+  }
+
+  const setFine = (matchId: number, homeGoals: number, awayGoals: number) => {
+    upsert(scenarioFromScore(matchId, homeGoals, awayGoals), matchId)
   }
 
   const filtered =
@@ -74,9 +101,33 @@ export function ScenarioPanel({ matches, scenarios, onChange, focusTeamId }: Pro
           Zurücksetzen
         </button>
       </div>
+
+      <div className="scenario-modes" role="tablist" aria-label="Eingabemodus">
+        <button
+          type="button"
+          role="tab"
+          className={mode === 'grob' ? 'active' : ''}
+          aria-selected={mode === 'grob'}
+          onClick={() => setMode('grob')}
+        >
+          Grob
+        </button>
+        <button
+          type="button"
+          role="tab"
+          className={mode === 'fein' ? 'active' : ''}
+          aria-selected={mode === 'fein'}
+          onClick={() => setMode('fein')}
+        >
+          Fein
+        </button>
+      </div>
       <p className="hint">
-        1 / X / 2 setzen – die Tabelle und Δ-Spalte aktualisieren sich sofort.
+        {mode === 'grob'
+          ? 'Aus Sicht der Heimmannschaft: Sieg, Unentschieden oder Niederlage.'
+          : 'Konkretes Ergebnis eingeben (Tore Heim : Auswärts). Ohne Auswahl gilt 0:0 beim Fokus der Felder.'}
       </p>
+
       <label className="toggle compact">
         <input
           type="checkbox"
@@ -86,16 +137,22 @@ export function ScenarioPanel({ matches, scenarios, onChange, focusTeamId }: Pro
         />
         Nur Spiele des Fokusvereins
       </label>
+
       <div className="matchday-list">
         {days.map((day) => (
           <section key={day} className="matchday-block">
             <h3>{day}. Spieltag</h3>
             <ul className="fixture-list">
               {(byMatchday.get(day) ?? []).map((match) => {
-                const current = outcomeOf(map.get(match.matchID))
+                const scenario = map.get(match.matchID)
+                const current = outcomeOf(scenario)
                 const involvesFocus =
                   focusTeamId != null &&
-                  (match.team1.teamId === focusTeamId || match.team2.teamId === focusTeamId)
+                  (match.team1.teamId === focusTeamId ||
+                    match.team2.teamId === focusTeamId)
+                const homeGoals = scenario?.homeGoals ?? 0
+                const awayGoals = scenario?.awayGoals ?? 0
+
                 return (
                   <li key={match.matchID} className={involvesFocus ? 'focus' : ''}>
                     <div className="fixture-meta">
@@ -106,26 +163,76 @@ export function ScenarioPanel({ matches, scenarios, onChange, focusTeamId }: Pro
                         <span>{match.team2.shortName || match.team2.teamName}</span>
                       </div>
                     </div>
-                    <div className="outcome-btns" role="group" aria-label="Ergebnis">
-                      {(
-                        [
-                          ['home', '1'],
-                          ['draw', 'X'],
-                          ['away', '2'],
-                        ] as const
-                      ).map(([key, label]) => (
-                        <button
-                          key={key}
-                          type="button"
-                          className={current === key ? 'active' : ''}
-                          onClick={() =>
-                            setOutcome(match.matchID, current === key ? null : key)
-                          }
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
+
+                    {mode === 'grob' ? (
+                      <div className="outcome-btns coarse" role="group" aria-label="Grob-Ergebnis">
+                        {COARSE_OPTIONS.map(({ key, label }) => (
+                          <button
+                            key={key}
+                            type="button"
+                            title={label}
+                            className={current === key ? 'active' : ''}
+                            onClick={() =>
+                              setCoarse(match.matchID, current === key ? null : key)
+                            }
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="score-inputs" aria-label="Feinergebnis">
+                        <label>
+                          <span className="sr-only">Tore Heim</span>
+                          <input
+                            type="number"
+                            min={0}
+                            max={20}
+                            value={homeGoals}
+                            onChange={(e) =>
+                              setFine(
+                                match.matchID,
+                                Number(e.target.value),
+                                awayGoals,
+                              )
+                            }
+                            onFocus={() => {
+                              if (!scenario) setFine(match.matchID, 0, 0)
+                            }}
+                          />
+                        </label>
+                        <span className="score-sep">:</span>
+                        <label>
+                          <span className="sr-only">Tore Auswärts</span>
+                          <input
+                            type="number"
+                            min={0}
+                            max={20}
+                            value={awayGoals}
+                            onChange={(e) =>
+                              setFine(
+                                match.matchID,
+                                homeGoals,
+                                Number(e.target.value),
+                              )
+                            }
+                            onFocus={() => {
+                              if (!scenario) setFine(match.matchID, 0, 0)
+                            }}
+                          />
+                        </label>
+                        {scenario && (
+                          <button
+                            type="button"
+                            className="ghost score-clear"
+                            onClick={() => upsert(null, match.matchID)}
+                            title="Ergebnis entfernen"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </li>
                 )
               })}

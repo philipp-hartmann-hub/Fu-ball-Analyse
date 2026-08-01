@@ -833,31 +833,104 @@
   color: var(--muted);
 }
 
-.outcome-btns {
-  display: inline-flex;
+.scenario-modes {
+  display: flex;
   gap: 0.25rem;
+  padding: 0.2rem;
+  margin: 0.65rem 0 0.35rem;
+  background: rgba(15, 31, 23, 0.55);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  width: fit-content;
 }
 
-.outcome-btns button {
-  width: 2rem;
-  height: 2rem;
-  border-radius: 0.4rem;
+.scenario-modes button {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 0.4rem 0.9rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.scenario-modes button.active {
+  background: var(--accent);
+  color: #132016;
+  font-weight: 700;
+}
+
+.outcome-btns {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  justify-content: flex-end;
+}
+
+.outcome-btns.coarse button {
+  width: auto;
+  min-width: 0;
+  height: auto;
+  padding: 0.35rem 0.55rem;
+  border-radius: 0.45rem;
   border: 1px solid var(--line);
   background: transparent;
   color: var(--muted);
   font-weight: 600;
+  font-size: 0.72rem;
+  line-height: 1.2;
+  white-space: nowrap;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 
-.outcome-btns button:hover {
+.outcome-btns.coarse button:hover {
   border-color: var(--accent);
   color: var(--text);
 }
 
-.outcome-btns button.active {
+.outcome-btns.coarse button.active {
   background: var(--accent);
   border-color: var(--accent);
   color: #132016;
+}
+
+.score-inputs {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.score-inputs input {
+  width: 2.6rem;
+  padding: 0.35rem 0.25rem;
+  text-align: center;
+  border-radius: 0.4rem;
+  border: 1px solid var(--line);
+  background: var(--bg-elevated);
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.score-sep {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.score-clear {
+  padding: 0.25rem 0.4rem;
+  font-size: 0.75rem;
+  line-height: 1;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
 }
 
 .footer {

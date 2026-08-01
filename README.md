@@ -55,6 +55,18 @@ src/
 
 ## Änderungsprotokoll
 
+### 2026-08-01 — Prompt 22
+
+**User:** Szenario-Simulator: Grob (Sieg/Unentschieden/Niederlage) und Fein (konkretes Ergebnis); kein 1/X/2.
+
+**Aktion:**
+- Modus Grob/Fein im Simulator
+- Grob: Sieg · Unentschieden · Niederlage (Heim-Sicht), Defaults 1:0 / 0:0 / 0:1
+- Fein: Toreingabe Heim:Auswärts
+- Push auf `main`
+
+**Status:** erledigt
+
 ### 2026-08-01 — Prompt 21
 
 **User:** Best-/Worst-Case-Pathways in der Vereinsanalyse; bei Saison ggf. erst nur nächster Spieltag; Pathway nur per Klick.

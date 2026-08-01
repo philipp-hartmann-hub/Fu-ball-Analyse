@@ -317,7 +317,19 @@ export function scenarioFromOutcome(
 ): ScenarioResult {
   if (outcome === 'home') return { matchId, homeGoals: 1, awayGoals: 0 }
   if (outcome === 'away') return { matchId, homeGoals: 0, awayGoals: 1 }
-  return { matchId, homeGoals: 1, awayGoals: 1 }
+  return { matchId, homeGoals: 0, awayGoals: 0 }
+}
+
+export function scenarioFromScore(
+  matchId: number,
+  homeGoals: number,
+  awayGoals: number,
+): ScenarioResult {
+  return {
+    matchId,
+    homeGoals: Math.max(0, Math.min(99, Math.floor(homeGoals))),
+    awayGoals: Math.max(0, Math.min(99, Math.floor(awayGoals))),
+  }
 }
 
 export function getAnalysisMatches(
