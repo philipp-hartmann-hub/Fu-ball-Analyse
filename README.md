@@ -55,6 +55,16 @@ src/
 
 ## Änderungsprotokoll
 
+### 2026-08-01 — Prompt 27
+
+**User:** Intro neu: Kamerflug ins Stadion zum Tor, Zoom auf Ball, Tabelle öffnet.
+
+**Aktion:**
+- Intro als 3D-Kamerflug (Stadion → Tor → Ball-Zoom → Tabellen-Bloom)
+- Push auf `main`
+
+**Status:** erledigt
+
 ### 2026-08-01 — Prompt 26
 
 **User:** Zonen-Linien in der Tabelle verrutscht.
