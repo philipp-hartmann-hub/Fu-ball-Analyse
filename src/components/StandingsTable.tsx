@@ -172,6 +172,16 @@ function HardnessCell({
   hardness: ScheduleHardness
   teamCount: number
 }) {
+  if (!hardness.reliable) {
+    return (
+      <span
+        className="hardness-pill tone-pending"
+        title="Noch keine Aussage – zu wenige Spiele für eine stabile Gegnerstärke"
+      >
+        –
+      </span>
+    )
+  }
   const tone = hardnessTone(hardness.index)
   const rounded = Math.round(hardness.index)
   return (

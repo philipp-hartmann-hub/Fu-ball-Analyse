@@ -147,7 +147,9 @@ export function TeamInsight({
   }
 
   const hardnessToneValue =
-    scheduleHardness && scheduleHardness.remainingGames > 0
+    scheduleHardness &&
+    scheduleHardness.remainingGames > 0 &&
+    scheduleHardness.reliable
       ? hardnessTone(scheduleHardness.index)
       : null
   const hardnessLabel =
@@ -199,21 +201,28 @@ export function TeamInsight({
               </strong>
             </div>
           )}
-          {scheduleHardness && scheduleHardness.remainingGames > 0 && hardnessToneValue && (
+          {scheduleHardness && scheduleHardness.remainingGames > 0 && (
             <div>
               <span className="label">Restprogramm</span>
-              <strong className={`hardness-stat tone-${hardnessToneValue}`}>
-                {Math.round(scheduleHardness.index)}
-                <span className="hardness-stat-meta">
-                  {' '}
-                  · {scheduleHardness.rank}/{leagueTeamCount}
-                  {hardnessLabel ? ` · ${hardnessLabel}` : ''}
-                </span>
-              </strong>
+              {scheduleHardness.reliable ? (
+                <strong className={`hardness-stat tone-${hardnessToneValue}`}>
+                  {Math.round(scheduleHardness.index)}
+                  <span className="hardness-stat-meta">
+                    {' '}
+                    · {scheduleHardness.rank}/{leagueTeamCount}
+                    {hardnessLabel ? ` · ${hardnessLabel}` : ''}
+                  </span>
+                </strong>
+              ) : (
+                <strong className="hardness-stat tone-pending">
+                  noch keine Aussage
+                  <span className="hardness-stat-meta"> (zu wenige Spiele)</span>
+                </strong>
+              )}
             </div>
           )}
         </div>
-        {scheduleHardness && scheduleHardness.remainingGames > 0 && (
+        {scheduleHardness && scheduleHardness.remainingGames > 0 && scheduleHardness.reliable && (
           <p className="hint tight">
             Härte 0–100 (höher = schwerer Gegner-Schnitt, Heim/Auswärts gewichtet). Rang 1 =
             schwerstes Restprogramm der Liga.

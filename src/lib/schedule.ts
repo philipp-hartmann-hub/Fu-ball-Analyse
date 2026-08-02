@@ -13,7 +13,10 @@ import type { Match, StandingRow } from '../types'
  *
  * Index 0–100: lineare Skalierung innerhalb der Liga (Min → 0, Max → 100).
  * Höher = schwereres Restprogramm. Ohne Restspiele → 0.
- * Alle Rohwerte gleich → 50 (bei mind. einem Restspiel).
+ * Rohwerte praktisch gleich ((max−min) < EQUALITY_EPS) → alle aktiven Teams 50.
+ *
+ * Aussagekraft: Median der bisher gespielten Spiele muss ≥ MIN_GAMES_FOR_HARDNESS
+ * sein (`reliable`). Sonst Index/Rang ohne Einstufung in der UI.
  */
 
 /** Faktor auf Gegner-PPG bei Heimspiel (leichter). */
@@ -25,15 +28,32 @@ export const AWAY_WEIGHT = 1.1
 /** Fallback-PPG, wenn ein Gegner noch 0 Spiele hat. */
 export const DEFAULT_PPG = 1.0
 
+/**
+ * Unter dieser Spread-Schwelle gelten Rohwerte als gleich → Index 50
+ * (verhindert 0–100-Aufblasen von Fließkomma-Rauschen).
+ */
+export const EQUALITY_EPS = 1e-9
+
+/**
+ * Median gespielter Spiele in der Liga muss mindestens so hoch sein,
+ * bevor die Härte als aussagekräftig gilt (PPG sonst zu verrauscht).
+ */
+export const MIN_GAMES_FOR_HARDNESS = 5
+
 export interface ScheduleHardness {
   teamId: number
-  /** 0–100, höher = schwerer */
+  /** 0–100, höher = schwerer; bei gleichen Rohwerten 50 */
   index: number
   /** 1 = schwerstes Restprogramm der Liga (bei Index-Gleichstand: niedrigere teamId zuerst) */
   rank: number
   /** Mittleres gewichtetes Gegner-PPG */
   raw: number
   remainingGames: number
+  /**
+   * false, wenn noch zu wenige Spiele gespielt sind (Median &lt; MIN_GAMES_FOR_HARDNESS)
+   * — Index/Rang dann nicht als Ranking interpretieren.
+   */
+  reliable: boolean
 }
 
 function opponentPpg(
@@ -100,6 +120,7 @@ export function remainingStrengthRaw(
  * Skaliert Rohwerte linear auf 0–100 innerhalb der Liga.
  * Nur Teams mit Restspielen fließen in Min/Max ein (auch bei Rohwert 0);
  * ohne Restspiele → Index 0.
+ * Bei (max − min) &lt; EQUALITY_EPS → alle aktiven Teams auf 50 (kein Rauschen-Ranking).
  */
 export function scaleHardnessIndex(
   buckets: Map<number, StrengthBucket>,
@@ -119,13 +140,16 @@ export function scaleHardnessIndex(
     if (b.raw > max) max = b.raw
   }
 
+  const spread = max - min
+  const allEqual = spread < EQUALITY_EPS
+
   for (const [teamId, b] of buckets) {
     if (b.remainingGames === 0) {
       index.set(teamId, 0)
-    } else if (max === min) {
+    } else if (allEqual) {
       index.set(teamId, 50)
     } else {
-      index.set(teamId, ((b.raw - min) / (max - min)) * 100)
+      index.set(teamId, ((b.raw - min) / spread) * 100)
     }
   }
   return index
@@ -142,8 +166,18 @@ export function remainingStrength(
   return scaleHardnessIndex(remainingStrengthRaw(matches, standings))
 }
 
+/** Median der `played`-Werte; leere Liga → 0. */
+export function medianGamesPlayed(standings: StandingRow[]): number {
+  if (standings.length === 0) return 0
+  const sorted = standings.map((s) => s.played).sort((a, b) => a - b)
+  const mid = Math.floor(sorted.length / 2)
+  if (sorted.length % 2 === 1) return sorted[mid]!
+  return (sorted[mid - 1]! + sorted[mid]!) / 2
+}
+
 /**
  * Volle Kennzahlen inkl. Liga-Rang (1 = schwerstes Restprogramm).
+ * `reliable` nur wenn Median gespielter Spiele ≥ MIN_GAMES_FOR_HARDNESS.
  */
 export function computeScheduleHardness(
   matches: Match[],
@@ -151,6 +185,7 @@ export function computeScheduleHardness(
 ): ScheduleHardness[] {
   const buckets = remainingStrengthRaw(matches, standings)
   const index = scaleHardnessIndex(buckets)
+  const reliable = medianGamesPlayed(standings) >= MIN_GAMES_FOR_HARDNESS
 
   const ordered = [...standings]
     .map((row) => {
@@ -160,6 +195,7 @@ export function computeScheduleHardness(
         index: index.get(row.teamId) ?? 0,
         raw: b?.raw ?? 0,
         remainingGames: b?.remainingGames ?? 0,
+        reliable,
       }
     })
     .sort((a, b) => {
@@ -176,7 +212,7 @@ export function computeScheduleHardness(
   }))
 }
 
-/** Tone für UI: leicht / mittel / schwer anhand Index. */
+/** Tone für UI: leicht / mittel / schwer anhand Index (nur bei reliable verwenden). */
 export function hardnessTone(index: number): 'easy' | 'mid' | 'hard' {
   if (index < 35) return 'easy'
   if (index < 65) return 'mid'

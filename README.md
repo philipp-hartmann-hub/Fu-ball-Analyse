@@ -56,6 +56,17 @@ src/
 
 ## Änderungsprotokoll
 
+### 2026-08-02 — Prompt 41
+
+**User:** Restprogramm-Härte bei Saisonstart bedeutungslos (leicht / Rang 10/18).
+
+**Aktion:**
+- `scaleHardnessIndex`: Epsilon `(max−min) < 1e-9` → Index 50 (kein Rauschen-Ranking)
+- `reliable`-Flag ab Median ≥ `MIN_GAMES_FOR_HARDNESS` (5)
+- UI: bei `reliable:false` „noch keine Aussage (zu wenige Spiele)“, kein Tone/Rang
+
+**Status:** erledigt
+
 ### 2026-08-02 — Prompt 40
 
 **User:** Fehlerhafte Punktschwellen bei Saisonstart beheben (`deriveThresholdLines`).

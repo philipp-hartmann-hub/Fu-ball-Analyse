@@ -912,6 +912,12 @@
   color: #f87171;
 }
 
+.hardness-pill.tone-pending {
+  background: rgba(148, 163, 184, 0.12);
+  color: var(--muted);
+  font-weight: 500;
+}
+
 .hardness-empty {
   color: var(--muted);
 }
@@ -926,6 +932,12 @@
 
 .hardness-stat.tone-hard {
   color: #f87171;
+}
+
+.hardness-stat.tone-pending {
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 0.85rem;
 }
 
 .hardness-stat-meta {
