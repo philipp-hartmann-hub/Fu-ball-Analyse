@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { fetchLeagueMatches } from '../api/dataSource'
 import type { League } from '../leagues'
 import type { Match } from '../types'
-
-const POLL_MS = 60_000
+import { LIVE_POLL_MS, POLL_MS, listLiveMatches } from '../lib/live'
 
 export function useLeagueData(leagueId: string, season: number) {
   const [matches, setMatches] = useState<Match[]>([])
@@ -13,6 +12,9 @@ export function useLeagueData(leagueId: string, season: number) {
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null)
   const [refreshing, setRefreshing] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
+
+  const liveMatches = useMemo(() => listLiveMatches(matches), [matches])
+  const pollMs = liveMatches.length > 0 ? LIVE_POLL_MS : POLL_MS
 
   const load = useCallback(
     async (silent = false) => {
@@ -44,14 +46,22 @@ export function useLeagueData(leagueId: string, season: number) {
     [leagueId, season],
   )
 
+  // Erstladen / Liga- oder Saisonwechsel – Abort nur hier beim Teardown
   useEffect(() => {
     void load(false)
-    const id = window.setInterval(() => void load(true), POLL_MS)
     return () => {
-      window.clearInterval(id)
       abortRef.current?.abort()
     }
   }, [load])
+
+  // Polling: Intervall wechseln ohne den Aktiven Request unnötig zu killen
+  // (Cleanup löscht nur den Timer, kein Abort).
+  useEffect(() => {
+    const id = window.setInterval(() => void load(true), pollMs)
+    return () => {
+      window.clearInterval(id)
+    }
+  }, [load, pollMs])
 
   return {
     matches,
@@ -61,5 +71,7 @@ export function useLeagueData(leagueId: string, season: number) {
     updatedAt,
     refreshing,
     reload: () => load(false),
+    liveMatches,
+    pollMs,
   }
 }

@@ -7,8 +7,13 @@ import { ScenarioPanel } from './components/ScenarioPanel'
 import { StandingsTable, type TableViewMode } from './components/StandingsTable'
 import { TeamInsight } from './components/TeamInsight'
 import { TeamCompare } from './components/TeamCompare'
+import { LiveMatchesBar } from './components/LiveMatchesBar'
 import { ZoneLegend } from './components/ZoneLegend'
 import type { ExplainTopic } from './lib/modelExplanations'
+import {
+  liveMatchesToScenarios,
+  mergeScenarios,
+} from './lib/live'
 import { getLeague, type LeagueId } from './leagues'
 import { useLeagueData } from './hooks/useLeagueData'
 import { useSeasonForecast } from './hooks/useSeasonForecast'
@@ -71,15 +76,23 @@ export default function App() {
   const [sideTab, setSideTab] = useState<'insight' | 'compare'>('insight')
   const [compareA, setCompareA] = useState<number | null>(null)
   const [compareB, setCompareB] = useState<number | null>(null)
+  const [includeLiveInTable, setIncludeLiveInTable] = useState(false)
 
   const openExplain = (topic: ExplainTopic) => setExplainTopic(topic)
   const autoCutoffKey = useRef<string | null>(null)
   const shareHintTimer = useRef<number | null>(null)
 
-  const { matches, league, loading, error, updatedAt, refreshing, reload } = useLeagueData(
-    leagueId,
-    season,
-  )
+  const {
+    matches,
+    league,
+    loading,
+    error,
+    updatedAt,
+    refreshing,
+    reload,
+    liveMatches,
+    pollMs,
+  } = useLeagueData(leagueId, season)
 
   const meta = league ?? getLeague(leagueId)
   const leagueLabel = meta?.label ?? leagueId
@@ -131,21 +144,48 @@ export default function App() {
     replaceShareQuery(shouldPersistShare(state) ? encodeShareState(state) : null)
   }, [leagueId, season, useCutoff, asOfMatchday, scenarios])
 
+  const liveScenarios = useMemo(
+    () => (includeLiveInTable ? liveMatchesToScenarios(liveMatches) : []),
+    [includeLiveInTable, liveMatches],
+  )
+  const liveMatchIds = useMemo(
+    () => new Set(liveMatches.map((l) => l.match.matchID)),
+    [liveMatches],
+  )
+  const tableScenarios = useMemo(
+    () => mergeScenarios(liveScenarios, scenarios),
+    [liveScenarios, scenarios],
+  )
+
   const baseStandings = useMemo(
-    () => buildStandings(matches, { maxMatchday: cutoff }),
-    [matches, cutoff],
+    () =>
+      buildStandings(matches, {
+        maxMatchday: cutoff,
+        scenarios: liveScenarios,
+      }),
+    [matches, cutoff, liveScenarios],
   )
-  const openMatches = useMemo(
-    () => remainingMatches(matches, cutoff),
-    [matches, cutoff],
-  )
+  const openMatches = useMemo(() => {
+    const open = remainingMatches(matches, cutoff)
+    if (!includeLiveInTable || liveMatchIds.size === 0) return open
+    // Live-Stände sind schon in der Tabelle → nicht nochmal als Restprogramm zählen
+    return open.filter((m) => !liveMatchIds.has(m.matchID))
+  }, [matches, cutoff, includeLiveInTable, liveMatchIds])
   const playedScores = useMemo(
-    () => resolveMatchScores(matches, { maxMatchday: cutoff }),
-    [matches, cutoff],
+    () =>
+      resolveMatchScores(matches, {
+        maxMatchday: cutoff,
+        scenarios: liveScenarios,
+      }),
+    [matches, cutoff, liveScenarios],
   )
   const projectedStandings = useMemo(
-    () => buildStandings(matches, { maxMatchday: cutoff, scenarios }),
-    [matches, cutoff, scenarios],
+    () =>
+      buildStandings(matches, {
+        maxMatchday: cutoff,
+        scenarios: tableScenarios,
+      }),
+    [matches, cutoff, tableScenarios],
   )
   const ranges = useMemo(
     () => computePositionRanges(baseStandings, openMatches, playedScores),
@@ -170,7 +210,7 @@ export default function App() {
     baseStandings,
     remaining: openMatches,
     league: leagueId,
-    fixedScenarios: scenarios,
+    fixedScenarios: tableScenarios,
     playedScores,
   })
 
@@ -418,9 +458,24 @@ export default function App() {
       ) : (
         <main className="layout">
           <div className="main-col">
+            <LiveMatchesBar
+              liveMatches={liveMatches}
+              pollMs={pollMs}
+              refreshing={refreshing}
+            />
             <div className="table-toolbar">
               <ZoneLegend league={leagueId} />
               <div className="table-toolbar-controls">
+                {liveMatches.length > 0 && (
+                  <label className="hardness-toggle" title="Zwischenstände wie Szenarien in die Tabelle übernehmen">
+                    <input
+                      type="checkbox"
+                      checked={includeLiveInTable}
+                      onChange={(e) => setIncludeLiveInTable(e.target.checked)}
+                    />
+                    Live-Stände einrechnen
+                  </label>
+                )}
                 <label className="hardness-toggle">
                   <input
                     type="checkbox"
