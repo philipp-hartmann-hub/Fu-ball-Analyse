@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { defaultSeason } from './api/dataSource'
 import { LeagueSwitcher } from './components/LeagueSwitcher'
-import { ModelInfoModal } from './components/ModelInfoModal'
+import { ExplainModal } from './components/ExplainModal'
+import { ExplainLink } from './components/ExplainLink'
 import { ScenarioPanel } from './components/ScenarioPanel'
 import { StandingsTable, type TableViewMode } from './components/StandingsTable'
 import { TeamInsight } from './components/TeamInsight'
 import { TeamCompare } from './components/TeamCompare'
 import { ZoneLegend } from './components/ZoneLegend'
+import type { ExplainTopic } from './lib/modelExplanations'
 import { getLeague, type LeagueId } from './leagues'
 import { useLeagueData } from './hooks/useLeagueData'
 import { useSeasonForecast } from './hooks/useSeasonForecast'
@@ -65,10 +67,12 @@ export default function App() {
   const [shareHint, setShareHint] = useState<string | null>(null)
   const [tableView, setTableView] = useState<TableViewMode>('range')
   const [showHardness, setShowHardness] = useState(false)
-  const [modelInfoOpen, setModelInfoOpen] = useState(false)
+  const [explainTopic, setExplainTopic] = useState<ExplainTopic | null>(null)
   const [sideTab, setSideTab] = useState<'insight' | 'compare'>('insight')
   const [compareA, setCompareA] = useState<number | null>(null)
   const [compareB, setCompareB] = useState<number | null>(null)
+
+  const openExplain = (topic: ExplainTopic) => setExplainTopic(topic)
   const autoCutoffKey = useRef<string | null>(null)
   const shareHintTimer = useRef<number | null>(null)
 
@@ -447,7 +451,7 @@ export default function App() {
                 </div>
               </div>
             </div>
-            {tableView === 'forecast' && (
+            {tableView === 'forecast' ? (
               <p className="forecast-disclaimer">
                 {forecastLoading
                   ? 'Simuliere Restprogramm…'
@@ -456,15 +460,20 @@ export default function App() {
                     : (
                       <>
                         Modellschätzung (Poisson-Simulation) – keine Vorhersage.{' '}
-                        <button
-                          type="button"
-                          className="linkish"
-                          onClick={() => setModelInfoOpen(true)}
-                        >
-                          Modell erklären
-                        </button>
+                        <ExplainLink topic="forecast" onExplain={openExplain} />
                       </>
                     )}
+              </p>
+            ) : (
+              <p className="forecast-disclaimer">
+                Rechnerische Best-/Schlechtfall-Spanne – keine Wahrscheinlichkeiten.{' '}
+                <ExplainLink topic="span" onExplain={openExplain} />
+              </p>
+            )}
+            {showHardness && (
+              <p className="forecast-disclaimer">
+                Restprogramm-Härte aus Gegner-PPG (Heim/Auswärts gewichtet).{' '}
+                <ExplainLink topic="hardness" onExplain={openExplain} />
               </p>
             )}
             <StandingsTable
@@ -480,8 +489,9 @@ export default function App() {
               league={leagueId}
               hardnessByTeam={hardnessByTeam}
               showHardness={showHardness}
+              onExplain={openExplain}
             />
-            <ModelInfoModal open={modelInfoOpen} onClose={() => setModelInfoOpen(false)} />
+            <ExplainModal topic={explainTopic} onClose={() => setExplainTopic(null)} />
           </div>
           <aside className="side-col">
             <div className="side-tabs" role="tablist" aria-label="Seitenleiste">
@@ -541,6 +551,7 @@ export default function App() {
                       : null
                   }
                   leagueTeamCount={baseStandings.length}
+                  onExplain={openExplain}
                 />
                 <ScenarioPanel
                   matches={openMatches}
@@ -558,6 +569,7 @@ export default function App() {
                 teamBId={compareB}
                 onChangeTeamA={setCompareA}
                 onChangeTeamB={setCompareB}
+                onExplain={openExplain}
               />
             )}
           </aside>

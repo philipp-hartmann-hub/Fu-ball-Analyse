@@ -57,6 +57,17 @@ src/
 
 ## Änderungsprotokoll
 
+### 2026-08-02 — Prompt 43
+
+**User:** Überall bei Modellrechnungen Erklär-Pop-ups; auch für künftige Prompts.
+
+**Aktion:**
+- Zentrale Topics in `modelExplanations.tsx` (Prognose, Spanne, Schwellen, Härte)
+- `ExplainModal` + `ExplainLink`; Einbindung in Tabelle, Analyse, Vergleich
+- Projektregel `.cursor/rules/model-explain-popups.mdc` (`alwaysApply`)
+
+**Status:** erledigt
+
 ### 2026-08-02 — Prompt 42
 
 **User:** Vergleichsansicht für zwei Vereine (Dropdown, Restprogramm, Härte, Direktspiel).

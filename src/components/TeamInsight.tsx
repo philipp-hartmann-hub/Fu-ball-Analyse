@@ -12,6 +12,8 @@ import {
   hardnessTone,
   type ScheduleHardness,
 } from '../lib/schedule'
+import type { ExplainTopic } from '../lib/modelExplanations'
+import { ExplainLink } from './ExplainLink'
 
 interface Props {
   team: StandingRow | null
@@ -27,16 +29,19 @@ interface Props {
   seasonThresholds?: ThresholdLine[]
   scheduleHardness?: ScheduleHardness | null
   leagueTeamCount?: number
+  onExplain?: (topic: ExplainTopic) => void
 }
 
 function ThresholdList({
   lines,
   emptyHint,
   summary = 'Punktschwellen',
+  onExplain,
 }: {
   lines: ThresholdLine[]
   emptyHint?: string
   summary?: string
+  onExplain?: (topic: ExplainTopic) => void
 }) {
   if (!lines.length) {
     return emptyHint ? <p className="hint tight">{emptyHint}</p> : null
@@ -58,6 +63,11 @@ function ThresholdList({
           </li>
         ))}
       </ul>
+      {onExplain && (
+        <p className="hint tight threshold-explain">
+          <ExplainLink topic="thresholds" onExplain={onExplain} />
+        </p>
+      )}
     </details>
   )
 }
@@ -71,6 +81,7 @@ function VariantPanel({
   emptyAction,
   thresholds,
   thresholdSummary,
+  onExplain,
 }: {
   heading: string
   range: PositionRange | null
@@ -80,10 +91,16 @@ function VariantPanel({
   emptyAction?: ReactNode
   thresholds?: ThresholdLine[]
   thresholdSummary?: string
+  onExplain?: (topic: ExplainTopic) => void
 }) {
   return (
     <div className="panel insight-variant">
-      <h2 className="variant-heading">{heading}</h2>
+      <div className="variant-head">
+        <h2 className="variant-heading">{heading}</h2>
+        {onExplain && range && (
+          <ExplainLink topic="span" onExplain={onExplain} className="explain-inline" />
+        )}
+      </div>
       {range ? (
         <>
           <div className="range-card">
@@ -101,7 +118,11 @@ function VariantPanel({
           </div>
 
           {thresholds && thresholds.length > 0 && (
-            <ThresholdList lines={thresholds} summary={thresholdSummary} />
+            <ThresholdList
+              lines={thresholds}
+              summary={thresholdSummary}
+              onExplain={onExplain}
+            />
           )}
 
           {range.bestRank === range.worstRank && (
@@ -133,6 +154,7 @@ export function TeamInsight({
   seasonThresholds = [],
   scheduleHardness = null,
   leagueTeamCount = 18,
+  onExplain,
 }: Props) {
   if (!team) {
     return (
@@ -203,7 +225,21 @@ export function TeamInsight({
           )}
           {scheduleHardness && scheduleHardness.remainingGames > 0 && (
             <div>
-              <span className="label">Restprogramm</span>
+              <span className="label">
+                Restprogramm
+                {onExplain && (
+                  <>
+                    {' '}
+                    <ExplainLink
+                      topic="hardness"
+                      onExplain={onExplain}
+                      className="explain-inline"
+                    >
+                      Erklärung
+                    </ExplainLink>
+                  </>
+                )}
+              </span>
               {scheduleHardness.reliable ? (
                 <strong className={`hardness-stat tone-${hardnessToneValue}`}>
                   {Math.round(scheduleHardness.index)}
@@ -240,6 +276,7 @@ export function TeamInsight({
         league={league}
         thresholds={matchdayThresholds}
         thresholdSummary="Nach dem nächsten Spieltag"
+        onExplain={onExplain}
         note={
           nextMatchday
             ? nextMatchday.plays
@@ -267,6 +304,7 @@ export function TeamInsight({
         league={league}
         thresholds={seasonThresholds}
         thresholdSummary="Saison (Schätzung)"
+        onExplain={onExplain}
         note="Schätzung über alle Restspiele (Kennzahlen genähert)."
         empty="Keine Saison-Spanne berechenbar."
       />

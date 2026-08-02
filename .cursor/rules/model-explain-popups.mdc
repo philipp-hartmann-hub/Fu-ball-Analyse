@@ -1,0 +1,24 @@
+---
+description: Bei jeder Modellrechnung ein Erklär-Popup in der UI vorsehen
+alwaysApply: true
+---
+
+# Modell-Erklärungen (Pop-ups)
+
+Immer wenn eine **Modellrechnung**, Heuristik, Simulation oder abgeleitete Kennzahl in der UI erscheint oder neu gebaut wird:
+
+## Pflicht
+
+1. Inhalt in [`src/lib/modelExplanations.tsx`](src/lib/modelExplanations.tsx) als neuen `ExplainTopic` ergänzen (Deutsch, verständlich, Grenzen/Unsicherheit nennen).
+2. In der UI einen Einstieg mit [`ExplainLink`](src/components/ExplainLink.tsx) setzen und das zentrale [`ExplainModal`](src/components/ExplainModal.tsx) öffnen (nicht nur `title`-Tooltip).
+3. Bestehende Topics wiederverwenden, wenn dieselbe Rechnung schon erklärt ist (`forecast`, `span`, `thresholds`, `hardness`, …).
+4. Keine „Black Box“-Zahlen ohne Erklärungsweg neben der Anzeige.
+
+## Gilt für
+
+Prognose (Monte-Carlo), Platz-Spanne (Best/Worst), Punktschwellen, Restprogramm-Härte, Vereinsvergleich-Kennzahlen und **alle künftigen** modellbasierten Features in diesem Projekt.
+
+## Nicht tun
+
+- Modellwerte ohne Link „Modell erklären“ / „Erklärung“ ausliefern
+- Erklärtext nur in README oder Code-Kommentar lassen, ohne UI-Popup

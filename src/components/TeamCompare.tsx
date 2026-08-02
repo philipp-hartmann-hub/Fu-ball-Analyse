@@ -4,6 +4,8 @@ import {
   hardnessTone,
   type ScheduleHardness,
 } from '../lib/schedule'
+import type { ExplainTopic } from '../lib/modelExplanations'
+import { ExplainLink } from './ExplainLink'
 
 export interface RemainingFixture {
   matchId: number
@@ -23,6 +25,7 @@ interface Props {
   teamBId: number | null
   onChangeTeamA: (id: number | null) => void
   onChangeTeamB: (id: number | null) => void
+  onExplain?: (topic: ExplainTopic) => void
 }
 
 function teamLabel(row: StandingRow): string {
@@ -87,11 +90,13 @@ function TeamColumn({
   fixtures,
   hardness,
   leagueSize,
+  onExplain,
 }: {
   row: StandingRow
   fixtures: RemainingFixture[]
   hardness: ScheduleHardness | undefined
   leagueSize: number
+  onExplain?: (topic: ExplainTopic) => void
 }) {
   return (
     <div className="compare-col">
@@ -127,7 +132,21 @@ function TeamColumn({
       </dl>
 
       <div className="compare-hardness-row">
-        <span className="label">Restprogramm-Härte</span>
+        <span className="label">
+          Restprogramm-Härte
+          {onExplain && (
+            <>
+              {' '}
+              <ExplainLink
+                topic="hardness"
+                onExplain={onExplain}
+                className="explain-inline"
+              >
+                Erklärung
+              </ExplainLink>
+            </>
+          )}
+        </span>
         <HardnessBadge hardness={hardness} leagueSize={leagueSize} />
       </div>
 
@@ -161,6 +180,7 @@ export function TeamCompare({
   teamBId,
   onChangeTeamA,
   onChangeTeamB,
+  onExplain,
 }: Props) {
   const sorted = useMemo(
     () => [...standings].sort((a, b) => a.teamName.localeCompare(b.teamName, 'de')),
@@ -267,12 +287,14 @@ export function TeamCompare({
               fixtures={fixturesA}
               hardness={hardnessByTeam.get(teamA.teamId)}
               leagueSize={standings.length}
+              onExplain={onExplain}
             />
             <TeamColumn
               row={teamB}
               fixtures={fixturesB}
               hardness={hardnessByTeam.get(teamB.teamId)}
               leagueSize={standings.length}
+              onExplain={onExplain}
             />
           </div>
         </>

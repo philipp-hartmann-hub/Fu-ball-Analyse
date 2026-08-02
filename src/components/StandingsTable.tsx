@@ -9,6 +9,8 @@ import {
   type ScheduleHardness,
 } from '../lib/schedule'
 import { zoneForRank } from '../lib/table'
+import type { ExplainTopic } from '../lib/modelExplanations'
+import { ExplainLink } from './ExplainLink'
 
 export type TableViewMode = 'range' | 'forecast'
 
@@ -26,6 +28,7 @@ interface Props {
   /** Restprogramm-Härte je Verein; Spalte nur wenn showHardness */
   hardnessByTeam?: Map<number, ScheduleHardness> | null
   showHardness?: boolean
+  onExplain?: (topic: ExplainTopic) => void
 }
 
 export function StandingsTable({
@@ -41,6 +44,7 @@ export function StandingsTable({
   league,
   hardnessByTeam,
   showHardness = false,
+  onExplain,
 }: Props) {
   const rangeMap = new Map(ranges.map((r) => [r.teamId, r]))
   const forecastMap = new Map((forecasts ?? []).map((f) => [f.teamId, f]))
@@ -70,10 +74,34 @@ export function StandingsTable({
                 title="Restprogramm-Härte: 0–100 (höher = schwerer), Rang in der Liga"
               >
                 Härte
+                {onExplain && (
+                  <span className="th-explain">
+                    {' '}
+                    <ExplainLink
+                      topic="hardness"
+                      onExplain={onExplain}
+                      className="explain-inline"
+                    >
+                      ?
+                    </ExplainLink>
+                  </span>
+                )}
               </th>
             )}
             <th className="range">
               {viewMode === 'forecast' ? 'Prognose' : 'Möglich'}
+              {onExplain && (
+                <span className="th-explain">
+                  {' '}
+                  <ExplainLink
+                    topic={viewMode === 'forecast' ? 'forecast' : 'span'}
+                    onExplain={onExplain}
+                    className="explain-inline"
+                  >
+                    ?
+                  </ExplainLink>
+                </span>
+              )}
             </th>
           </tr>
         </thead>
