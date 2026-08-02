@@ -11,9 +11,10 @@ Echtzeit-Analyse für die **1. und 2. Bundesliga**: Tabelle, Restprogramm und m�
 | | |
 |---|---|
 | **Repo** | https://github.com/philipp-hartmann-hub/Fu-ball-Analyse |
-| **Stack** | React 19 · TypeScript · Vite 8 |
+| **Stack** | React 19 · TypeScript · Vite 8 · Vitest |
 | **Daten** | [OpenLigaDB](https://www.openligadb.de/) (`bl1` / `bl2`) – ohne API-Token |
 | **Scope** | Nur 1. und 2. Bundesliga (andere Wettbewerbe bewusst zurückgestellt) |
+| **Tests** | `npm run test` · Watch: `npm run test:watch` |
 
 ### Features
 
@@ -53,6 +54,17 @@ src/
 ---
 
 ## Änderungsprotokoll
+
+### 2026-08-02 — Prompt 32
+
+**User:** Vitest einrichten + Unit-Tests für analytische Kernlogik (Regressionsschutz).
+
+**Aktion:**
+- `vitest` + `@vitest/coverage-v8`, Scripts `test` / `test:watch`
+- Fixtures `src/lib/__fixtures__/miniLeague.ts` (4 Teams)
+- Tests: `table.test.ts`, `scenarios.test.ts` (21 grün)
+
+**Status:** erledigt
 
 ### 2026-08-01 — Prompt 31
 
