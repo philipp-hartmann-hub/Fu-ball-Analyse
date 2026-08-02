@@ -17,8 +17,12 @@ import {
 import type { ExplainTopic } from '../lib/modelExplanations'
 import { ExplainLink } from './ExplainLink'
 
+/** Abschnitte der Vereinsanalyse (Seitenleisten-Reiter). */
+export type InsightSection = 'overview' | 'matchday' | 'season'
+
 interface Props {
   team: StandingRow | null
+  section: InsightSection
   seasonOutlook: SeasonOutlook | null
   nextMatchday: NextMatchdayOutlook | null
   remainingCount: number
@@ -396,6 +400,7 @@ function VariantPanel({
 
 export function TeamInsight({
   team,
+  section,
   seasonOutlook,
   nextMatchday,
   remainingCount,
@@ -414,10 +419,15 @@ export function TeamInsight({
   if (!team) {
     return (
       <div className="panel insight">
-        <h2>Vereinsanalyse</h2>
+        <h2>
+          {section === 'matchday'
+            ? 'Nächster Spieltag'
+            : section === 'season'
+              ? 'Gesamte Saison'
+              : 'Verein'}
+        </h2>
         <p className="hint">
-          Verein wählen – dann siehst du Best-/Schlechtfall für den nächsten Spieltag und die
-          Saison.
+          Verein in der Tabelle wählen – dann erscheint dieser Abschnitt.
         </p>
       </div>
     )
@@ -438,89 +448,8 @@ export function TeamInsight({
           ? 'mittel'
           : null
 
-  return (
-    <div className="insight-column">
-      <div className="panel insight">
-        <div className="insight-head">
-          {team.teamIconUrl ? (
-            <img src={team.teamIconUrl} alt="" width={40} height={40} />
-          ) : (
-            <span className="crest-fallback large" aria-hidden />
-          )}
-          <div>
-            <h2>{team.teamName}</h2>
-            <p className="meta">
-              Platz {team.rank} · {team.points} Pkt. · {team.won}S {team.draw}U {team.lost}N ·{' '}
-              {remainingCount} Restspiele
-            </p>
-          </div>
-        </div>
-
-        <div className="stat-row">
-          <div>
-            <span className="label">Aktuelle Zone</span>
-            <strong>{zoneLabelFor(team.rank, league)}</strong>
-          </div>
-          {pointsToFirst != null && pointsToFirst > 0 && (
-            <div>
-              <span className="label">Rückstand Platz 1</span>
-              <strong>{pointsToFirst} Pkt.</strong>
-            </div>
-          )}
-          {pointsAboveRelegation != null && (
-            <div>
-              <span className="label">Vorsprung Platz 16</span>
-              <strong>
-                {pointsAboveRelegation >= 0
-                  ? `+${pointsAboveRelegation}`
-                  : pointsAboveRelegation}{' '}
-                Pkt.
-              </strong>
-            </div>
-          )}
-          {scheduleHardness && scheduleHardness.remainingGames > 0 && (
-            <div>
-              <span className="label">
-                Restprogramm
-                {onExplain && (
-                  <>
-                    {' '}
-                    <ExplainLink
-                      topic="hardness"
-                      onExplain={onExplain}
-                      className="explain-inline"
-                    >
-                      Erklärung
-                    </ExplainLink>
-                  </>
-                )}
-              </span>
-              {scheduleHardness.reliable ? (
-                <strong className={`hardness-stat tone-${hardnessToneValue}`}>
-                  {Math.round(scheduleHardness.index)}
-                  <span className="hardness-stat-meta">
-                    {' '}
-                    · {scheduleHardness.rank}/{leagueTeamCount}
-                    {hardnessLabel ? ` · ${hardnessLabel}` : ''}
-                  </span>
-                </strong>
-              ) : (
-                <strong className="hardness-stat tone-pending">
-                  noch keine Aussage
-                  <span className="hardness-stat-meta"> (zu wenige Spiele)</span>
-                </strong>
-              )}
-            </div>
-          )}
-        </div>
-        {scheduleHardness && scheduleHardness.remainingGames > 0 && scheduleHardness.reliable && (
-          <p className="hint tight">
-            Härte 0–100 (höher = schwerer Gegner-Schnitt, Heim/Auswärts gewichtet). Rang 1 =
-            schwerstes Restprogramm der Liga.
-          </p>
-        )}
-      </div>
-
+  if (section === 'matchday') {
+    return (
       <VariantPanel
         heading={
           nextMatchday
@@ -555,7 +484,11 @@ export function TeamInsight({
           ) : null
         }
       />
+    )
+  }
 
+  if (section === 'season') {
+    return (
       <VariantPanel
         heading="Gesamte Saison"
         range={seasonOutlook?.range ?? null}
@@ -569,6 +502,89 @@ export function TeamInsight({
         note="Schätzung über alle Restspiele. Bedingungen heuristisch — Klick auf Best-/Schlechtfall."
         empty="Keine Saison-Spanne berechenbar."
       />
+    )
+  }
+
+  return (
+    <div className="panel insight">
+      <div className="insight-head">
+        {team.teamIconUrl ? (
+          <img src={team.teamIconUrl} alt="" width={40} height={40} />
+        ) : (
+          <span className="crest-fallback large" aria-hidden />
+        )}
+        <div>
+          <h2>{team.teamName}</h2>
+          <p className="meta">
+            Platz {team.rank} · {team.points} Pkt. · {team.won}S {team.draw}U {team.lost}N ·{' '}
+            {remainingCount} Restspiele
+          </p>
+        </div>
+      </div>
+
+      <div className="stat-row">
+        <div>
+          <span className="label">Aktuelle Zone</span>
+          <strong>{zoneLabelFor(team.rank, league)}</strong>
+        </div>
+        {pointsToFirst != null && pointsToFirst > 0 && (
+          <div>
+            <span className="label">Rückstand Platz 1</span>
+            <strong>{pointsToFirst} Pkt.</strong>
+          </div>
+        )}
+        {pointsAboveRelegation != null && (
+          <div>
+            <span className="label">Vorsprung Platz 16</span>
+            <strong>
+              {pointsAboveRelegation >= 0
+                ? `+${pointsAboveRelegation}`
+                : pointsAboveRelegation}{' '}
+              Pkt.
+            </strong>
+          </div>
+        )}
+        {scheduleHardness && scheduleHardness.remainingGames > 0 && (
+          <div>
+            <span className="label">
+              Restprogramm
+              {onExplain && (
+                <>
+                  {' '}
+                  <ExplainLink
+                    topic="hardness"
+                    onExplain={onExplain}
+                    className="explain-inline"
+                  >
+                    Erklärung
+                  </ExplainLink>
+                </>
+              )}
+            </span>
+            {scheduleHardness.reliable ? (
+              <strong className={`hardness-stat tone-${hardnessToneValue}`}>
+                {Math.round(scheduleHardness.index)}
+                <span className="hardness-stat-meta">
+                  {' '}
+                  · {scheduleHardness.rank}/{leagueTeamCount}
+                  {hardnessLabel ? ` · ${hardnessLabel}` : ''}
+                </span>
+              </strong>
+            ) : (
+              <strong className="hardness-stat tone-pending">
+                noch keine Aussage
+                <span className="hardness-stat-meta"> (zu wenige Spiele)</span>
+              </strong>
+            )}
+          </div>
+        )}
+      </div>
+      {scheduleHardness && scheduleHardness.remainingGames > 0 && scheduleHardness.reliable && (
+        <p className="hint tight">
+          Härte 0–100 (höher = schwerer Gegner-Schnitt, Heim/Auswärts gewichtet). Rang 1 =
+          schwerstes Restprogramm der Liga.
+        </p>
+      )}
     </div>
   )
 }

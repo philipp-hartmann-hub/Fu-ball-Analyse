@@ -23,10 +23,7 @@ Echtzeit-Analyse für die **1. und 2. Bundesliga**: Tabelle, Restprogramm und m�
 - **Live-Spiele**: Ergebnisübersicht des aktuellen Spieltags unter der Tabelle (aufklappbar); 2 Tage nach letztem Spiel → nächster Spieltag; Polling 20s bei Live
 - Spalte **Möglich**: Best-/Schlechtfall bis Saisonende (**Spanne**) oder Monte-Carlo-**Prognose** (umschaltbar)
 - Optionale Spalte **Härte**: Restprogramm-Härte 0–100 (Toggle „Restprogramm“; auf Mobile ausgeblendet)
-- Vereinsanalyse: **nach nächstem Spieltag** (exakt) und **Saisonende** (heuristisch), inkl. Restprogramm-Härte und Bedingungs-Analyse (notwendig vs. egal)
-- **Vereinsvergleich**: zwei Teams nebeneinander (Tabelle, Restprogramm, Härte; Direktspiele hervorgehoben)
-- Spalte **Δ**: Platzveränderung durch gesetzte Szenarien
-- **Szenario-Simulator**: Grob/Fein je Spieltag (Default: nächster); teilbar via `?s=`
+- Vereinsanalyse in der Seitenleiste per Reiter: **Verein** · **Spieltag** · **Saison** · **Szenario** · **Vergleich** (Best-/Schlechtfall, Bedingungen, Härte)
 - **Stand nach Spieltag**: Slider für historischen Stand
 - Toolbar: **Link teilen** (Zwischenablage) und **Zurücksetzen** (Szenarien + `?s=`)
 
@@ -58,6 +55,17 @@ src/
 ---
 
 ## Änderungsprotokoll
+
+### 2026-08-02 — Prompt 51
+
+**User:** Analyse-/Vergleich-Reiter durch einzelne Abschnitte ersetzen (auswählbar).
+
+**Aktion:**
+- Seitenleisten-Tabs: Verein · Spieltag · Saison · Szenario · Vergleich
+- `TeamInsight` rendert nur den gewählten Abschnitt (`section`-Prop)
+- „Als Szenario übernehmen“ wechselt automatisch zum Reiter Szenario
+
+**Status:** erledigt
 
 ### 2026-08-02 — Prompt 50
 

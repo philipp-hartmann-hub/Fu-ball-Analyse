@@ -5,7 +5,7 @@ import { ExplainModal } from './components/ExplainModal'
 import { ExplainLink } from './components/ExplainLink'
 import { ScenarioPanel } from './components/ScenarioPanel'
 import { StandingsTable, type TableViewMode } from './components/StandingsTable'
-import { TeamInsight } from './components/TeamInsight'
+import { TeamInsight, type InsightSection } from './components/TeamInsight'
 import { TeamCompare } from './components/TeamCompare'
 import { LiveMatchesBar } from './components/LiveMatchesBar'
 import { ZoneLegend } from './components/ZoneLegend'
@@ -74,7 +74,9 @@ export default function App() {
   const [tableView, setTableView] = useState<TableViewMode>('range')
   const [showHardness, setShowHardness] = useState(false)
   const [explainTopic, setExplainTopic] = useState<ExplainTopic | null>(null)
-  const [sideTab, setSideTab] = useState<'insight' | 'compare'>('insight')
+  const [sideTab, setSideTab] = useState<
+    InsightSection | 'scenario' | 'compare'
+  >('overview')
   const [compareA, setCompareA] = useState<number | null>(null)
   const [compareB, setCompareB] = useState<number | null>(null)
   const [includeLiveInTable, setIncludeLiveInTable] = useState(false)
@@ -553,80 +555,41 @@ export default function App() {
           </div>
           <aside className="side-col">
             <div className="side-tabs" role="tablist" aria-label="Seitenleiste">
-              <button
-                type="button"
-                role="tab"
-                className={sideTab === 'insight' ? 'active' : ''}
-                aria-selected={sideTab === 'insight'}
-                onClick={() => setSideTab('insight')}
-              >
-                Analyse
-              </button>
-              <button
-                type="button"
-                role="tab"
-                className={sideTab === 'compare' ? 'active' : ''}
-                aria-selected={sideTab === 'compare'}
-                onClick={() => {
-                  setSideTab('compare')
-                  if (compareA == null && selectedTeamId != null) {
-                    setCompareA(selectedTeamId)
-                  }
-                }}
-              >
-                Vergleich
-              </button>
+              {(
+                [
+                  { id: 'overview', label: 'Verein' },
+                  { id: 'matchday', label: 'Spieltag' },
+                  { id: 'season', label: 'Saison' },
+                  { id: 'scenario', label: 'Szenario' },
+                  { id: 'compare', label: 'Vergleich' },
+                ] as const
+              ).map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  role="tab"
+                  className={sideTab === tab.id ? 'active' : ''}
+                  aria-selected={sideTab === tab.id}
+                  onClick={() => {
+                    setSideTab(tab.id)
+                    if (tab.id === 'compare' && compareA == null && selectedTeamId != null) {
+                      setCompareA(selectedTeamId)
+                    }
+                  }}
+                >
+                  {tab.label}
+                </button>
+              ))}
             </div>
 
-            {sideTab === 'insight' ? (
-              <>
-                <TeamInsight
-                  team={selectedTeam}
-                  seasonOutlook={seasonOutlook}
-                  nextMatchday={nextMatchdayOutlook}
-                  league={leagueId}
-                  suggestedCutoff={suggestedCutoff}
-                  onEnableMatchdayCutoff={enableMatchdayCutoff}
-                  matchdayThresholds={matchdayThresholds}
-                  seasonThresholds={seasonThresholds}
-                  pointsToFirst={
-                    selectedTeam ? leaderPoints - selectedTeam.points : null
-                  }
-                  pointsAboveRelegation={
-                    selectedTeam ? selectedTeam.points - relegLine : null
-                  }
-                  remainingCount={
-                    openMatches.filter(
-                      (m) =>
-                        selectedTeamId != null &&
-                        (m.team1.teamId === selectedTeamId ||
-                          m.team2.teamId === selectedTeamId),
-                    ).length
-                  }
-                  scheduleHardness={
-                    selectedTeamId != null
-                      ? (hardnessByTeam.get(selectedTeamId) ?? null)
-                      : null
-                  }
-                  leagueTeamCount={baseStandings.length}
-                  onExplain={openExplain}
-                  onApplyConditions={(cond) => {
-                    const added = scenariosFromConditions(cond)
-                    setScenarios((prev) => {
-                      const map = new Map(prev.map((s) => [s.matchId, s]))
-                      for (const s of added) map.set(s.matchId, s)
-                      return [...map.values()]
-                    })
-                  }}
-                />
-                <ScenarioPanel
-                  matches={openMatches}
-                  scenarios={scenarios}
-                  onChange={setScenarios}
-                  focusTeamId={selectedTeamId}
-                />
-              </>
-            ) : (
+            {sideTab === 'scenario' ? (
+              <ScenarioPanel
+                matches={openMatches}
+                scenarios={scenarios}
+                onChange={setScenarios}
+                focusTeamId={selectedTeamId}
+              />
+            ) : sideTab === 'compare' ? (
               <TeamCompare
                 standings={projectedStandings}
                 remaining={openMatches}
@@ -636,6 +599,48 @@ export default function App() {
                 onChangeTeamA={setCompareA}
                 onChangeTeamB={setCompareB}
                 onExplain={openExplain}
+              />
+            ) : (
+              <TeamInsight
+                section={sideTab}
+                team={selectedTeam}
+                seasonOutlook={seasonOutlook}
+                nextMatchday={nextMatchdayOutlook}
+                league={leagueId}
+                suggestedCutoff={suggestedCutoff}
+                onEnableMatchdayCutoff={enableMatchdayCutoff}
+                matchdayThresholds={matchdayThresholds}
+                seasonThresholds={seasonThresholds}
+                pointsToFirst={
+                  selectedTeam ? leaderPoints - selectedTeam.points : null
+                }
+                pointsAboveRelegation={
+                  selectedTeam ? selectedTeam.points - relegLine : null
+                }
+                remainingCount={
+                  openMatches.filter(
+                    (m) =>
+                      selectedTeamId != null &&
+                      (m.team1.teamId === selectedTeamId ||
+                        m.team2.teamId === selectedTeamId),
+                  ).length
+                }
+                scheduleHardness={
+                  selectedTeamId != null
+                    ? (hardnessByTeam.get(selectedTeamId) ?? null)
+                    : null
+                }
+                leagueTeamCount={baseStandings.length}
+                onExplain={openExplain}
+                onApplyConditions={(cond) => {
+                  const added = scenariosFromConditions(cond)
+                  setScenarios((prev) => {
+                    const map = new Map(prev.map((s) => [s.matchId, s]))
+                    for (const s of added) map.set(s.matchId, s)
+                    return [...map.values()]
+                  })
+                  setSideTab('scenario')
+                }}
               />
             )}
           </aside>
