@@ -32,9 +32,11 @@ interface Props {
 function ThresholdList({
   lines,
   emptyHint,
+  summary = 'Punktschwellen',
 }: {
   lines: ThresholdLine[]
   emptyHint?: string
+  summary?: string
 }) {
   if (!lines.length) {
     return emptyHint ? <p className="hint tight">{emptyHint}</p> : null
@@ -42,7 +44,7 @@ function ThresholdList({
   return (
     <details className="threshold-details">
       <summary className="threshold-summary">
-        Punktschwellen
+        {summary}
         <span className="threshold-count">{lines.length}</span>
       </summary>
       <ul className="threshold-list">
@@ -68,6 +70,7 @@ function VariantPanel({
   empty,
   emptyAction,
   thresholds,
+  thresholdSummary,
 }: {
   heading: string
   range: PositionRange | null
@@ -76,6 +79,7 @@ function VariantPanel({
   empty?: string
   emptyAction?: ReactNode
   thresholds?: ThresholdLine[]
+  thresholdSummary?: string
 }) {
   return (
     <div className="panel insight-variant">
@@ -97,7 +101,7 @@ function VariantPanel({
           </div>
 
           {thresholds && thresholds.length > 0 && (
-            <ThresholdList lines={thresholds} />
+            <ThresholdList lines={thresholds} summary={thresholdSummary} />
           )}
 
           {range.bestRank === range.worstRank && (
@@ -226,6 +230,7 @@ export function TeamInsight({
         range={nextMatchday?.range ?? null}
         league={league}
         thresholds={matchdayThresholds}
+        thresholdSummary="Nach dem nächsten Spieltag"
         note={
           nextMatchday
             ? nextMatchday.plays
@@ -252,6 +257,7 @@ export function TeamInsight({
         range={seasonOutlook?.range ?? null}
         league={league}
         thresholds={seasonThresholds}
+        thresholdSummary="Saison (Schätzung)"
         note="Schätzung über alle Restspiele (Kennzahlen genähert)."
         empty="Keine Saison-Spanne berechenbar."
       />

@@ -56,6 +56,17 @@ src/
 
 ## Änderungsprotokoll
 
+### 2026-08-02 — Prompt 40
+
+**User:** Fehlerhafte Punktschwellen bei Saisonstart beheben (`deriveThresholdLines`).
+
+**Aktion:**
+- Saison (`exact: false`): nur qualitative Extremfall-Aussagen, keine „ab X Pkt.“; offen (Ziel∧Abstieg) → []
+- Spieltag: `reachableMax` (Pkt.+0/3), Regime-Guard, Labels „Nach Spieltag: …“
+- Tests für Saisonstart, Klassenerhalt-Schwelle, CL weg, reachableMax-Cap
+
+**Status:** erledigt
+
 ### 2026-08-02 — Prompt 39
 
 **User:** Restprogramm-Härte pro Verein; Spalte (Toggle) + Vereinsanalyse; Modul `schedule.ts`.

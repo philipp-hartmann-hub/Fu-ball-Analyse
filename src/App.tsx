@@ -200,13 +200,18 @@ export default function App() {
       playedScores,
     )
     if (!outcomes) return []
-    const exact = (nextMatchdayOutlook?.fixtureCount ?? 99) <= 12
+    const playsNext = nextMatchdayOutlook?.plays ?? false
+    const reachableMax = selectedTeam.points + (playsNext ? 3 : 0)
     return deriveThresholdLines(
       outcomes,
       selectedTeam.points,
       selectedTeam.rank,
       leagueId,
-      { exact },
+      {
+        exact: (nextMatchdayOutlook?.fixtureCount ?? 99) <= 12,
+        reachableMax,
+        horizon: 'matchday',
+      },
     )
   }, [
     selectedTeam,
@@ -214,6 +219,7 @@ export default function App() {
     openMatches,
     playedScores,
     nextMatchdayOutlook?.fixtureCount,
+    nextMatchdayOutlook?.plays,
     leagueId,
   ])
 
@@ -231,7 +237,7 @@ export default function App() {
       selectedTeam.points,
       selectedTeam.rank,
       leagueId,
-      { exact: false },
+      { exact: false, horizon: 'season' },
     )
   }, [selectedTeam, baseStandings, openMatches, playedScores, leagueId])
 
