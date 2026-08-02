@@ -56,6 +56,16 @@ src/
 
 ## Änderungsprotokoll
 
+### 2026-08-02 — Prompt 35
+
+**User:** Popup, das die Modellrechnung erklärt.
+
+**Aktion:**
+- `ModelInfoModal` + Link „Modell erklären“ in der Prognose-Zeile
+- Push auf Feature-Branch und `main`
+
+**Status:** erledigt
+
 ### 2026-08-02 — Prompt 34
 
 **User:** Wahrscheinlichkeitsbasierte Saisonprognose (Poisson-MC) als Alternative zur Spanne.

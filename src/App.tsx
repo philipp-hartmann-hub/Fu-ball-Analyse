@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { defaultSeason } from './api/dataSource'
 import { LeagueSwitcher } from './components/LeagueSwitcher'
+import { ModelInfoModal } from './components/ModelInfoModal'
 import { ScenarioPanel } from './components/ScenarioPanel'
 import { StandingsTable, type TableViewMode } from './components/StandingsTable'
 import { TeamInsight } from './components/TeamInsight'
@@ -53,6 +54,7 @@ export default function App() {
   const [useCutoff, setUseCutoff] = useState(() => initialShare?.useCutoff ?? false)
   const [shareHint, setShareHint] = useState<string | null>(null)
   const [tableView, setTableView] = useState<TableViewMode>('range')
+  const [modelInfoOpen, setModelInfoOpen] = useState(false)
   const autoCutoffKey = useRef<string | null>(null)
   const shareHintTimer = useRef<number | null>(null)
 
@@ -353,7 +355,18 @@ export default function App() {
                   ? 'Simuliere Restprogramm…'
                   : forecastError
                     ? `Prognose nicht verfügbar: ${forecastError}`
-                    : 'Modellschätzung (Poisson-Simulation) – keine Vorhersage.'}
+                    : (
+                      <>
+                        Modellschätzung (Poisson-Simulation) – keine Vorhersage.{' '}
+                        <button
+                          type="button"
+                          className="linkish"
+                          onClick={() => setModelInfoOpen(true)}
+                        >
+                          Modell erklären
+                        </button>
+                      </>
+                    )}
               </p>
             )}
             <StandingsTable
@@ -368,6 +381,7 @@ export default function App() {
               highlightScenarios={scenarios.length > 0}
               league={leagueId}
             />
+            <ModelInfoModal open={modelInfoOpen} onClose={() => setModelInfoOpen(false)} />
           </div>
           <aside className="side-col">
             <TeamInsight
