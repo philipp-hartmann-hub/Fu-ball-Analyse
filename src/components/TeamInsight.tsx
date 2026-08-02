@@ -8,6 +8,10 @@ import type {
 } from '../types'
 import { zoneLabelFor } from '../lib/table'
 import type { ThresholdLine } from '../lib/thresholds'
+import {
+  hardnessTone,
+  type ScheduleHardness,
+} from '../lib/schedule'
 
 interface Props {
   team: StandingRow | null
@@ -21,6 +25,8 @@ interface Props {
   suggestedCutoff?: number | null
   matchdayThresholds?: ThresholdLine[]
   seasonThresholds?: ThresholdLine[]
+  scheduleHardness?: ScheduleHardness | null
+  leagueTeamCount?: number
 }
 
 function ThresholdList({
@@ -121,6 +127,8 @@ export function TeamInsight({
   suggestedCutoff,
   matchdayThresholds = [],
   seasonThresholds = [],
+  scheduleHardness = null,
+  leagueTeamCount = 18,
 }: Props) {
   if (!team) {
     return (
@@ -133,6 +141,19 @@ export function TeamInsight({
       </div>
     )
   }
+
+  const hardnessToneValue =
+    scheduleHardness && scheduleHardness.remainingGames > 0
+      ? hardnessTone(scheduleHardness.index)
+      : null
+  const hardnessLabel =
+    hardnessToneValue === 'hard'
+      ? 'schwer'
+      : hardnessToneValue === 'easy'
+        ? 'leicht'
+        : hardnessToneValue === 'mid'
+          ? 'mittel'
+          : null
 
   return (
     <div className="insight-column">
@@ -174,7 +195,26 @@ export function TeamInsight({
               </strong>
             </div>
           )}
+          {scheduleHardness && scheduleHardness.remainingGames > 0 && hardnessToneValue && (
+            <div>
+              <span className="label">Restprogramm</span>
+              <strong className={`hardness-stat tone-${hardnessToneValue}`}>
+                {Math.round(scheduleHardness.index)}
+                <span className="hardness-stat-meta">
+                  {' '}
+                  · {scheduleHardness.rank}/{leagueTeamCount}
+                  {hardnessLabel ? ` · ${hardnessLabel}` : ''}
+                </span>
+              </strong>
+            </div>
+          )}
         </div>
+        {scheduleHardness && scheduleHardness.remainingGames > 0 && (
+          <p className="hint tight">
+            Härte 0–100 (höher = schwerer Gegner-Schnitt, Heim/Auswärts gewichtet). Rang 1 =
+            schwerstes Restprogramm der Liga.
+          </p>
+        )}
       </div>
 
       <VariantPanel

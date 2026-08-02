@@ -256,6 +256,27 @@
   margin-bottom: 0;
 }
 
+.table-toolbar-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.hardness-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.hardness-toggle input {
+  accent-color: var(--accent);
+}
+
 .table-view-toggle {
   display: inline-flex;
   padding: 0.15rem;
@@ -865,6 +886,54 @@
   white-space: nowrap;
 }
 
+.hardness-pill {
+  display: inline-block;
+  min-width: 1.75rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: 0.4rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  font-size: 0.82rem;
+}
+
+.hardness-pill.tone-easy {
+  background: rgba(110, 231, 168, 0.18);
+  color: var(--accent);
+}
+
+.hardness-pill.tone-mid {
+  background: rgba(250, 204, 21, 0.15);
+  color: #e8c547;
+}
+
+.hardness-pill.tone-hard {
+  background: rgba(248, 113, 113, 0.18);
+  color: #f87171;
+}
+
+.hardness-empty {
+  color: var(--muted);
+}
+
+.hardness-stat.tone-easy {
+  color: var(--accent);
+}
+
+.hardness-stat.tone-mid {
+  color: #e8c547;
+}
+
+.hardness-stat.tone-hard {
+  color: #f87171;
+}
+
+.hardness-stat-meta {
+  font-weight: 500;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
 .rank {
   font-weight: 600;
   color: var(--muted);
@@ -1007,6 +1076,10 @@
   }
 
   .standings .col-form {
+    display: none;
+  }
+
+  .standings .col-hardness {
     display: none;
   }
 

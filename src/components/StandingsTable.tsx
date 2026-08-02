@@ -4,6 +4,10 @@ import {
   primaryForecastZone,
   type TeamForecast,
 } from '../lib/simulation'
+import {
+  hardnessTone,
+  type ScheduleHardness,
+} from '../lib/schedule'
 import { zoneForRank } from '../lib/table'
 
 export type TableViewMode = 'range' | 'forecast'
@@ -19,6 +23,9 @@ interface Props {
   onSelectTeam: (teamId: number) => void
   highlightScenarios: boolean
   league: LeagueZoneId
+  /** Restprogramm-Härte je Verein; Spalte nur wenn showHardness */
+  hardnessByTeam?: Map<number, ScheduleHardness> | null
+  showHardness?: boolean
 }
 
 export function StandingsTable({
@@ -32,10 +39,13 @@ export function StandingsTable({
   onSelectTeam,
   highlightScenarios,
   league,
+  hardnessByTeam,
+  showHardness = false,
 }: Props) {
   const rangeMap = new Map(ranges.map((r) => [r.teamId, r]))
   const forecastMap = new Map((forecasts ?? []).map((f) => [f.teamId, f]))
   const baseRank = new Map((baseline ?? []).map((r) => [r.teamId, r.rank]))
+  const teamCount = standings.length
 
   return (
     <div className="table-wrap">
@@ -54,6 +64,14 @@ export function StandingsTable({
             <th className="num">Tore</th>
             <th className="num">Diff</th>
             <th className="num">Pkt</th>
+            {showHardness && (
+              <th
+                className="num col-hardness"
+                title="Restprogramm-Härte: 0–100 (höher = schwerer), Rang in der Liga"
+              >
+                Härte
+              </th>
+            )}
             <th className="range">
               {viewMode === 'forecast' ? 'Prognose' : 'Möglich'}
             </th>
@@ -67,6 +85,7 @@ export function StandingsTable({
             const selected = selectedTeamId === row.teamId
             const prev = baseRank.get(row.teamId)
             const delta = prev != null ? prev - row.rank : 0
+            const hardness = hardnessByTeam?.get(row.teamId)
             return (
               <tr
                 key={row.teamId}
@@ -107,6 +126,15 @@ export function StandingsTable({
                 </td>
                 <td className="num">{row.goalDiff > 0 ? `+${row.goalDiff}` : row.goalDiff}</td>
                 <td className="num pts">{row.points}</td>
+                {showHardness && (
+                  <td className="num col-hardness">
+                    {hardness && hardness.remainingGames > 0 ? (
+                      <HardnessCell hardness={hardness} teamCount={teamCount} />
+                    ) : (
+                      <span className="hardness-empty">–</span>
+                    )}
+                  </td>
+                )}
                 <td className="range">
                   {viewMode === 'forecast' ? (
                     forecastLoading && !forecast ? (
@@ -134,6 +162,25 @@ export function StandingsTable({
         </tbody>
       </table>
     </div>
+  )
+}
+
+function HardnessCell({
+  hardness,
+  teamCount,
+}: {
+  hardness: ScheduleHardness
+  teamCount: number
+}) {
+  const tone = hardnessTone(hardness.index)
+  const rounded = Math.round(hardness.index)
+  return (
+    <span
+      className={`hardness-pill tone-${tone}`}
+      title={`Index ${rounded}/100 · Rang ${hardness.rank}/${teamCount} (1 = schwerstes Restprogramm)`}
+    >
+      {rounded}
+    </span>
   )
 }
 

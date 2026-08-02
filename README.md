@@ -20,7 +20,8 @@ Echtzeit-Analyse für die **1. und 2. Bundesliga**: Tabelle, Restprogramm und m�
 
 - Live-Tabelle mit Zonen (BL1: CL/EL/Abstieg · BL2: Aufstieg/Abstieg)
 - Spalte **Möglich**: Best-/Schlechtfall bis Saisonende (**Spanne**) oder Monte-Carlo-**Prognose** (umschaltbar)
-- Vereinsanalyse: **nach nächstem Spieltag** (exakt) und **Saisonende** (heuristisch)
+- Optionale Spalte **Härte**: Restprogramm-Härte 0–100 (Toggle „Restprogramm“; auf Mobile ausgeblendet)
+- Vereinsanalyse: **nach nächstem Spieltag** (exakt) und **Saisonende** (heuristisch), inkl. Restprogramm-Härte
 - Spalte **Δ**: Platzveränderung durch gesetzte Szenarien
 - **Szenario-Simulator**: Grob/Fein je Spieltag (Default: nächster); teilbar via `?s=`
 - **Stand nach Spieltag**: Slider für historischen Stand
@@ -46,8 +47,7 @@ src/
   leagues.ts
   api/openliga.ts / dataSource.ts
   hooks/useLeagueData.ts
-  lib/table.ts / scenarios.ts
-  components/Intro.tsx     # Splash-Animation
+  lib/table.ts / scenarios.ts / schedule.ts / simulation.ts / thresholds.ts
   components/…             # UI
   App.tsx
 ```
@@ -55,6 +55,28 @@ src/
 ---
 
 ## Änderungsprotokoll
+
+### 2026-08-02 — Prompt 39
+
+**User:** Restprogramm-Härte pro Verein; Spalte (Toggle) + Vereinsanalyse; Modul `schedule.ts`.
+
+**Aktion:**
+- `src/lib/schedule.ts`: `remainingStrength` / `computeScheduleHardness` (PPG-Gegner, Heim/Auswärts-Gewichte, Index 0–100 + Liga-Rang)
+- Unit-Tests gegen Mini-Liga-Fixture
+- Tabellen-Toggle „Restprogramm“, farbcodierte Spalte `col-hardness` (Mobile ausgeblendet)
+- Anzeige in `TeamInsight`
+
+**Status:** erledigt
+
+### 2026-08-02 — Prompt 38
+
+**User:** Codebase-Exploration als Kontext für „Restprogramm-Härte“ (remaining schedule strength).
+
+**Aktion:**
+- Recherche: `remainingMatches`, `StandingRow`/`Match`, `StandingsTable` (Spalten/`col-form`, View-Toggle Spanne/Prognose), Datenfluss in `App.tsx` → Tabelle/`TeamInsight`, Fixtures `miniLeague.ts`, schedule-nahe Hilfen in `scenarios.ts`/`simulation.ts`, mobile CSS für optionale Spalten
+- Keine Feature-Implementierung
+
+**Status:** erledigt
 
 ### 2026-08-02 — Prompt 37
 

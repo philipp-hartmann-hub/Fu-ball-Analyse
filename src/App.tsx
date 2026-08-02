@@ -17,6 +17,7 @@ import {
   seasonExtremeOutcomes,
 } from './lib/scenarios'
 import { deriveThresholdLines } from './lib/thresholds'
+import { computeScheduleHardness } from './lib/schedule'
 import {
   encodeShareState,
   loadShareStateFromSearch,
@@ -62,6 +63,7 @@ export default function App() {
   const [useCutoff, setUseCutoff] = useState(() => initialShare?.useCutoff ?? false)
   const [shareHint, setShareHint] = useState<string | null>(null)
   const [tableView, setTableView] = useState<TableViewMode>('range')
+  const [showHardness, setShowHardness] = useState(false)
   const [modelInfoOpen, setModelInfoOpen] = useState(false)
   const autoCutoffKey = useRef<string | null>(null)
   const shareHintTimer = useRef<number | null>(null)
@@ -140,6 +142,15 @@ export default function App() {
   const ranges = useMemo(
     () => computePositionRanges(baseStandings, openMatches, playedScores),
     [baseStandings, openMatches, playedScores],
+  )
+
+  const scheduleHardness = useMemo(
+    () => computeScheduleHardness(openMatches, baseStandings),
+    [openMatches, baseStandings],
+  )
+  const hardnessByTeam = useMemo(
+    () => new Map(scheduleHardness.map((h) => [h.teamId, h])),
+    [scheduleHardness],
   )
 
   const {
@@ -395,25 +406,35 @@ export default function App() {
           <div className="main-col">
             <div className="table-toolbar">
               <ZoneLegend league={leagueId} />
-              <div className="table-view-toggle" role="tablist" aria-label="Tabellenansicht">
-                <button
-                  type="button"
-                  role="tab"
-                  className={tableView === 'range' ? 'active' : ''}
-                  aria-selected={tableView === 'range'}
-                  onClick={() => setTableView('range')}
-                >
-                  Spanne
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  className={tableView === 'forecast' ? 'active' : ''}
-                  aria-selected={tableView === 'forecast'}
-                  onClick={() => setTableView('forecast')}
-                >
-                  Prognose
-                </button>
+              <div className="table-toolbar-controls">
+                <label className="hardness-toggle">
+                  <input
+                    type="checkbox"
+                    checked={showHardness}
+                    onChange={(e) => setShowHardness(e.target.checked)}
+                  />
+                  Restprogramm
+                </label>
+                <div className="table-view-toggle" role="tablist" aria-label="Tabellenansicht">
+                  <button
+                    type="button"
+                    role="tab"
+                    className={tableView === 'range' ? 'active' : ''}
+                    aria-selected={tableView === 'range'}
+                    onClick={() => setTableView('range')}
+                  >
+                    Spanne
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    className={tableView === 'forecast' ? 'active' : ''}
+                    aria-selected={tableView === 'forecast'}
+                    onClick={() => setTableView('forecast')}
+                  >
+                    Prognose
+                  </button>
+                </div>
               </div>
             </div>
             {tableView === 'forecast' && (
@@ -447,6 +468,8 @@ export default function App() {
               onSelectTeam={setSelectedTeamId}
               highlightScenarios={scenarios.length > 0}
               league={leagueId}
+              hardnessByTeam={hardnessByTeam}
+              showHardness={showHardness}
             />
             <ModelInfoModal open={modelInfoOpen} onClose={() => setModelInfoOpen(false)} />
           </div>
@@ -474,6 +497,12 @@ export default function App() {
                       m.team2.teamId === selectedTeamId),
                 ).length
               }
+              scheduleHardness={
+                selectedTeamId != null
+                  ? (hardnessByTeam.get(selectedTeamId) ?? null)
+                  : null
+              }
+              leagueTeamCount={baseStandings.length}
             />
             <ScenarioPanel
               matches={openMatches}
