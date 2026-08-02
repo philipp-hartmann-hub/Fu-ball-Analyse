@@ -1,39 +1,10 @@
-export interface TeamInfo {
-  teamId: number
-  teamName: string
-  shortName: string
-  teamIconUrl: string
-}
-
-export interface MatchGroup {
-  groupName: string
-  groupOrderID: number
-  groupID: number
-}
-
-export interface MatchResult {
-  resultID: number
-  resultName: string
-  pointsTeam1: number
-  pointsTeam2: number
-  resultOrderID: number
-  resultTypeID: number
-}
-
-export interface Match {
-  matchID: number
-  matchDateTime: string
-  matchDateTimeUTC: string
-  leagueName: string
-  leagueSeason: number
-  leagueShortcut: string
-  group: MatchGroup
-  team1: TeamInfo
-  team2: TeamInfo
-  matchIsFinished: boolean
-  matchResults: MatchResult[]
-  lastUpdateDateTime: string
-}
+/** API-/Domain-Typen. Match-Form aus Zod-Schema (siehe api/matchSchema.ts). */
+export type {
+  TeamInfo,
+  MatchGroup,
+  MatchResult,
+  Match,
+} from './api/matchSchema'
 
 export interface ApiTableRow {
   teamInfoId: number

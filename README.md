@@ -11,7 +11,8 @@ Echtzeit-Analyse für die **1. und 2. Bundesliga**: Tabelle, Restprogramm und m�
 | | |
 |---|---|
 | **Repo** | https://github.com/philipp-hartmann-hub/Fu-ball-Analyse |
-| **Stack** | React 19 · TypeScript · Vite 8 · Vitest |
+| **Stack** | React 19 · TypeScript · Vite 8 · Vitest · Zod |
+
 | **Daten** | [OpenLigaDB](https://www.openligadb.de/) (`bl1` / `bl2`) – ohne API-Token |
 | **Scope** | Nur 1. und 2. Bundesliga (andere Wettbewerbe bewusst zurückgestellt) |
 | **Tests** | `npm run test` · Watch: `npm run test:watch` |
@@ -47,9 +48,9 @@ Build: `npm run build`
 ```
 src/
   leagues.ts
-  api/openliga.ts / dataSource.ts
+  api/openliga.ts / matchSchema.ts / dataSource.ts
   hooks/useLeagueData.ts
-  lib/table.ts / scenarios.ts / schedule.ts / simulation.ts / thresholds.ts
+  lib/table.ts / scenarios.ts / schedule.ts / simulation.ts / thresholds.ts / live.ts
   components/…             # UI
   App.tsx
 ```
@@ -57,6 +58,17 @@ src/
 ---
 
 ## Änderungsprotokoll
+
+### 2026-08-02 — Prompt 47
+
+**User:** Runtime-Validierung OpenLigaDB mit zod; Typen aus Schema ableiten.
+
+**Aktion:**
+- Dependency `zod`; `api/matchSchema.ts` + `parseMatchesResponse` in `openliga.ts`
+- Match-Typen via `z.infer` in `types.ts` re-exportiert
+- Test: fehlendes `group.groupOrderID` → klare Fehlermeldung, kein Crash
+
+**Status:** erledigt
 
 ### 2026-08-02 — Prompt 46
 
