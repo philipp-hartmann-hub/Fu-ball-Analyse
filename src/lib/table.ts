@@ -7,12 +7,14 @@ export function finalResult(match: Match): MatchResult | null {
   return [...match.matchResults].sort((a, b) => b.resultOrderID - a.resultOrderID)[0] ?? null
 }
 
-function emptyStanding(
+export type StandingDraft = Omit<StandingRow, 'rank'>
+
+export function emptyStanding(
   teamId: number,
   teamName: string,
   shortName: string,
   teamIconUrl: string,
-): Omit<StandingRow, 'rank'> {
+): StandingDraft {
   return {
     teamId,
     teamName,
@@ -29,8 +31,9 @@ function emptyStanding(
   }
 }
 
-function applyScore(
-  map: Map<number, Omit<StandingRow, 'rank'>>,
+/** Wendet ein Spielergebnis auf die Tabellen-Map an (gemeinsam genutzt von buildStandings + Simulation). */
+export function applyScore(
+  map: Map<number, StandingDraft>,
   homeId: number,
   awayId: number,
   homeGoals: number,
@@ -90,7 +93,7 @@ export function buildStandings(
 ): StandingRow[] {
   const { maxMatchday = null, scenarios = [] } = options
   const scenarioMap = new Map(scenarios.map((s) => [s.matchId, s]))
-  const map = new Map<number, Omit<StandingRow, 'rank'>>()
+  const map = new Map<number, StandingDraft>()
 
   for (const match of matches) {
     for (const team of [match.team1, match.team2]) {

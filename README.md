@@ -19,7 +19,7 @@ Echtzeit-Analyse für die **1. und 2. Bundesliga**: Tabelle, Restprogramm und m�
 ### Features
 
 - Live-Tabelle mit Zonen (BL1: CL/EL/Abstieg · BL2: Aufstieg/Abstieg)
-- Spalte **Möglich**: Best-/Schlechtfall bis Saisonende
+- Spalte **Möglich**: Best-/Schlechtfall bis Saisonende (**Spanne**) oder Monte-Carlo-**Prognose** (umschaltbar)
 - Vereinsanalyse: **nach nächstem Spieltag** (exakt) und **Saisonende** (heuristisch)
 - Spalte **Δ**: Platzveränderung durch gesetzte Szenarien
 - **Szenario-Simulator**: Grob/Fein je Spieltag (Default: nächster); teilbar via `?s=`
@@ -55,6 +55,18 @@ src/
 ---
 
 ## Änderungsprotokoll
+
+### 2026-08-02 — Prompt 34
+
+**User:** Wahrscheinlichkeitsbasierte Saisonprognose (Poisson-MC) als Alternative zur Spanne.
+
+**Aktion:**
+- `simulation.ts`: Stärken, Poisson, seedbarer RNG, Zone-Probabilitäten via `zoneForRank`
+- `applyScore` aus `table.ts` exportiert; Worker `simulate.ts` + Hook
+- UI: Umschalter Spanne/Prognose in der Tabelle
+- Tests: 41 grün
+
+**Status:** erledigt
 
 ### 2026-08-02 — Prompt 33
 

@@ -1,11 +1,20 @@
 import type { LeagueZoneId } from '../lib/table'
 import type { PositionRange, StandingRow } from '../types'
+import {
+  primaryForecastZone,
+  type TeamForecast,
+} from '../lib/simulation'
 import { zoneForRank } from '../lib/table'
+
+export type TableViewMode = 'range' | 'forecast'
 
 interface Props {
   standings: StandingRow[]
   baseline?: StandingRow[] | null
   ranges: PositionRange[]
+  forecasts?: TeamForecast[] | null
+  forecastLoading?: boolean
+  viewMode: TableViewMode
   selectedTeamId: number | null
   onSelectTeam: (teamId: number) => void
   highlightScenarios: boolean
@@ -16,12 +25,16 @@ export function StandingsTable({
   standings,
   baseline,
   ranges,
+  forecasts,
+  forecastLoading,
+  viewMode,
   selectedTeamId,
   onSelectTeam,
   highlightScenarios,
   league,
 }: Props) {
   const rangeMap = new Map(ranges.map((r) => [r.teamId, r]))
+  const forecastMap = new Map((forecasts ?? []).map((f) => [f.teamId, f]))
   const baseRank = new Map((baseline ?? []).map((r) => [r.teamId, r.rank]))
 
   return (
@@ -41,12 +54,15 @@ export function StandingsTable({
             <th className="num">Tore</th>
             <th className="num">Diff</th>
             <th className="num">Pkt</th>
-            <th className="range">Möglich</th>
+            <th className="range">
+              {viewMode === 'forecast' ? 'Prognose' : 'Möglich'}
+            </th>
           </tr>
         </thead>
         <tbody>
           {standings.map((row) => {
             const range = rangeMap.get(row.teamId)
+            const forecast = forecastMap.get(row.teamId)
             const zone = zoneForRank(row.rank, league)
             const selected = selectedTeamId === row.teamId
             const prev = baseRank.get(row.teamId)
@@ -92,7 +108,15 @@ export function StandingsTable({
                 <td className="num">{row.goalDiff > 0 ? `+${row.goalDiff}` : row.goalDiff}</td>
                 <td className="num pts">{row.points}</td>
                 <td className="range">
-                  {range ? (
+                  {viewMode === 'forecast' ? (
+                    forecastLoading && !forecast ? (
+                      <span className="pill muted">…</span>
+                    ) : forecast ? (
+                      <ForecastCell forecast={forecast} league={league} />
+                    ) : (
+                      '–'
+                    )
+                  ) : range ? (
                     range.bestRank === range.worstRank ? (
                       <span className="pill locked">{range.bestRank}.</span>
                     ) : (
@@ -111,4 +135,47 @@ export function StandingsTable({
       </table>
     </div>
   )
+}
+
+function ForecastCell({
+  forecast,
+  league,
+}: {
+  forecast: TeamForecast
+  league: LeagueZoneId
+}) {
+  const { zone, probability } = primaryForecastZone(forecast, league)
+  const pct = Math.round(probability * 100)
+
+  return (
+    <div
+      className="forecast-cell"
+      title={`Modellschätzung · Median-Rang ${forecast.medianRank}. · ~${forecast.expectedPoints.toFixed(1)} Pkt.`}
+    >
+      <div className="forecast-meta">
+        <span className="forecast-label">{shortZoneLabel(zone, league)}</span>
+        <span className="forecast-pct">{pct}%</span>
+      </div>
+      <div className="forecast-bar" aria-hidden>
+        <span className={`forecast-fill zone-${zone}`} style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  )
+}
+
+function shortZoneLabel(zone: string, league: LeagueZoneId): string {
+  if (league === 'bl2') {
+    if (zone === 'champion') return 'Aufstieg'
+    if (zone === 'cl') return 'Rel.↑'
+    if (zone === 'relegation') return 'Rel.↓'
+    if (zone === 'direct-relegation') return 'Abstieg'
+    return 'Mittelfeld'
+  }
+  if (zone === 'champion') return 'Meister'
+  if (zone === 'cl') return 'CL'
+  if (zone === 'el') return 'EL'
+  if (zone === 'ecl') return 'ECL'
+  if (zone === 'relegation') return 'Relegation'
+  if (zone === 'direct-relegation') return 'Abstieg'
+  return 'Mittelfeld'
 }

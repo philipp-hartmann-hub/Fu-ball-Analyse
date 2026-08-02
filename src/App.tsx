@@ -2,11 +2,12 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { defaultSeason } from './api/dataSource'
 import { LeagueSwitcher } from './components/LeagueSwitcher'
 import { ScenarioPanel } from './components/ScenarioPanel'
-import { StandingsTable } from './components/StandingsTable'
+import { StandingsTable, type TableViewMode } from './components/StandingsTable'
 import { TeamInsight } from './components/TeamInsight'
 import { ZoneLegend } from './components/ZoneLegend'
 import { getLeague, type LeagueId } from './leagues'
 import { useLeagueData } from './hooks/useLeagueData'
+import { useSeasonForecast } from './hooks/useSeasonForecast'
 import { computeNextMatchdayOutlook, computePositionRanges, computeSeasonOutlook } from './lib/scenarios'
 import {
   encodeShareState,
@@ -51,6 +52,7 @@ export default function App() {
   )
   const [useCutoff, setUseCutoff] = useState(() => initialShare?.useCutoff ?? false)
   const [shareHint, setShareHint] = useState<string | null>(null)
+  const [tableView, setTableView] = useState<TableViewMode>('range')
   const autoCutoffKey = useRef<string | null>(null)
   const shareHintTimer = useRef<number | null>(null)
 
@@ -125,6 +127,18 @@ export default function App() {
     () => computePositionRanges(baseStandings, openMatches),
     [baseStandings, openMatches],
   )
+
+  const {
+    result: forecastResult,
+    loading: forecastLoading,
+    error: forecastError,
+  } = useSeasonForecast({
+    enabled: tableView === 'forecast' && baseStandings.length > 0,
+    baseStandings,
+    remaining: openMatches,
+    league: leagueId,
+    fixedScenarios: scenarios,
+  })
 
   const selectedTeam =
     projectedStandings.find((s) => s.teamId === selectedTeamId) ??
@@ -310,11 +324,45 @@ export default function App() {
       ) : (
         <main className="layout">
           <div className="main-col">
-            <ZoneLegend league={leagueId} />
+            <div className="table-toolbar">
+              <ZoneLegend league={leagueId} />
+              <div className="table-view-toggle" role="tablist" aria-label="Tabellenansicht">
+                <button
+                  type="button"
+                  role="tab"
+                  className={tableView === 'range' ? 'active' : ''}
+                  aria-selected={tableView === 'range'}
+                  onClick={() => setTableView('range')}
+                >
+                  Spanne
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  className={tableView === 'forecast' ? 'active' : ''}
+                  aria-selected={tableView === 'forecast'}
+                  onClick={() => setTableView('forecast')}
+                >
+                  Prognose
+                </button>
+              </div>
+            </div>
+            {tableView === 'forecast' && (
+              <p className="forecast-disclaimer">
+                {forecastLoading
+                  ? 'Simuliere Restprogramm…'
+                  : forecastError
+                    ? `Prognose nicht verfügbar: ${forecastError}`
+                    : 'Modellschätzung (Poisson-Simulation) – keine Vorhersage.'}
+              </p>
+            )}
             <StandingsTable
               standings={projectedStandings}
               baseline={scenarios.length > 0 ? baseStandings : null}
               ranges={ranges}
+              forecasts={forecastResult?.teams ?? null}
+              forecastLoading={forecastLoading}
+              viewMode={tableView}
               selectedTeamId={selectedTeamId}
               onSelectTeam={setSelectedTeamId}
               highlightScenarios={scenarios.length > 0}
