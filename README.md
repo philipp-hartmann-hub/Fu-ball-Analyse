@@ -56,6 +56,15 @@ src/
 
 ## Änderungsprotokoll
 
+### 2026-08-02 — Prompt 58
+
+**User:** Tabelle mit durchgehenden Linien.
+
+**Aktion:**
+- Standings: `border-collapse: collapse`, klarere durchgehende Zeilenlinien (auch unter letzter Zeile)
+
+**Status:** erledigt
+
 ### 2026-08-02 — Prompt 57
 
 **User:** Status-Label Termin/Offen bei Ergebnissen entfernen.
