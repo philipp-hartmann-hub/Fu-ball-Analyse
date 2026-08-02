@@ -536,8 +536,12 @@
   gap: 0.35rem;
 }
 
-.live-crest {
-  flex-shrink: 0;
+.live-panel .live-day-picker {
+  margin: 0;
+}
+
+.live-bar .live-day-picker {
+  margin: 0.55rem 0 0.35rem;
 }
 
 .live-bar {

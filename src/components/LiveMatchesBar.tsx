@@ -41,11 +41,31 @@ export function LiveMatchesBar({
   liveCount,
   variant = 'panel',
 }: Props) {
-  const matchday = useMemo(() => resolveResultsMatchday(matches), [matches])
+  const allDays = useMemo(
+    () =>
+      [...new Set(matches.map((m) => m.group.groupOrderID))].sort((a, b) => a - b),
+    [matches],
+  )
+  const defaultDay = useMemo(() => resolveResultsMatchday(matches), [matches])
+  const [selectedDay, setSelectedDay] = useState<number | null>(null)
+
+  useEffect(() => {
+    setSelectedDay((prev) => {
+      if (allDays.length === 0) return null
+      if (prev != null && allDays.includes(prev)) return prev
+      return defaultDay ?? allDays[0]!
+    })
+  }, [allDays, defaultDay])
+
+  const matchday = selectedDay ?? defaultDay
   const fixtures = useMemo(
     () => (matchday != null ? listMatchdayFixtures(matches, matchday) : []),
     [matches, matchday],
   )
+
+  const dayIndex = matchday != null ? allDays.indexOf(matchday) : -1
+  const canPrev = dayIndex > 0
+  const canNext = dayIndex >= 0 && dayIndex < allDays.length - 1
 
   const prevScores = useRef<Map<number, string>>(new Map())
   const [flashIds, setFlashIds] = useState<Set<number>>(() => new Set())
@@ -107,7 +127,7 @@ export function LiveMatchesBar({
     }
   }, [])
 
-  if (matchday == null || fixtures.length === 0) {
+  if (allDays.length === 0 || matchday == null) {
     if (variant === 'panel') {
       return (
         <div className="panel live-panel">
@@ -134,25 +154,70 @@ export function LiveMatchesBar({
     </>
   )
 
-  const list = (
-    <ul className="live-list">
-      {fixtures.map((row) => (
-        <FixtureRow
-          key={row.match.matchID}
-          row={row}
-          flashed={flashIds.has(row.match.matchID)}
-          showCrests={variant === 'panel'}
-        />
-      ))}
-    </ul>
+  const picker = (
+    <div className="matchday-picker live-day-picker">
+      <button
+        type="button"
+        className="ghost matchday-nav"
+        disabled={!canPrev}
+        aria-label="Vorheriger Spieltag"
+        onClick={() => {
+          if (canPrev) setSelectedDay(allDays[dayIndex - 1]!)
+        }}
+      >
+        ‹
+      </button>
+      <label className="matchday-select-wrap">
+        <span className="sr-only">Spieltag wählen</span>
+        <select
+          value={matchday}
+          onChange={(e) => setSelectedDay(Number(e.target.value))}
+          aria-label="Spieltag wählen"
+        >
+          {allDays.map((day) => (
+            <option key={day} value={day}>
+              {day}. Spieltag
+              {day === defaultDay ? ' (aktuell)' : ''}
+            </option>
+          ))}
+        </select>
+      </label>
+      <button
+        type="button"
+        className="ghost matchday-nav"
+        disabled={!canNext}
+        aria-label="Nächster Spieltag"
+        onClick={() => {
+          if (canNext) setSelectedDay(allDays[dayIndex + 1]!)
+        }}
+      >
+        ›
+      </button>
+    </div>
   )
+
+  const list =
+    fixtures.length === 0 ? (
+      <p className="hint tight">Keine Partien an diesem Spieltag.</p>
+    ) : (
+      <ul className="live-list">
+        {fixtures.map((row) => (
+          <FixtureRow
+            key={row.match.matchID}
+            row={row}
+            flashed={flashIds.has(row.match.matchID)}
+            showCrests={variant === 'panel'}
+          />
+        ))}
+      </ul>
+    )
 
   if (variant === 'panel') {
     return (
       <section className="panel live-panel" aria-label={`Ergebnisse Spieltag ${matchday}`}>
         <div className="live-panel-head">
           <div>
-            <h2>{matchday}. Spieltag</h2>
+            <h2>Ergebnisse</h2>
             <p className="meta live-panel-meta">{meta}</p>
           </div>
           {live > 0 ? (
@@ -161,9 +226,10 @@ export function LiveMatchesBar({
               Live
             </span>
           ) : (
-            <span className="live-pill muted">Ergebnisse</span>
+            <span className="live-pill muted">Spieltag</span>
           )}
         </div>
+        {picker}
         {list}
       </section>
     )
@@ -194,7 +260,12 @@ export function LiveMatchesBar({
         </span>
       </button>
 
-      {open && list}
+      {open && (
+        <>
+          {picker}
+          {list}
+        </>
+      )}
     </section>
   )
 }
@@ -230,7 +301,11 @@ function FixtureRow({
         .join(' ')}
     >
       <span className="live-status-tag">
-        {row.status === 'live' ? 'LIVE' : row.status === 'finished' ? 'Ende' : 'Termin'}
+        {row.status === 'live'
+          ? 'LIVE'
+          : row.status === 'finished'
+            ? 'Ende'
+            : 'Offen'}
       </span>
       <span className="live-teams">
         <span className="live-home">

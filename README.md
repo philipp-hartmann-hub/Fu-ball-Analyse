@@ -20,7 +20,7 @@ Echtzeit-Analyse für die **1. und 2. Bundesliga**: Tabelle, Restprogramm und m�
 ### Features
 
 - Live-Tabelle mit Zonen (BL1: CL/EL/Abstieg · BL2: Aufstieg/Abstieg); **Cache**: zuletzt geladene Daten sofort aus localStorage, Refresh im Hintergrund
-- **Ergebnisse**: aktueller Spieltag als Seitenleisten-Reiter (Wappen, Live-Updates; 2 Tage nach letztem Spiel → nächster Spieltag)
+- **Ergebnisse**: Spieltag wählbar (durchklicken); Wappen; Live-Updates; 2 Tage nach letztem Spiel → nächster Spieltag als Default
 - Spalte **Möglich**: Best-/Schlechtfall bis Saisonende (**Spanne**) oder Monte-Carlo-**Prognose** (umschaltbar)
 - Optionale Spalte **Härte**: Restprogramm-Härte 0–100 (Toggle „Restprogramm“; auf Mobile ausgeblendet)
 - Seitenleiste: **Verein** (Überblick + Spieltag-Analyse + Saison) · **Ergebnisse** · **Szenario** · **Vergleich**
@@ -55,6 +55,25 @@ src/
 ---
 
 ## Änderungsprotokoll
+
+### 2026-08-02 — Prompt 56
+
+**User:** Bei Ergebnissen Spieltage durchklicken können; „Termin“ unverständlich.
+
+**Aktion:**
+- Ergebnis-Panel: Spieltag-Picker (‹ / Select / ›), Default = aktueller Ergebnis-Spieltag
+- Status-Label „Termin“ → „Offen“
+
+**Status:** erledigt
+
+### 2026-08-02 — Prompt 55
+
+**User:** Bei Ergebnissen steht immer „Termin“ – unverständlich.
+
+**Aktion:**
+- Status-Label für ausstehende Partien: „Termin“ → „Offen“
+
+**Status:** erledigt
 
 ### 2026-08-02 — Prompt 54
 
