@@ -191,6 +191,7 @@ export function deriveExactCaseConditions(
       opponentName: isHome
         ? own.team2.shortName || own.team2.teamName
         : own.team1.shortName || own.team1.teamName,
+      opponentIconUrl: isHome ? own.team2.teamIconUrl : own.team1.teamIconUrl,
       homeAway: isHome ? 'H' : 'A',
       outcome,
       focusResult: focusResultFromOutcome(isHome, outcome),
@@ -208,6 +209,8 @@ export function deriveExactCaseConditions(
         matchId: match.matchID,
         homeName: names.homeName,
         awayName: names.awayName,
+        homeIconUrl: match.team1.teamIconUrl,
+        awayIconUrl: match.team2.teamIconUrl,
         outcome: outcomeFromIndex(oi),
       })
     } else {
@@ -215,6 +218,8 @@ export function deriveExactCaseConditions(
         matchId: match.matchID,
         homeName: names.homeName,
         awayName: names.awayName,
+        homeIconUrl: match.team1.teamIconUrl,
+        awayIconUrl: match.team2.teamIconUrl,
       })
     }
   }
@@ -257,6 +262,7 @@ export function deriveHeuristicSeasonConditions(
     cond.ownRest.push({
       matchId: m.matchID,
       opponentName: opponent.shortName || opponent.teamName,
+      opponentIconUrl: opponent.teamIconUrl,
       homeAway: isHome ? 'H' : 'A',
       focusResult,
       outcome,
@@ -269,6 +275,7 @@ export function deriveHeuristicSeasonConditions(
     cond.ownMatch = {
       matchId: first.matchId,
       opponentName: first.opponentName,
+      opponentIconUrl: first.opponentIconUrl,
       homeAway: first.homeAway,
       outcome: first.outcome,
       focusResult: first.focusResult,
@@ -287,6 +294,7 @@ export function deriveHeuristicSeasonConditions(
   cond.relevantRivals = rivals.map((s) => ({
     teamId: s.teamId,
     teamName: teamLabel(s),
+    teamIconUrl: s.teamIconUrl,
     points: s.points,
     rank: s.rank,
   }))
@@ -301,6 +309,8 @@ export function deriveHeuristicSeasonConditions(
         matchId: m.matchID,
         homeName: names.homeName,
         awayName: names.awayName,
+        homeIconUrl: m.team1.teamIconUrl,
+        awayIconUrl: m.team2.teamIconUrl,
       })
     }
   }
@@ -496,11 +506,17 @@ export function computeNextMatchdayOutlook(
     (m) => m.team1.teamId === teamId || m.team2.teamId === teamId,
   )
   const plays = Boolean(own)
-  const opponentName = own
-    ? own.team1.teamId === teamId
-      ? own.team2.shortName || own.team2.teamName
-      : own.team1.shortName || own.team1.teamName
+  const isHome = own ? own.team1.teamId === teamId : false
+  const opponent = own
+    ? isHome
+      ? own.team2
+      : own.team1
     : null
+  const opponentName = opponent
+    ? opponent.shortName || opponent.teamName
+    : null
+  const opponentIconUrl = opponent?.teamIconUrl ?? null
+  const homeAway: 'H' | 'A' | null = own ? (isHome ? 'H' : 'A') : null
 
   if (fixtures.length > 12) {
     const best = simulateExtremeFinish(
@@ -522,6 +538,8 @@ export function computeNextMatchdayOutlook(
       fixtureCount: fixtures.length,
       plays,
       opponentName,
+      opponentIconUrl,
+      homeAway,
       range: {
         teamId,
         bestRank: Math.min(best.rank, worst.rank),
@@ -577,6 +595,8 @@ export function computeNextMatchdayOutlook(
     fixtureCount: fixtures.length,
     plays,
     opponentName,
+    opponentIconUrl,
+    homeAway,
     range: { teamId, bestRank, worstRank },
     bestConditions: deriveExactCaseConditions(fixtures, teamId, bestMasks, 'best'),
     worstConditions: deriveExactCaseConditions(

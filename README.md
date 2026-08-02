@@ -20,10 +20,10 @@ Echtzeit-Analyse für die **1. und 2. Bundesliga**: Tabelle, Restprogramm und m�
 ### Features
 
 - Live-Tabelle mit Zonen (BL1: CL/EL/Abstieg · BL2: Aufstieg/Abstieg); **Cache**: zuletzt geladene Daten sofort aus localStorage, Refresh im Hintergrund
-- **Live-Spiele**: Ergebnisübersicht des aktuellen Spieltags unter der Tabelle (aufklappbar); 2 Tage nach letztem Spiel → nächster Spieltag; Polling 20s bei Live
+- **Ergebnisse**: aktueller Spieltag als Seitenleisten-Reiter (Wappen, Live-Updates; 2 Tage nach letztem Spiel → nächster Spieltag)
 - Spalte **Möglich**: Best-/Schlechtfall bis Saisonende (**Spanne**) oder Monte-Carlo-**Prognose** (umschaltbar)
 - Optionale Spalte **Härte**: Restprogramm-Härte 0–100 (Toggle „Restprogramm“; auf Mobile ausgeblendet)
-- Vereinsanalyse in der Seitenleiste per Reiter: **Verein** · **Spieltag** · **Saison** · **Szenario** · **Vergleich** (Best-/Schlechtfall, Bedingungen, Härte)
+- Seitenleiste: **Verein** (Überblick + Spieltag-Analyse + Saison) · **Ergebnisse** · **Szenario** · **Vergleich**
 - **Stand nach Spieltag**: Slider für historischen Stand
 - Toolbar: **Link teilen** (Zwischenablage) und **Zurücksetzen** (Szenarien + `?s=`)
 
@@ -55,6 +55,35 @@ src/
 ---
 
 ## Änderungsprotokoll
+
+### 2026-08-02 — Prompt 54
+
+**User:** Spieltag-Ergebnisse als extra Reiter „Ergebnisse“.
+
+**Aktion:**
+- `LiveMatchesBar` als Panel im Reiter Ergebnisse (mit Wappen); unter der Tabelle entfernt
+- Tabs: Verein · Ergebnisse · Szenario · Vergleich
+
+**Status:** erledigt
+
+### 2026-08-02 — Prompt 53
+
+**User:** Verein, Spieltag und Saison wieder zu einem Reiter „Verein“ mergen.
+
+**Aktion:**
+- Tabs: Verein · Szenario · Vergleich; unter Verein wieder Überblick + Spieltag (mit Logos) + Saison gestapelt
+
+**Status:** erledigt
+
+### 2026-08-02 — Prompt 52
+
+**User:** Spieltag-Reiter mit Logos und ansprechender Aufbereitung.
+
+**Aktion:**
+- Icon-URLs in `CaseConditions` / `NextMatchdayOutlook`; Matchup-Header mit Wappen
+- Bedingungen als Crest-Zeilen (1/X/2-Chip); CTA hervorgehoben
+
+**Status:** erledigt
 
 ### 2026-08-02 — Prompt 51
 

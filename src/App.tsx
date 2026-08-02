@@ -5,7 +5,7 @@ import { ExplainModal } from './components/ExplainModal'
 import { ExplainLink } from './components/ExplainLink'
 import { ScenarioPanel } from './components/ScenarioPanel'
 import { StandingsTable, type TableViewMode } from './components/StandingsTable'
-import { TeamInsight, type InsightSection } from './components/TeamInsight'
+import { TeamInsight } from './components/TeamInsight'
 import { TeamCompare } from './components/TeamCompare'
 import { LiveMatchesBar } from './components/LiveMatchesBar'
 import { ZoneLegend } from './components/ZoneLegend'
@@ -75,8 +75,8 @@ export default function App() {
   const [showHardness, setShowHardness] = useState(false)
   const [explainTopic, setExplainTopic] = useState<ExplainTopic | null>(null)
   const [sideTab, setSideTab] = useState<
-    InsightSection | 'scenario' | 'compare'
-  >('overview')
+    'club' | 'results' | 'scenario' | 'compare'
+  >('club')
   const [compareA, setCompareA] = useState<number | null>(null)
   const [compareB, setCompareB] = useState<number | null>(null)
   const [includeLiveInTable, setIncludeLiveInTable] = useState(false)
@@ -546,20 +546,13 @@ export default function App() {
               showHardness={showHardness}
               onExplain={openExplain}
             />
-            <LiveMatchesBar
-              matches={matches}
-              pollMs={pollMs}
-              refreshing={refreshing}
-              liveCount={liveMatches.length}
-            />
           </div>
           <aside className="side-col">
             <div className="side-tabs" role="tablist" aria-label="Seitenleiste">
               {(
                 [
-                  { id: 'overview', label: 'Verein' },
-                  { id: 'matchday', label: 'Spieltag' },
-                  { id: 'season', label: 'Saison' },
+                  { id: 'club', label: 'Verein' },
+                  { id: 'results', label: 'Ergebnisse' },
                   { id: 'scenario', label: 'Szenario' },
                   { id: 'compare', label: 'Vergleich' },
                 ] as const
@@ -582,7 +575,15 @@ export default function App() {
               ))}
             </div>
 
-            {sideTab === 'scenario' ? (
+            {sideTab === 'results' ? (
+              <LiveMatchesBar
+                matches={matches}
+                pollMs={pollMs}
+                refreshing={refreshing}
+                liveCount={liveMatches.length}
+                variant="panel"
+              />
+            ) : sideTab === 'scenario' ? (
               <ScenarioPanel
                 matches={openMatches}
                 scenarios={scenarios}
@@ -602,7 +603,6 @@ export default function App() {
               />
             ) : (
               <TeamInsight
-                section={sideTab}
                 team={selectedTeam}
                 seasonOutlook={seasonOutlook}
                 nextMatchday={nextMatchdayOutlook}

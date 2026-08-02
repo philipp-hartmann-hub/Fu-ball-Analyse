@@ -11,11 +11,36 @@ interface Props {
   matches: Match[]
   pollMs: number
   refreshing: boolean
-  /** Anzahl wirklich laufender Partien (für Live-Pill / Default offen) */
+  /** Anzahl wirklich laufender Partien (für Live-Pill) */
   liveCount: number
+  /** bar = unter der Tabelle (legacy); panel = Seitenleisten-Reiter */
+  variant?: 'bar' | 'panel'
 }
 
-export function LiveMatchesBar({ matches, pollMs, refreshing, liveCount }: Props) {
+function Crest({ url, name }: { url?: string; name: string }) {
+  if (url) {
+    return (
+      <img
+        className="crest-img live-crest"
+        src={url}
+        alt=""
+        width={22}
+        height={22}
+        title={name}
+        loading="lazy"
+      />
+    )
+  }
+  return <span className="crest-fallback live-crest" aria-hidden title={name} />
+}
+
+export function LiveMatchesBar({
+  matches,
+  pollMs,
+  refreshing,
+  liveCount,
+  variant = 'panel',
+}: Props) {
   const matchday = useMemo(() => resolveResultsMatchday(matches), [matches])
   const fixtures = useMemo(
     () => (matchday != null ? listMatchdayFixtures(matches, matchday) : []),
@@ -25,12 +50,15 @@ export function LiveMatchesBar({ matches, pollMs, refreshing, liveCount }: Props
   const prevScores = useRef<Map<number, string>>(new Map())
   const [flashIds, setFlashIds] = useState<Set<number>>(() => new Set())
   const flashTimers = useRef<Map<number, number>>(new Map())
-  const [open, setOpen] = useState(liveCount > 0)
+  const [open, setOpen] = useState(variant === 'panel' || liveCount > 0)
 
-  // Bei neuem Live-Spiel automatisch aufklappen
   useEffect(() => {
+    if (variant === 'panel') {
+      setOpen(true)
+      return
+    }
     if (liveCount > 0) setOpen(true)
-  }, [liveCount])
+  }, [liveCount, variant])
 
   useEffect(() => {
     const nextFlash = new Set<number>()
@@ -79,12 +107,67 @@ export function LiveMatchesBar({ matches, pollMs, refreshing, liveCount }: Props
     }
   }, [])
 
-  if (matchday == null || fixtures.length === 0) return null
+  if (matchday == null || fixtures.length === 0) {
+    if (variant === 'panel') {
+      return (
+        <div className="panel live-panel">
+          <h2>Ergebnisse</h2>
+          <p className="hint">Aktuell kein Spieltag mit Partien verfügbar.</p>
+        </div>
+      )
+    }
+    return null
+  }
 
   const pollSec = Math.round(pollMs / 1000)
   const finished = fixtures.filter((f) => f.status === 'finished').length
   const live = fixtures.filter((f) => f.status === 'live').length
   const upcoming = fixtures.filter((f) => f.status === 'upcoming').length
+
+  const meta = (
+    <>
+      {finished}/{fixtures.length} beendet
+      {live > 0 ? ` · ${live} live` : ''}
+      {upcoming > 0 ? ` · ${upcoming} offen` : ''}
+      {live > 0 ? ` · Update ${pollSec}s` : ''}
+      {refreshing ? ' · …' : ''}
+    </>
+  )
+
+  const list = (
+    <ul className="live-list">
+      {fixtures.map((row) => (
+        <FixtureRow
+          key={row.match.matchID}
+          row={row}
+          flashed={flashIds.has(row.match.matchID)}
+          showCrests={variant === 'panel'}
+        />
+      ))}
+    </ul>
+  )
+
+  if (variant === 'panel') {
+    return (
+      <section className="panel live-panel" aria-label={`Ergebnisse Spieltag ${matchday}`}>
+        <div className="live-panel-head">
+          <div>
+            <h2>{matchday}. Spieltag</h2>
+            <p className="meta live-panel-meta">{meta}</p>
+          </div>
+          {live > 0 ? (
+            <span className="live-pill">
+              <span className="live-dot" aria-hidden />
+              Live
+            </span>
+          ) : (
+            <span className="live-pill muted">Ergebnisse</span>
+          )}
+        </div>
+        {list}
+      </section>
+    )
+  }
 
   return (
     <section className="live-bar live-bar-below" aria-label={`Spieltag ${matchday}`}>
@@ -104,30 +187,14 @@ export function LiveMatchesBar({ matches, pollMs, refreshing, liveCount }: Props
             <span className="live-pill muted">Spieltag</span>
           )}
           <span className="live-bar-title">{matchday}. Spieltag</span>
-          <span className="live-meta">
-            {finished}/{fixtures.length} beendet
-            {live > 0 ? ` · ${live} live` : ''}
-            {upcoming > 0 ? ` · ${upcoming} offen` : ''}
-            {live > 0 ? ` · Update ${pollSec}s` : ''}
-            {refreshing ? ' · …' : ''}
-          </span>
+          <span className="live-meta">{meta}</span>
         </span>
         <span className="live-chevron" aria-hidden>
           {open ? '▾' : '▸'}
         </span>
       </button>
 
-      {open && (
-        <ul className="live-list">
-          {fixtures.map((row) => (
-            <FixtureRow
-              key={row.match.matchID}
-              row={row}
-              flashed={flashIds.has(row.match.matchID)}
-            />
-          ))}
-        </ul>
-      )}
+      {open && list}
     </section>
   )
 }
@@ -135,9 +202,11 @@ export function LiveMatchesBar({ matches, pollMs, refreshing, liveCount }: Props
 function FixtureRow({
   row,
   flashed,
+  showCrests,
 }: {
   row: MatchdayFixtureView
   flashed: boolean
+  showCrests: boolean
 }) {
   const m = row.match
   const home = m.team1.shortName || m.team1.teamName
@@ -153,6 +222,7 @@ function FixtureRow({
     <li
       className={[
         'live-item',
+        showCrests ? 'with-crests' : '',
         `status-${row.status}`,
         flashed ? 'score-flash' : '',
       ]
@@ -163,7 +233,10 @@ function FixtureRow({
         {row.status === 'live' ? 'LIVE' : row.status === 'finished' ? 'Ende' : 'Termin'}
       </span>
       <span className="live-teams">
-        <span className="live-home">{home}</span>
+        <span className="live-home">
+          {showCrests && <Crest url={m.team1.teamIconUrl} name={home} />}
+          {home}
+        </span>
         <span
           className={[
             'live-score',
@@ -174,7 +247,10 @@ function FixtureRow({
         >
           {score}
         </span>
-        <span className="live-away">{away}</span>
+        <span className="live-away">
+          {away}
+          {showCrests && <Crest url={m.team2.teamIconUrl} name={away} />}
+        </span>
       </span>
       <span className="live-result-name">
         {row.status === 'upcoming'

@@ -48,6 +48,7 @@ export interface CaseConditions {
   ownMatch: {
     matchId: number
     opponentName: string
+    opponentIconUrl: string
     homeAway: 'H' | 'A'
     /** Rohes Match-Ergebnis */
     outcome: MatchOutcome
@@ -58,6 +59,7 @@ export interface CaseConditions {
   ownRest: Array<{
     matchId: number
     opponentName: string
+    opponentIconUrl: string
     homeAway: 'H' | 'A'
     focusResult: 'win' | 'loss'
     outcome: MatchOutcome
@@ -70,6 +72,8 @@ export interface CaseConditions {
     matchId: number
     homeName: string
     awayName: string
+    homeIconUrl: string
+    awayIconUrl: string
     outcome: MatchOutcome
   }>
   /** Fremdspiele ohne festen Ausgang (exact) bzw. ohne Einfluss (Heuristik) */
@@ -77,11 +81,14 @@ export interface CaseConditions {
     matchId: number
     homeName: string
     awayName: string
+    homeIconUrl: string
+    awayIconUrl: string
   }>
   /** Heuristik: Konkurrenten in Tabellen-Reichweite */
   relevantRivals: Array<{
     teamId: number
     teamName: string
+    teamIconUrl: string
     points: number
     rank: number
   }>
@@ -95,6 +102,8 @@ export interface NextMatchdayOutlook {
   range: PositionRange
   fixtureCount: number
   opponentName: string | null
+  opponentIconUrl: string | null
+  homeAway: 'H' | 'A' | null
   plays: boolean
   bestConditions: CaseConditions | null
   worstConditions: CaseConditions | null
