@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import {
   EXPLAIN_TITLES,
   explainBody,
@@ -12,11 +13,14 @@ interface Props {
 
 export function ExplainModal({ topic, onClose }: Props) {
   const closeRef = useRef<HTMLButtonElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
   const open = topic != null
 
   useEffect(() => {
     if (!open) return
     closeRef.current?.focus()
+    // Panel sofort in den sichtbaren Bereich bringen (Scroll/Keyboard)
+    panelRef.current?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
     }
@@ -27,16 +31,21 @@ export function ExplainModal({ topic, onClose }: Props) {
       window.removeEventListener('keydown', onKey)
       document.body.style.overflow = prev
     }
-  }, [open, onClose])
+  }, [open, onClose, topic])
 
-  if (!topic) return null
+  if (!topic || typeof document === 'undefined') return null
 
   const title = EXPLAIN_TITLES[topic]
   const titleId = `explain-title-${topic}`
 
-  return (
-    <div className="modal-backdrop" role="presentation" onClick={onClose}>
+  return createPortal(
+    <div
+      className="modal-backdrop"
+      role="presentation"
+      onClick={onClose}
+    >
       <div
+        ref={panelRef}
         className="modal-panel"
         role="dialog"
         aria-modal="true"
@@ -62,6 +71,7 @@ export function ExplainModal({ topic, onClose }: Props) {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

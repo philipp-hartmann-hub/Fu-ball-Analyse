@@ -546,7 +546,6 @@ export default function App() {
               showHardness={showHardness}
               onExplain={openExplain}
             />
-            <ExplainModal topic={explainTopic} onClose={() => setExplainTopic(null)} />
           </div>
           <aside className="side-col">
             <div className="side-tabs" role="tablist" aria-label="Seitenleiste">
@@ -635,6 +634,8 @@ export default function App() {
         Daten: OpenLigaDB · Aktualisierung alle 60 Sekunden · Keine Wettberatung · Build{' '}
         <code>{__APP_BUILD__}</code>
       </footer>
+
+      <ExplainModal topic={explainTopic} onClose={() => setExplainTopic(null)} />
     </div>
   )
 }

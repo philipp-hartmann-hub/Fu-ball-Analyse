@@ -58,6 +58,16 @@ src/
 
 ## Änderungsprotokoll
 
+### 2026-08-02 — Prompt 45
+
+**User:** Pop-ups besser platzieren – immer voll lesbar im Bildschirm.
+
+**Aktion:**
+- `ExplainModal` per `createPortal` auf `document.body`
+- Modal-CSS: Viewport-zentriert, `dvh`, Safe-Area, scrollbarer Body; kein transform-Clipping
+
+**Status:** erledigt
+
 ### 2026-08-02 — Prompt 44
 
 **User:** Live-Darstellung laufender Spiele + schnelleres Polling + Toggle Live-Stände.
