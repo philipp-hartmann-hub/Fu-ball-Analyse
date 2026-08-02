@@ -34,17 +34,23 @@ function ThresholdList({
     return emptyHint ? <p className="hint tight">{emptyHint}</p> : null
   }
   return (
-    <ul className="threshold-list">
-      {lines.map((line) => (
-        <li key={line.key} className={`threshold-item tone-${line.tone}`}>
-          <span className="threshold-label">{line.label}</span>
-          <span className="threshold-primary">{line.primary}</span>
-          {line.secondary && (
-            <span className="threshold-secondary">{line.secondary}</span>
-          )}
-        </li>
-      ))}
-    </ul>
+    <details className="threshold-details">
+      <summary className="threshold-summary">
+        Punktschwellen
+        <span className="threshold-count">{lines.length}</span>
+      </summary>
+      <ul className="threshold-list">
+        {lines.map((line) => (
+          <li key={line.key} className={`threshold-item tone-${line.tone}`}>
+            <span className="threshold-label">{line.label}</span>
+            <span className="threshold-primary">{line.primary}</span>
+            {line.secondary && (
+              <span className="threshold-secondary">{line.secondary}</span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </details>
   )
 }
 
