@@ -300,13 +300,6 @@ function FixtureRow({
         .filter(Boolean)
         .join(' ')}
     >
-      <span className="live-status-tag">
-        {row.status === 'live'
-          ? 'LIVE'
-          : row.status === 'finished'
-            ? 'Ende'
-            : 'Offen'}
-      </span>
       <span className="live-teams">
         <span className="live-home">
           {showCrests && <Crest url={m.team1.teamIconUrl} name={home} />}
@@ -330,7 +323,9 @@ function FixtureRow({
       <span className="live-result-name">
         {row.status === 'upcoming'
           ? row.kickoffLabel
-          : row.resultName || row.kickoffLabel}
+          : row.status === 'live'
+            ? 'LIVE'
+            : row.resultName || row.kickoffLabel}
       </span>
     </li>
   )

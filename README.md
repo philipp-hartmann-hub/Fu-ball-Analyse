@@ -56,6 +56,15 @@ src/
 
 ## Änderungsprotokoll
 
+### 2026-08-02 — Prompt 57
+
+**User:** Status-Label Termin/Offen bei Ergebnissen entfernen.
+
+**Aktion:**
+- `live-status-tag` entfernt; Live weiter als Text rechts, sonst Anstoßzeit/Ergebnisname
+
+**Status:** erledigt
+
 ### 2026-08-02 — Prompt 56
 
 **User:** Bei Ergebnissen Spieltage durchklicken können; „Termin“ unverständlich.
