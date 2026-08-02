@@ -22,6 +22,7 @@ Echtzeit-Analyse für die **1. und 2. Bundesliga**: Tabelle, Restprogramm und m�
 - Spalte **Möglich**: Best-/Schlechtfall bis Saisonende (**Spanne**) oder Monte-Carlo-**Prognose** (umschaltbar)
 - Optionale Spalte **Härte**: Restprogramm-Härte 0–100 (Toggle „Restprogramm“; auf Mobile ausgeblendet)
 - Vereinsanalyse: **nach nächstem Spieltag** (exakt) und **Saisonende** (heuristisch), inkl. Restprogramm-Härte
+- **Vereinsvergleich**: zwei Teams nebeneinander (Tabelle, Restprogramm, Härte; Direktspiele hervorgehoben)
 - Spalte **Δ**: Platzveränderung durch gesetzte Szenarien
 - **Szenario-Simulator**: Grob/Fein je Spieltag (Default: nächster); teilbar via `?s=`
 - **Stand nach Spieltag**: Slider für historischen Stand
@@ -55,6 +56,17 @@ src/
 ---
 
 ## Änderungsprotokoll
+
+### 2026-08-02 — Prompt 42
+
+**User:** Vergleichsansicht für zwei Vereine (Dropdown, Restprogramm, Härte, Direktspiel).
+
+**Aktion:**
+- Neue Komponente `TeamCompare.tsx`
+- Side-Tab „Analyse | Vergleich“ in `App.tsx`
+- Responsive: Mobile untereinander; H2H-Spiele hervorgehoben
+
+**Status:** erledigt
 
 ### 2026-08-02 — Prompt 41
 
