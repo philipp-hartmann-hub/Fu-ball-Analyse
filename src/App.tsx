@@ -9,7 +9,14 @@ import { ZoneLegend } from './components/ZoneLegend'
 import { getLeague, type LeagueId } from './leagues'
 import { useLeagueData } from './hooks/useLeagueData'
 import { useSeasonForecast } from './hooks/useSeasonForecast'
-import { computeNextMatchdayOutlook, computePositionRanges, computeSeasonOutlook } from './lib/scenarios'
+import {
+  computeNextMatchdayOutlook,
+  computePositionRanges,
+  computeSeasonOutlook,
+  enumerateMatchdayOutcomes,
+  seasonExtremeOutcomes,
+} from './lib/scenarios'
+import { deriveThresholdLines } from './lib/thresholds'
 import {
   encodeShareState,
   loadShareStateFromSearch,
@@ -172,6 +179,50 @@ export default function App() {
       playedScores,
     )
   }, [baseStandings, openMatches, selectedTeamId, playedScores])
+
+  const matchdayThresholds = useMemo(() => {
+    if (!selectedTeam) return []
+    const outcomes = enumerateMatchdayOutcomes(
+      baseStandings,
+      openMatches,
+      selectedTeam.teamId,
+      playedScores,
+    )
+    if (!outcomes) return []
+    const exact = (nextMatchdayOutlook?.fixtureCount ?? 99) <= 12
+    return deriveThresholdLines(
+      outcomes,
+      selectedTeam.points,
+      selectedTeam.rank,
+      leagueId,
+      { exact },
+    )
+  }, [
+    selectedTeam,
+    baseStandings,
+    openMatches,
+    playedScores,
+    nextMatchdayOutlook?.fixtureCount,
+    leagueId,
+  ])
+
+  const seasonThresholds = useMemo(() => {
+    if (!selectedTeam) return []
+    const outcomes = seasonExtremeOutcomes(
+      baseStandings,
+      openMatches,
+      selectedTeam.teamId,
+      playedScores,
+    )
+    if (!outcomes) return []
+    return deriveThresholdLines(
+      outcomes,
+      selectedTeam.points,
+      selectedTeam.rank,
+      leagueId,
+      { exact: false },
+    )
+  }, [selectedTeam, baseStandings, openMatches, playedScores, leagueId])
 
   const leaderPoints = projectedStandings[0]?.points ?? 0
   const relegLine = projectedStandings.find((s) => s.rank === 16)?.points ?? 0
@@ -407,6 +458,8 @@ export default function App() {
               league={leagueId}
               suggestedCutoff={suggestedCutoff}
               onEnableMatchdayCutoff={enableMatchdayCutoff}
+              matchdayThresholds={matchdayThresholds}
+              seasonThresholds={seasonThresholds}
               pointsToFirst={
                 selectedTeam ? leaderPoints - selectedTeam.points : null
               }

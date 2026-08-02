@@ -56,6 +56,17 @@ src/
 
 ## Änderungsprotokoll
 
+### 2026-08-02 — Prompt 37
+
+**User:** Vereinsanalyse: Schwellen Klassenerhalt/CL/Aufstieg + benötigte Punkte.
+
+**Aktion:**
+- `thresholds.ts` + Enumeration/Extreme aus `scenarios.ts`
+- Anzeige in TeamInsight (Spieltag exakt, Saison als Schätzung)
+- 52 Tests grün
+
+**Status:** erledigt
+
 ### 2026-08-02 — Prompt 36
 
 **User:** DFL-Reihenfolge bei Punktgleichheit (Direktvergleich) statt Alphabet.

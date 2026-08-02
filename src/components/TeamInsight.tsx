@@ -7,6 +7,7 @@ import type {
   StandingRow,
 } from '../types'
 import { zoneLabelFor } from '../lib/table'
+import type { ThresholdLine } from '../lib/thresholds'
 
 interface Props {
   team: StandingRow | null
@@ -18,6 +19,33 @@ interface Props {
   pointsAboveRelegation?: number | null
   onEnableMatchdayCutoff?: (matchday: number) => void
   suggestedCutoff?: number | null
+  matchdayThresholds?: ThresholdLine[]
+  seasonThresholds?: ThresholdLine[]
+}
+
+function ThresholdList({
+  lines,
+  emptyHint,
+}: {
+  lines: ThresholdLine[]
+  emptyHint?: string
+}) {
+  if (!lines.length) {
+    return emptyHint ? <p className="hint tight">{emptyHint}</p> : null
+  }
+  return (
+    <ul className="threshold-list">
+      {lines.map((line) => (
+        <li key={line.key} className={`threshold-item tone-${line.tone}`}>
+          <span className="threshold-label">{line.label}</span>
+          <span className="threshold-primary">{line.primary}</span>
+          {line.secondary && (
+            <span className="threshold-secondary">{line.secondary}</span>
+          )}
+        </li>
+      ))}
+    </ul>
+  )
 }
 
 function VariantPanel({
@@ -27,6 +55,7 @@ function VariantPanel({
   note,
   empty,
   emptyAction,
+  thresholds,
 }: {
   heading: string
   range: PositionRange | null
@@ -34,6 +63,7 @@ function VariantPanel({
   note?: string
   empty?: string
   emptyAction?: ReactNode
+  thresholds?: ThresholdLine[]
 }) {
   return (
     <div className="panel insight-variant">
@@ -53,6 +83,10 @@ function VariantPanel({
               <span className="sub">{zoneLabelFor(range.worstRank, league)}</span>
             </div>
           </div>
+
+          {thresholds && thresholds.length > 0 && (
+            <ThresholdList lines={thresholds} />
+          )}
 
           {range.bestRank === range.worstRank && (
             <p className="hint tight">Platz in dieser Sicht bereits fest.</p>
@@ -79,6 +113,8 @@ export function TeamInsight({
   pointsAboveRelegation,
   onEnableMatchdayCutoff,
   suggestedCutoff,
+  matchdayThresholds = [],
+  seasonThresholds = [],
 }: Props) {
   if (!team) {
     return (
@@ -143,6 +179,7 @@ export function TeamInsight({
         }
         range={nextMatchday?.range ?? null}
         league={league}
+        thresholds={matchdayThresholds}
         note={
           nextMatchday
             ? nextMatchday.plays
@@ -168,7 +205,8 @@ export function TeamInsight({
         heading="Gesamte Saison"
         range={seasonOutlook?.range ?? null}
         league={league}
-        note="Schätzung über alle Restspiele."
+        thresholds={seasonThresholds}
+        note="Schätzung über alle Restspiele (Kennzahlen genähert)."
         empty="Keine Saison-Spanne berechenbar."
       />
     </div>

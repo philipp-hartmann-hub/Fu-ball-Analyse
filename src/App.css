@@ -654,11 +654,60 @@
   margin-top: 0.25rem;
 }
 
-.range-same-hint {
-  flex-basis: 100%;
-  margin: 0.35rem 0 0;
-  font-size: 0.75rem;
+.threshold-list {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.threshold-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.15rem 0.75rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: 0.5rem;
+  background: rgba(15, 31, 23, 0.45);
+  border-left: 3px solid var(--line);
+  font-size: 0.82rem;
+}
+
+.threshold-item.tone-good {
+  border-left-color: var(--accent);
+}
+
+.threshold-item.tone-bad {
+  border-left-color: var(--releg);
+}
+
+.threshold-item.tone-neutral {
+  border-left-color: var(--el);
+}
+
+.threshold-label {
+  grid-column: 1;
   color: var(--muted);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.threshold-primary {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  font-weight: 600;
+  color: var(--text);
+  text-align: right;
+  max-width: 11rem;
+}
+
+.threshold-secondary {
+  grid-column: 1;
+  color: var(--accent);
+  font-size: 0.78rem;
 }
 
 .range-card {
