@@ -6,7 +6,12 @@ import type {
   SeasonOutlook,
   StandingRow,
 } from '../types'
-import { buildStandings, compareStandings, remainingMatches } from './table'
+import {
+  buildStandings,
+  rankStandings,
+  remainingMatches,
+  type MatchScore,
+} from './table'
 
 function cloneRow(row: StandingRow): StandingRow {
   return { ...row }
@@ -48,9 +53,30 @@ function applyOutcome(
   }
 }
 
-function rankOf(standings: StandingRow[], teamId: number): number {
-  const sorted = [...standings].sort(compareStandings)
-  return sorted.findIndex((s) => s.teamId === teamId) + 1
+function toDrafts(standings: StandingRow[]) {
+  return standings.map((row) => ({
+    teamId: row.teamId,
+    teamName: row.teamName,
+    shortName: row.shortName,
+    teamIconUrl: row.teamIconUrl,
+    played: row.played,
+    won: row.won,
+    draw: row.draw,
+    lost: row.lost,
+    goalsFor: row.goalsFor,
+    goalsAgainst: row.goalsAgainst,
+    goalDiff: row.goalDiff,
+    points: row.points,
+  }))
+}
+
+function rankOf(
+  standings: StandingRow[],
+  teamId: number,
+  matchScores: MatchScore[] = [],
+): number {
+  const ranked = rankStandings(toDrafts(standings), { matchScores })
+  return ranked.findIndex((s) => s.teamId === teamId) + 1
 }
 
 const OUTCOMES: Array<[number, number]> = [
@@ -65,8 +91,10 @@ function simulateExtremeRank(
   remaining: Match[],
   focusId: number,
   mode: 'best' | 'worst',
+  priorScores: MatchScore[] = [],
 ): number {
   const map = new Map(baseStandings.map((s) => [s.teamId, cloneRow(s)]))
+  const scores: MatchScore[] = [...priorScores]
 
   for (const match of remaining) {
     const homeId = match.team1.teamId
@@ -109,15 +137,23 @@ function simulateExtremeRank(
     }
 
     applyOutcome(map, homeId, awayId, homeGoals, awayGoals)
+    scores.push({
+      matchId: match.matchID,
+      homeId,
+      awayId,
+      homeGoals,
+      awayGoals,
+    })
   }
 
-  return rankOf([...map.values()], focusId)
+  return rankOf([...map.values()], focusId, scores)
 }
 
 export function computeSeasonOutlook(
   baseStandings: StandingRow[],
   remaining: Match[],
   teamId: number,
+  priorScores: MatchScore[] = [],
 ): SeasonOutlook | null {
   if (!remaining.length) {
     const row = baseStandings.find((s) => s.teamId === teamId)
@@ -125,8 +161,20 @@ export function computeSeasonOutlook(
     return { range: { teamId, bestRank: row.rank, worstRank: row.rank } }
   }
 
-  const best = simulateExtremeRank(baseStandings, remaining, teamId, 'best')
-  const worst = simulateExtremeRank(baseStandings, remaining, teamId, 'worst')
+  const best = simulateExtremeRank(
+    baseStandings,
+    remaining,
+    teamId,
+    'best',
+    priorScores,
+  )
+  const worst = simulateExtremeRank(
+    baseStandings,
+    remaining,
+    teamId,
+    'worst',
+    priorScores,
+  )
   return {
     range: {
       teamId,
@@ -140,9 +188,15 @@ export function computeSeasonOutlook(
 export function computePositionRanges(
   baseStandings: StandingRow[],
   remaining: Match[],
+  priorScores: MatchScore[] = [],
 ): PositionRange[] {
   return baseStandings.map((team) => {
-    const outlook = computeSeasonOutlook(baseStandings, remaining, team.teamId)
+    const outlook = computeSeasonOutlook(
+      baseStandings,
+      remaining,
+      team.teamId,
+      priorScores,
+    )
     return (
       outlook?.range ?? {
         teamId: team.teamId,
@@ -167,6 +221,7 @@ export function computeNextMatchdayOutlook(
   baseStandings: StandingRow[],
   remaining: Match[],
   teamId: number,
+  priorScores: MatchScore[] = [],
 ): NextMatchdayOutlook | null {
   const matchday = nextOpenMatchday(remaining)
   if (matchday == null) return null
@@ -185,8 +240,20 @@ export function computeNextMatchdayOutlook(
     : null
 
   if (fixtures.length > 12) {
-    const best = simulateExtremeRank(baseStandings, fixtures, teamId, 'best')
-    const worst = simulateExtremeRank(baseStandings, fixtures, teamId, 'worst')
+    const best = simulateExtremeRank(
+      baseStandings,
+      fixtures,
+      teamId,
+      'best',
+      priorScores,
+    )
+    const worst = simulateExtremeRank(
+      baseStandings,
+      fixtures,
+      teamId,
+      'worst',
+      priorScores,
+    )
     return {
       matchday,
       fixtureCount: fixtures.length,
@@ -206,6 +273,7 @@ export function computeNextMatchdayOutlook(
 
   for (let mask = 0; mask < total; mask++) {
     const map = new Map(baseStandings.map((s) => [s.teamId, cloneRow(s)]))
+    const scores: MatchScore[] = [...priorScores]
     let x = mask
     for (const match of fixtures) {
       const outcome = OUTCOMES[x % 3]!
@@ -217,8 +285,15 @@ export function computeNextMatchdayOutlook(
         outcome[0],
         outcome[1],
       )
+      scores.push({
+        matchId: match.matchID,
+        homeId: match.team1.teamId,
+        awayId: match.team2.teamId,
+        homeGoals: outcome[0],
+        awayGoals: outcome[1],
+      })
     }
-    const rank = rankOf([...map.values()], teamId)
+    const rank = rankOf([...map.values()], teamId, scores)
     if (rank < bestRank) bestRank = rank
     if (rank > worstRank) worstRank = rank
   }

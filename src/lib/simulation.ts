@@ -4,6 +4,7 @@ import {
   rankStandings,
   zoneForRank,
   type LeagueZoneId,
+  type MatchScore,
   type StandingDraft,
 } from './table'
 
@@ -76,6 +77,8 @@ export interface SeasonSimulationInput {
   league: LeagueZoneId
   /** Bereits gesetzte Szenarien: werden nicht neu gezogen */
   fixedScenarios?: ScenarioResult[]
+  /** Bereits gezählte Spiele (für DFL-Direktvergleich / Auswärtstore) */
+  playedScores?: MatchScore[]
   runs?: number
   seed?: number
 }
@@ -185,6 +188,7 @@ export function runSeasonSimulation(
   const fixed = new Map(
     (input.fixedScenarios ?? []).map((s) => [s.matchId, s] as const),
   )
+  const playedScores = input.playedScores ?? []
   const teamIds = input.baseStandings.map((s) => s.teamId)
   const nTeams = teamIds.length
   const rankCounts = new Map<number, number[]>()
@@ -202,6 +206,8 @@ export function runSeasonSimulation(
     for (const row of input.baseStandings) {
       map.set(row.teamId, cloneDraft(row))
     }
+
+    const runScores: MatchScore[] = [...playedScores]
 
     for (const match of input.remaining) {
       const locked = fixed.get(match.matchID)
@@ -238,9 +244,16 @@ export function runSeasonSimulation(
         homeGoals,
         awayGoals,
       )
+      runScores.push({
+        matchId: match.matchID,
+        homeId: match.team1.teamId,
+        awayId: match.team2.teamId,
+        homeGoals,
+        awayGoals,
+      })
     }
 
-    const table = rankStandings([...map.values()])
+    const table = rankStandings([...map.values()], { matchScores: runScores })
     for (const row of table) {
       const counts = rankCounts.get(row.teamId)!
       counts[row.rank - 1] = (counts[row.rank - 1] ?? 0) + 1

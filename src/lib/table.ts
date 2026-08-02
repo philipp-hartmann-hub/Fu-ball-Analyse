@@ -9,6 +9,15 @@ export function finalResult(match: Match): MatchResult | null {
 
 export type StandingDraft = Omit<StandingRow, 'rank'>
 
+/** Aufgelöstes Spielergebnis (fertig oder Szenario) für Tabelle + Direktvergleich. */
+export interface MatchScore {
+  matchId: number
+  homeId: number
+  awayId: number
+  homeGoals: number
+  awayGoals: number
+}
+
 export function emptyStanding(
   teamId: number,
   teamName: string,
@@ -68,6 +77,106 @@ export function applyScore(
   }
 }
 
+/**
+ * Löst fertige Spiele + Szenarien zu MatchScore[] auf
+ * (gleiche Einschlussregeln wie buildStandings).
+ */
+export function resolveMatchScores(
+  matches: Match[],
+  options: {
+    maxMatchday?: number | null
+    scenarios?: ScenarioResult[]
+  } = {},
+): MatchScore[] {
+  const { maxMatchday = null, scenarios = [] } = options
+  const scenarioMap = new Map(scenarios.map((s) => [s.matchId, s]))
+  const scores: MatchScore[] = []
+
+  for (const match of matches) {
+    const matchday = match.group.groupOrderID
+    if (maxMatchday != null && matchday > maxMatchday) continue
+
+    const scenario = scenarioMap.get(match.matchID)
+    if (scenario) {
+      scores.push({
+        matchId: match.matchID,
+        homeId: match.team1.teamId,
+        awayId: match.team2.teamId,
+        homeGoals: scenario.homeGoals,
+        awayGoals: scenario.awayGoals,
+      })
+      continue
+    }
+
+    const includeFinished =
+      maxMatchday != null ? matchday <= maxMatchday && match.matchIsFinished : match.matchIsFinished
+    if (!includeFinished) continue
+
+    const result = finalResult(match)
+    if (!result) continue
+
+    scores.push({
+      matchId: match.matchID,
+      homeId: match.team1.teamId,
+      awayId: match.team2.teamId,
+      homeGoals: result.pointsTeam1,
+      awayGoals: result.pointsTeam2,
+    })
+  }
+
+  return scores
+}
+
+export function awayGoalsFromScores(scores: MatchScore[]): Map<number, number> {
+  const map = new Map<number, number>()
+  for (const s of scores) {
+    map.set(s.awayId, (map.get(s.awayId) ?? 0) + s.awayGoals)
+  }
+  return map
+}
+
+interface H2HStats {
+  points: number
+  goalDiff: number
+  awayGoals: number
+}
+
+function emptyH2H(): H2HStats {
+  return { points: 0, goalDiff: 0, awayGoals: 0 }
+}
+
+/** Mini-Liga nur aus Spielen innerhalb von `teamIds`. */
+export function buildHeadToHeadStats(
+  teamIds: Iterable<number>,
+  scores: MatchScore[],
+): Map<number, H2HStats> {
+  const idSet = new Set(teamIds)
+  const stats = new Map<number, H2HStats>()
+  for (const id of idSet) stats.set(id, emptyH2H())
+
+  for (const s of scores) {
+    if (!idSet.has(s.homeId) || !idSet.has(s.awayId)) continue
+    const home = stats.get(s.homeId)!
+    const away = stats.get(s.awayId)!
+    home.goalDiff += s.homeGoals - s.awayGoals
+    away.goalDiff += s.awayGoals - s.homeGoals
+    away.awayGoals += s.awayGoals
+    if (s.homeGoals > s.awayGoals) {
+      home.points += 3
+    } else if (s.homeGoals < s.awayGoals) {
+      away.points += 3
+    } else {
+      home.points += 1
+      away.points += 1
+    }
+  }
+  return stats
+}
+
+/**
+ * Primärvergleich ohne Direktvergleich:
+ * Punkte > Tordiff > Tore (Name nur als Notnagel ohne Match-Kontext).
+ */
 export function compareStandings(
   a: Omit<StandingRow, 'rank'>,
   b: Omit<StandingRow, 'rank'>,
@@ -78,9 +187,67 @@ export function compareStandings(
   return a.teamName.localeCompare(b.teamName, 'de')
 }
 
-export function rankStandings(rows: Omit<StandingRow, 'rank'>[]): StandingRow[] {
+function primaryKey(row: Omit<StandingRow, 'rank'>): string {
+  return `${row.points}|${row.goalDiff}|${row.goalsFor}`
+}
+
+function compareTiedGroup(
+  a: Omit<StandingRow, 'rank'>,
+  b: Omit<StandingRow, 'rank'>,
+  h2h: Map<number, H2HStats>,
+  awayGoals: Map<number, number>,
+): number {
+  const ha = h2h.get(a.teamId) ?? emptyH2H()
+  const hb = h2h.get(b.teamId) ?? emptyH2H()
+  if (hb.points !== ha.points) return hb.points - ha.points
+  if (hb.goalDiff !== ha.goalDiff) return hb.goalDiff - ha.goalDiff
+  if (hb.awayGoals !== ha.awayGoals) return hb.awayGoals - ha.awayGoals
+  const aa = awayGoals.get(a.teamId) ?? 0
+  const ab = awayGoals.get(b.teamId) ?? 0
+  if (ab !== aa) return ab - aa
+  return a.teamName.localeCompare(b.teamName, 'de')
+}
+
+export interface RankStandingsOptions {
+  /** Ergebnisse für H2H + Auswärtstore gesamt (Szenarien müssen schon aufgelöst sein). */
+  matchScores?: MatchScore[]
+}
+
+/**
+ * DFL-Reihenfolge:
+ * 1 Punkte 2 Tordiff 3 Tore 4 H2H-Punkte 5 H2H-Tordiff 6 H2H-Auswärtstore
+ * 7 Auswärtstore gesamt 8 Name
+ */
+export function rankStandings(
+  rows: Omit<StandingRow, 'rank'>[],
+  options: RankStandingsOptions = {},
+): StandingRow[] {
+  const scores = options.matchScores ?? []
+  const awayGoals = awayGoalsFromScores(scores)
   const sorted = [...rows].sort(compareStandings)
-  return sorted.map((row, i) => ({ ...row, rank: i + 1 }))
+
+  const result: Omit<StandingRow, 'rank'>[] = []
+  let i = 0
+  while (i < sorted.length) {
+    let j = i + 1
+    while (j < sorted.length && primaryKey(sorted[j]!) === primaryKey(sorted[i]!)) {
+      j += 1
+    }
+    const group = sorted.slice(i, j)
+    if (group.length === 1 || scores.length === 0) {
+      result.push(...group)
+    } else {
+      const h2h = buildHeadToHeadStats(
+        group.map((g) => g.teamId),
+        scores,
+      )
+      group.sort((a, b) => compareTiedGroup(a, b, h2h, awayGoals))
+      result.push(...group)
+    }
+    i = j
+  }
+
+  return result.map((row, idx) => ({ ...row, rank: idx + 1 }))
 }
 
 /** Build table from matches up to (and including) maxMatchday. If null, use finished matches. */
@@ -91,8 +258,7 @@ export function buildStandings(
     scenarios?: ScenarioResult[]
   } = {},
 ): StandingRow[] {
-  const { maxMatchday = null, scenarios = [] } = options
-  const scenarioMap = new Map(scenarios.map((s) => [s.matchId, s]))
+  const scores = resolveMatchScores(matches, options)
   const map = new Map<number, StandingDraft>()
 
   for (const match of matches) {
@@ -106,40 +272,11 @@ export function buildStandings(
     }
   }
 
-  for (const match of matches) {
-    const matchday = match.group.groupOrderID
-    if (maxMatchday != null && matchday > maxMatchday) continue
-
-    const scenario = scenarioMap.get(match.matchID)
-    if (scenario) {
-      applyScore(
-        map,
-        match.team1.teamId,
-        match.team2.teamId,
-        scenario.homeGoals,
-        scenario.awayGoals,
-      )
-      continue
-    }
-
-    const includeFinished =
-      maxMatchday != null ? matchday <= maxMatchday && match.matchIsFinished : match.matchIsFinished
-
-    if (!includeFinished) continue
-
-    const result = finalResult(match)
-    if (!result) continue
-
-    applyScore(
-      map,
-      match.team1.teamId,
-      match.team2.teamId,
-      result.pointsTeam1,
-      result.pointsTeam2,
-    )
+  for (const s of scores) {
+    applyScore(map, s.homeId, s.awayId, s.homeGoals, s.awayGoals)
   }
 
-  return rankStandings([...map.values()])
+  return rankStandings([...map.values()], { matchScores: scores })
 }
 
 export function remainingMatches(

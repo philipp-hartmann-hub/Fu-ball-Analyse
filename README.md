@@ -56,6 +56,17 @@ src/
 
 ## Änderungsprotokoll
 
+### 2026-08-02 — Prompt 36
+
+**User:** DFL-Reihenfolge bei Punktgleichheit (Direktvergleich) statt Alphabet.
+
+**Aktion:**
+- `resolveMatchScores` + H2H-Mini-Liga in `rankStandings`
+- Szenarien/Simulation/Outlook nutzen dieselben Scores
+- Unit-Tests 2er/3er-H2H inkl. Umkehr vs. Gesamt-Auswärtstore
+
+**Status:** erledigt
+
 ### 2026-08-02 — Prompt 35
 
 **User:** Popup, das die Modellrechnung erklärt.

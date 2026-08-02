@@ -22,6 +22,7 @@ import {
   currentMatchday,
   matchdays,
   remainingMatches,
+  resolveMatchScores,
 } from './lib/table'
 import type { ScenarioResult } from './types'
 import './App.css'
@@ -121,13 +122,17 @@ export default function App() {
     () => remainingMatches(matches, cutoff),
     [matches, cutoff],
   )
+  const playedScores = useMemo(
+    () => resolveMatchScores(matches, { maxMatchday: cutoff }),
+    [matches, cutoff],
+  )
   const projectedStandings = useMemo(
     () => buildStandings(matches, { maxMatchday: cutoff, scenarios }),
     [matches, cutoff, scenarios],
   )
   const ranges = useMemo(
-    () => computePositionRanges(baseStandings, openMatches),
-    [baseStandings, openMatches],
+    () => computePositionRanges(baseStandings, openMatches, playedScores),
+    [baseStandings, openMatches, playedScores],
   )
 
   const {
@@ -140,6 +145,7 @@ export default function App() {
     remaining: openMatches,
     league: leagueId,
     fixedScenarios: scenarios,
+    playedScores,
   })
 
   const selectedTeam =
@@ -149,13 +155,23 @@ export default function App() {
 
   const nextMatchdayOutlook = useMemo(() => {
     if (selectedTeamId == null) return null
-    return computeNextMatchdayOutlook(baseStandings, openMatches, selectedTeamId)
-  }, [baseStandings, openMatches, selectedTeamId])
+    return computeNextMatchdayOutlook(
+      baseStandings,
+      openMatches,
+      selectedTeamId,
+      playedScores,
+    )
+  }, [baseStandings, openMatches, selectedTeamId, playedScores])
 
   const seasonOutlook = useMemo(() => {
     if (selectedTeamId == null) return null
-    return computeSeasonOutlook(baseStandings, openMatches, selectedTeamId)
-  }, [baseStandings, openMatches, selectedTeamId])
+    return computeSeasonOutlook(
+      baseStandings,
+      openMatches,
+      selectedTeamId,
+      playedScores,
+    )
+  }, [baseStandings, openMatches, selectedTeamId, playedScores])
 
   const leaderPoints = projectedStandings[0]?.points ?? 0
   const relegLine = projectedStandings.find((s) => s.rank === 16)?.points ?? 0

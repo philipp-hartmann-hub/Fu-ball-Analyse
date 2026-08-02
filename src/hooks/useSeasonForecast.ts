@@ -5,7 +5,7 @@ import {
   runSeasonSimulation,
   type SeasonSimulationResult,
 } from '../lib/simulation'
-import type { LeagueZoneId } from '../lib/table'
+import type { LeagueZoneId, MatchScore } from '../lib/table'
 import type {
   SimulateWorkerRequest,
   SimulateWorkerResponse,
@@ -17,6 +17,7 @@ interface Args {
   remaining: Match[]
   league: LeagueZoneId
   fixedScenarios: ScenarioResult[]
+  playedScores?: MatchScore[]
   runs?: number
 }
 
@@ -25,6 +26,7 @@ function fingerprintInput(
   remaining: Match[],
   league: LeagueZoneId,
   fixedScenarios: ScenarioResult[],
+  playedScores: MatchScore[],
   runs: number,
 ): string {
   return JSON.stringify({
@@ -40,6 +42,13 @@ function fingerprintInput(
     ]),
     remaining: remaining.map((m) => m.matchID),
     fixed: fixedScenarios.map((s) => [s.matchId, s.homeGoals, s.awayGoals]),
+    played: playedScores.map((s) => [
+      s.matchId,
+      s.homeId,
+      s.awayId,
+      s.homeGoals,
+      s.awayGoals,
+    ]),
   })
 }
 
@@ -58,6 +67,7 @@ export function useSeasonForecast({
   remaining,
   league,
   fixedScenarios,
+  playedScores = [],
   runs = DEFAULT_SIMULATIONS,
 }: Args) {
   const [result, setResult] = useState<SeasonSimulationResult | null>(null)
@@ -67,8 +77,15 @@ export function useSeasonForecast({
 
   const fingerprint = useMemo(
     () =>
-      fingerprintInput(baseStandings, remaining, league, fixedScenarios, runs),
-    [baseStandings, remaining, league, fixedScenarios, runs],
+      fingerprintInput(
+        baseStandings,
+        remaining,
+        league,
+        fixedScenarios,
+        playedScores,
+        runs,
+      ),
+    [baseStandings, remaining, league, fixedScenarios, playedScores, runs],
   )
 
   const latest = useRef({
@@ -76,6 +93,7 @@ export function useSeasonForecast({
     remaining,
     league,
     fixedScenarios,
+    playedScores,
     runs,
   })
   latest.current = {
@@ -83,6 +101,7 @@ export function useSeasonForecast({
     remaining,
     league,
     fixedScenarios,
+    playedScores,
     runs,
   }
 
@@ -99,6 +118,7 @@ export function useSeasonForecast({
       remaining: open,
       league: lg,
       fixedScenarios: fixed,
+      playedScores: played,
       runs: n,
     } = latest.current
 
@@ -120,6 +140,7 @@ export function useSeasonForecast({
           remaining: [],
           league: lg,
           fixedScenarios: [],
+          playedScores: played,
           runs: 1,
           seed,
         }),
@@ -135,6 +156,7 @@ export function useSeasonForecast({
       remaining: open,
       league: lg,
       fixedScenarios: fixed,
+      playedScores: played,
       runs: n,
       seed,
     }
