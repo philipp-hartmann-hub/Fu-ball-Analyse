@@ -9,6 +9,13 @@ import { getLeague, type LeagueId } from './leagues'
 import { useLeagueData } from './hooks/useLeagueData'
 import { computeNextMatchdayOutlook, computePositionRanges, computeSeasonOutlook } from './lib/scenarios'
 import {
+  encodeShareState,
+  loadShareStateFromSearch,
+  replaceShareQuery,
+  shouldPersistShare,
+  type ShareState,
+} from './lib/shareState'
+import {
   buildStandings,
   currentMatchday,
   matchdays,
@@ -21,15 +28,31 @@ function seasonOptions(base: number): number[] {
   return [base, base - 1, base - 2, base - 3]
 }
 
+function bootShare(): ShareState | null {
+  if (typeof window === 'undefined') return null
+  return loadShareStateFromSearch(window.location.search)
+}
+
 export default function App() {
   const baseSeason = defaultSeason()
-  const [leagueId, setLeagueId] = useState<LeagueId>('bl1')
-  const [season, setSeason] = useState(baseSeason)
+  const initialShare = useMemo(() => bootShare(), [])
+  const skipAutoCutoffWipe = useRef(initialShare != null)
+
+  const [leagueId, setLeagueId] = useState<LeagueId>(
+    () => initialShare?.leagueId ?? 'bl1',
+  )
+  const [season, setSeason] = useState(() => initialShare?.season ?? baseSeason)
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null)
-  const [scenarios, setScenarios] = useState<ScenarioResult[]>([])
-  const [asOfMatchday, setAsOfMatchday] = useState<number | null>(null)
-  const [useCutoff, setUseCutoff] = useState(false)
+  const [scenarios, setScenarios] = useState<ScenarioResult[]>(
+    () => initialShare?.scenarios ?? [],
+  )
+  const [asOfMatchday, setAsOfMatchday] = useState<number | null>(
+    () => initialShare?.asOfMatchday ?? null,
+  )
+  const [useCutoff, setUseCutoff] = useState(() => initialShare?.useCutoff ?? false)
+  const [shareHint, setShareHint] = useState<string | null>(null)
   const autoCutoffKey = useRef<string | null>(null)
+  const shareHintTimer = useRef<number | null>(null)
 
   const { matches, league, loading, error, updatedAt, refreshing, reload } = useLeagueData(
     leagueId,
@@ -52,16 +75,39 @@ export default function App() {
 
   // Abgeschlossene Saison: automatisch Stand vor dem letzten Spieltag,
   // damit „Nächster Spieltag“ sofort eine Spanne hat.
+  // Share-Links: ersten Auto-Wipe überspringen, damit ?s=-Szenarien erhalten bleiben.
   useEffect(() => {
     const key = `${leagueId}-${season}`
     if (!matches.length || autoCutoffKey.current === key) return
     if (seasonComplete) {
-      setUseCutoff(true)
-      setAsOfMatchday(Math.max(0, maxDay - 1))
-      setScenarios([])
+      if (skipAutoCutoffWipe.current) {
+        skipAutoCutoffWipe.current = false
+        if (!useCutoff) {
+          setUseCutoff(true)
+          setAsOfMatchday((prev) => prev ?? Math.max(0, maxDay - 1))
+        }
+      } else {
+        setUseCutoff(true)
+        setAsOfMatchday(Math.max(0, maxDay - 1))
+        setScenarios([])
+      }
+    } else {
+      skipAutoCutoffWipe.current = false
     }
     autoCutoffKey.current = key
-  }, [matches, leagueId, season, seasonComplete, maxDay])
+  }, [matches, leagueId, season, seasonComplete, maxDay, useCutoff])
+
+  // Szenarien + Kontext → ?s= (replaceState, kein Reload)
+  useEffect(() => {
+    const state: ShareState = {
+      leagueId,
+      season,
+      useCutoff,
+      asOfMatchday: useCutoff ? asOfMatchday : null,
+      scenarios,
+    }
+    replaceShareQuery(shouldPersistShare(state) ? encodeShareState(state) : null)
+  }, [leagueId, season, useCutoff, asOfMatchday, scenarios])
 
   const baseStandings = useMemo(
     () => buildStandings(matches, { maxMatchday: cutoff }),
@@ -103,6 +149,12 @@ export default function App() {
   const suggestedCutoff =
     seasonComplete || openMatches.length === 0 ? Math.max(0, maxDay - 1) : null
 
+  const flashShareHint = (message: string) => {
+    setShareHint(message)
+    if (shareHintTimer.current != null) window.clearTimeout(shareHintTimer.current)
+    shareHintTimer.current = window.setTimeout(() => setShareHint(null), 2000)
+  }
+
   const onLeagueChange = (next: LeagueId) => {
     setLeagueId(next)
     setSelectedTeamId(null)
@@ -125,6 +177,31 @@ export default function App() {
     setUseCutoff(true)
     setAsOfMatchday(day)
     setScenarios([])
+  }
+
+  const resetScenariosAndShare = () => {
+    setScenarios([])
+    replaceShareQuery(null)
+    flashShareHint('Szenarien zurückgesetzt')
+  }
+
+  const copyShareLink = async () => {
+    const state: ShareState = {
+      leagueId,
+      season,
+      useCutoff,
+      asOfMatchday: useCutoff ? asOfMatchday : null,
+      scenarios,
+    }
+    const url = shouldPersistShare(state)
+      ? replaceShareQuery(encodeShareState(state))
+      : replaceShareQuery(null)
+    try {
+      await navigator.clipboard.writeText(url)
+      flashShareHint('Link kopiert')
+    } catch {
+      flashShareHint('Kopieren fehlgeschlagen')
+    }
   }
 
   return (
@@ -196,6 +273,20 @@ export default function App() {
             <strong className="cutoff-value">{asOfMatchday ?? 0}</strong>
           </label>
         )}
+        <div className="toolbar-actions">
+          <button type="button" className="ghost" onClick={() => void copyShareLink()}>
+            Link teilen
+          </button>
+          <button
+            type="button"
+            className="ghost"
+            onClick={resetScenariosAndShare}
+            disabled={scenarios.length === 0}
+          >
+            Zurücksetzen
+          </button>
+          {shareHint && <span className="share-hint">{shareHint}</span>}
+        </div>
         <span className="toolbar-note">
           {openMatches.length} offene Spiele
           {scenarios.length > 0 ? ` · ${scenarios.length} Szenarien` : ''}

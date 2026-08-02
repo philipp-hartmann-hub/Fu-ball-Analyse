@@ -22,8 +22,9 @@ Echtzeit-Analyse für die **1. und 2. Bundesliga**: Tabelle, Restprogramm und m�
 - Spalte **Möglich**: Best-/Schlechtfall bis Saisonende
 - Vereinsanalyse: **nach nächstem Spieltag** (exakt) und **Saisonende** (heuristisch)
 - Spalte **Δ**: Platzveränderung durch gesetzte Szenarien
-- **Szenario-Simulator**: Grob/Fein je Spieltag (Default: nächster)
+- **Szenario-Simulator**: Grob/Fein je Spieltag (Default: nächster); teilbar via `?s=`
 - **Stand nach Spieltag**: Slider für historischen Stand
+- Toolbar: **Link teilen** (Zwischenablage) und **Zurücksetzen** (Szenarien + `?s=`)
 
 ---
 
@@ -54,6 +55,18 @@ src/
 ---
 
 ## Änderungsprotokoll
+
+### 2026-08-02 — Prompt 33
+
+**User:** Szenarien über URL teilen (`?s=`), Link-teilen-Button, Zurücksetzen.
+
+**Aktion:**
+- `src/lib/shareState.ts` (base64url JSON: Liga, Saison, Cutoff, Szenarien)
+- Sync per `history.replaceState`; Boot aus `?s=`; robustes Decode
+- Toolbar: „Link teilen“ + „Zurücksetzen“
+- Unit-Tests Round-Trip (`shareState.test.ts`)
+
+**Status:** erledigt
 
 ### 2026-08-02 — Prompt 32
 

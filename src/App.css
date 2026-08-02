@@ -353,6 +353,19 @@
   font-size: 0.85rem;
 }
 
+.toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.share-hint {
+  font-size: 0.8rem;
+  color: var(--accent);
+  animation: rise 0.25s ease-out both;
+}
+
 .banner {
   padding: 1rem;
   border-radius: 0.75rem;
@@ -640,6 +653,10 @@
   .toolbar-note {
     margin-left: 0;
     font-size: 0.8rem;
+  }
+
+  .toolbar-actions {
+    width: 100%;
   }
 
   .cutoff {
