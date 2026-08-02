@@ -2,13 +2,31 @@ import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import {
   EXPLAIN_TITLES,
-  explainBody,
   type ExplainTopic,
 } from '../lib/modelExplanations'
+import {
+  ForecastExplainBody,
+  HardnessExplainBody,
+  SpanExplainBody,
+  ThresholdsExplainBody,
+} from './explainBodies'
 
 interface Props {
   topic: ExplainTopic | null
   onClose: () => void
+}
+
+function ExplainContent({ topic }: { topic: ExplainTopic }) {
+  switch (topic) {
+    case 'forecast':
+      return <ForecastExplainBody />
+    case 'span':
+      return <SpanExplainBody />
+    case 'thresholds':
+      return <ThresholdsExplainBody />
+    case 'hardness':
+      return <HardnessExplainBody />
+  }
 }
 
 export function ExplainModal({ topic, onClose }: Props) {
@@ -19,7 +37,6 @@ export function ExplainModal({ topic, onClose }: Props) {
   useEffect(() => {
     if (!open) return
     closeRef.current?.focus()
-    // Panel sofort in den sichtbaren Bereich bringen (Scroll/Keyboard)
     panelRef.current?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
@@ -64,7 +81,9 @@ export function ExplainModal({ topic, onClose }: Props) {
             ✕
           </button>
         </div>
-        <div className="modal-body">{explainBody(topic)}</div>
+        <div className="modal-body">
+          <ExplainContent topic={topic} />
+        </div>
         <div className="modal-foot">
           <button type="button" className="ghost" onClick={onClose}>
             Verstanden

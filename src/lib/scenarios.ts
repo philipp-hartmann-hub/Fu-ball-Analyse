@@ -189,7 +189,7 @@ export function computeSeasonOutlook(
   }
 }
 
-/** @deprecated use computeSeasonOutlook for selected team */
+/** Spannen für alle Teams (Tabellenspalte „Möglich“). */
 export function computePositionRanges(
   baseStandings: StandingRow[],
   remaining: Match[],

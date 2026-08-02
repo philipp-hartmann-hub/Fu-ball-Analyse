@@ -72,9 +72,10 @@ export function LiveMatchesBar({ matches, pollMs, refreshing, liveCount }: Props
   }, [fixtures])
 
   useEffect(() => {
+    const timers = flashTimers.current
     return () => {
-      for (const tid of flashTimers.current.values()) window.clearTimeout(tid)
-      flashTimers.current.clear()
+      for (const tid of timers.values()) window.clearTimeout(tid)
+      timers.clear()
     }
   }, [])
 

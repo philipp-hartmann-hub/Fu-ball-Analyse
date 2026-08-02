@@ -6,21 +6,6 @@ export type {
   Match,
 } from './api/matchSchema'
 
-export interface ApiTableRow {
-  teamInfoId: number
-  teamName: string
-  shortName: string
-  teamIconUrl: string
-  points: number
-  opponentGoals: number
-  goals: number
-  matches: number
-  won: number
-  lost: number
-  draw: number
-  goalDiff: number
-}
-
 export interface StandingRow {
   teamId: number
   teamName: string

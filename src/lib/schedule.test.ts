@@ -31,7 +31,7 @@ describe('remainingStrengthRaw', () => {
     expect(raw.get(TEAM_ALPHA.teamId)?.remainingGames).toBe(1)
     expect(raw.get(TEAM_GAMMA.teamId)?.raw).toBeCloseTo(3 * AWAY_WEIGHT)
     expect(raw.get(TEAM_BETA.teamId)?.raw).toBeCloseTo(1 * HOME_WEIGHT)
-    expect(raw.get(TEAM_DELTA.teamId)?.raw).toBeCloseTo(0 * AWAY_WEIGHT)
+    expect(raw.get(TEAM_DELTA.teamId)?.raw).toBeCloseTo(0)
     expect(raw.get(TEAM_DELTA.teamId)?.remainingGames).toBe(1)
   })
 

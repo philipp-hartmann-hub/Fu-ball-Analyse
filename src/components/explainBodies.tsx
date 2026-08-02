@@ -1,29 +1,14 @@
-import type { ReactNode } from 'react'
 import {
   DEFAULT_SIMULATIONS,
   HOME_ADVANTAGE,
-} from './simulation'
+} from '../lib/simulation'
 import {
   AWAY_WEIGHT,
   HOME_WEIGHT,
   MIN_GAMES_FOR_HARDNESS,
-} from './schedule'
+} from '../lib/schedule'
 
-/** Alle UI-Stellen mit Modell-/Heuristik-Rechnung. */
-export type ExplainTopic =
-  | 'forecast'
-  | 'span'
-  | 'thresholds'
-  | 'hardness'
-
-export const EXPLAIN_TITLES: Record<ExplainTopic, string> = {
-  forecast: 'So funktioniert die Prognose',
-  span: 'So funktioniert die Platz-Spanne',
-  thresholds: 'So entstehen Punktschwellen',
-  hardness: 'So entsteht die Restprogramm-Härte',
-}
-
-function ForecastBody() {
+export function ForecastExplainBody() {
   const runsLabel = DEFAULT_SIMULATIONS.toLocaleString('de-DE')
   const homeLabel = HOME_ADVANTAGE.toLocaleString('de-DE', {
     minimumFractionDigits: 1,
@@ -68,7 +53,7 @@ function ForecastBody() {
   )
 }
 
-function SpanBody() {
+export function SpanExplainBody() {
   return (
     <>
       <p className="modal-lead">
@@ -99,7 +84,7 @@ function SpanBody() {
   )
 }
 
-function ThresholdsBody() {
+export function ThresholdsExplainBody() {
   return (
     <>
       <p className="modal-lead">
@@ -128,7 +113,7 @@ function ThresholdsBody() {
   )
 }
 
-function HardnessBody() {
+export function HardnessExplainBody() {
   const home = HOME_WEIGHT.toLocaleString('de-DE', {
     minimumFractionDigits: 1,
     maximumFractionDigits: 1,
@@ -166,17 +151,4 @@ function HardnessBody() {
       </p>
     </>
   )
-}
-
-export function explainBody(topic: ExplainTopic): ReactNode {
-  switch (topic) {
-    case 'forecast':
-      return <ForecastBody />
-    case 'span':
-      return <SpanBody />
-    case 'thresholds':
-      return <ThresholdsBody />
-    case 'hardness':
-      return <HardnessBody />
-  }
 }

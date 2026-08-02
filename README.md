@@ -59,6 +59,16 @@ src/
 
 ## Änderungsprotokoll
 
+### 2026-08-02 — Prompt 48
+
+**User:** Ungenutzten Code aufräumen; oxlint-Findings beheben.
+
+**Aktion:**
+- `ApiTableRow` entfernt (ungenutzt); `computePositionRanges` behalten (App-Tabelle), `@deprecated` entfernt
+- oxlint: LiveMatchesBar-Cleanup, Explain-Bodies ausgelagert, Test `0 * AWAY_WEIGHT` gefixt
+
+**Status:** erledigt
+
 ### 2026-08-02 — Prompt 47
 
 **User:** Runtime-Validierung OpenLigaDB mit zod; Typen aus Schema ableiten.
