@@ -8,9 +8,11 @@ import type { Match } from '../types'
 import {
   isLiveMatch,
   listLiveMatches,
+  listMatchdayFixtures,
   liveMatchesToScenarios,
   liveScoreResult,
   mergeScenarios,
+  resolveResultsMatchday,
 } from './live'
 
 function withKickoff(match: Match, iso: string, finished = false): Match {
@@ -19,6 +21,18 @@ function withKickoff(match: Match, iso: string, finished = false): Match {
     matchIsFinished: finished,
     matchDateTime: iso,
     matchDateTimeUTC: iso,
+  }
+}
+
+function withDay(match: Match, day: number): Match {
+  return {
+    ...match,
+    matchID: match.matchID + day * 1000,
+    group: {
+      groupName: `${day}. Spieltag`,
+      groupOrderID: day,
+      groupID: 1000 + day,
+    },
   }
 }
 
@@ -80,6 +94,85 @@ describe('liveScoreResult', () => {
       },
     ]
     expect(liveScoreResult(m)?.pointsTeam1).toBe(2)
+  })
+})
+
+describe('resolveResultsMatchday', () => {
+  it('zeigt Spieltag noch 2 Tage nach letztem Spiel', () => {
+    const md1 = withKickoff(
+      withDay(MATCH_MD2_ALPHA_GAMMA, 1),
+      '2025-08-10T15:30:00Z',
+      true,
+    )
+    const md2 = withKickoff(
+      withDay(MATCH_MD2_ALPHA_GAMMA, 2),
+      '2025-08-20T15:30:00Z',
+      false,
+    )
+    // 1 Tag nach MD1 → noch MD1
+    expect(
+      resolveResultsMatchday([md1, md2], Date.parse('2025-08-11T16:00:00Z')),
+    ).toBe(1)
+  })
+
+  it('wechselt nach Hold-Fenster auf den nächsten Spieltag', () => {
+    const md1 = withKickoff(
+      withDay(MATCH_MD2_ALPHA_GAMMA, 1),
+      '2025-08-10T15:30:00Z',
+      true,
+    )
+    const md2 = withKickoff(
+      withDay(MATCH_MD2_ALPHA_GAMMA, 2),
+      '2025-08-20T15:30:00Z',
+      false,
+    )
+    // > 2 Tage nach MD1 → MD2
+    expect(
+      resolveResultsMatchday([md1, md2], Date.parse('2025-08-13T16:00:00Z')),
+    ).toBe(2)
+  })
+})
+
+describe('listMatchdayFixtures', () => {
+  it('liefert finished/live/upcoming Status', () => {
+    const now = Date.parse('2025-08-15T16:00:00Z')
+    const finished = withKickoff(
+      withDay(MATCH_MD2_ALPHA_GAMMA, 3),
+      '2025-08-15T13:00:00Z',
+      true,
+    )
+    finished.matchResults = [
+      {
+        resultID: 1,
+        resultName: 'Endergebnis',
+        pointsTeam1: 2,
+        pointsTeam2: 1,
+        resultOrderID: 2,
+        resultTypeID: 2,
+      },
+    ]
+    const live = withKickoff(
+      { ...withDay(MATCH_MD2_ALPHA_GAMMA, 3), matchID: 301 },
+      '2025-08-15T15:30:00Z',
+      false,
+    )
+    live.matchResults = [
+      {
+        resultID: 2,
+        resultName: 'Zwischenstand',
+        pointsTeam1: 0,
+        pointsTeam2: 1,
+        resultOrderID: 1,
+        resultTypeID: 1,
+      },
+    ]
+    const upcoming = withKickoff(
+      { ...withDay(MATCH_MD2_ALPHA_GAMMA, 3), matchID: 302 },
+      '2025-08-15T18:30:00Z',
+      false,
+    )
+    const rows = listMatchdayFixtures([finished, live, upcoming], 3, now)
+    expect(rows.map((r) => r.status)).toEqual(['finished', 'live', 'upcoming'])
   })
 })
 

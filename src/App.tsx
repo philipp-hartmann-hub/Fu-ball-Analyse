@@ -458,11 +458,6 @@ export default function App() {
       ) : (
         <main className="layout">
           <div className="main-col">
-            <LiveMatchesBar
-              liveMatches={liveMatches}
-              pollMs={pollMs}
-              refreshing={refreshing}
-            />
             <div className="table-toolbar">
               <ZoneLegend league={leagueId} />
               <div className="table-toolbar-controls">
@@ -545,6 +540,12 @@ export default function App() {
               hardnessByTeam={hardnessByTeam}
               showHardness={showHardness}
               onExplain={openExplain}
+            />
+            <LiveMatchesBar
+              matches={matches}
+              pollMs={pollMs}
+              refreshing={refreshing}
+              liveCount={liveMatches.length}
             />
           </div>
           <aside className="side-col">

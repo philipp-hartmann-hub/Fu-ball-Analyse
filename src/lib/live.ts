@@ -1,4 +1,5 @@
 import type { Match, MatchResult, ScenarioResult } from '../types'
+import { finalResult } from './table'
 
 /** Normales Polling ohne laufende Spiele. */
 export const POLL_MS = 60_000
@@ -12,6 +13,14 @@ export const LIVE_POLL_MS = 20_000
  */
 export const LIVE_MAX_AGE_MS = 6 * 60 * 60 * 1000
 
+/**
+ * Nach dem letzten Anstoß eines Spieltags bleibt er noch so lange die
+ * Ergebnis-Übersicht – danach der nächste Spieltag.
+ */
+export const MATCHDAY_DISPLAY_HOLD_MS = 2 * 24 * 60 * 60 * 1000
+
+export type MatchDisplayStatus = 'live' | 'finished' | 'upcoming'
+
 export interface LiveMatchView {
   match: Match
   homeGoals: number
@@ -21,11 +30,25 @@ export interface LiveMatchView {
   resultName: string | null
 }
 
+export interface MatchdayFixtureView {
+  match: Match
+  status: MatchDisplayStatus
+  homeGoals: number | null
+  awayGoals: number | null
+  hasScore: boolean
+  resultName: string | null
+  kickoffLabel: string
+}
+
 function kickoffMs(match: Match): number | null {
   const raw = match.matchDateTimeUTC || match.matchDateTime
   if (!raw) return null
   const t = Date.parse(raw)
   return Number.isNaN(t) ? null : t
+}
+
+export function matchKickoffMs(match: Match): number | null {
+  return kickoffMs(match)
 }
 
 /**
@@ -40,7 +63,6 @@ export function liveScoreResult(match: Match): MatchResult | null {
 /**
  * Laufendes Spiel: Anstoß in der Vergangenheit, nicht beendet,
  * und nicht älter als LIVE_MAX_AGE_MS.
- * Zwischenstand optional (ohne Results → 0:0 / hasScore false).
  */
 export function isLiveMatch(match: Match, nowMs: number = Date.now()): boolean {
   if (match.matchIsFinished) return false
@@ -73,6 +95,111 @@ export function listLiveMatches(
   })
 }
 
+function lastKickoffOfDay(dayMatches: Match[]): number | null {
+  let max: number | null = null
+  for (const m of dayMatches) {
+    const t = kickoffMs(m)
+    if (t == null) continue
+    if (max == null || t > max) max = t
+  }
+  return max
+}
+
+/**
+ * Spieltag für die Ergebnis-Übersicht:
+ * Erster Spieltag, der noch nicht „abgelaufen“ ist
+ * (alle fertig UND letztes Spiel + 2 Tage vorbei) → sonst nächster.
+ */
+export function resolveResultsMatchday(
+  matches: Match[],
+  nowMs: number = Date.now(),
+): number | null {
+  const days = [...new Set(matches.map((m) => m.group.groupOrderID))].sort(
+    (a, b) => a - b,
+  )
+  if (days.length === 0) return null
+
+  for (const day of days) {
+    const dayMatches = matches.filter((m) => m.group.groupOrderID === day)
+    const allFinished = dayMatches.every((m) => m.matchIsFinished)
+    const lastKo = lastKickoffOfDay(dayMatches)
+    const expired =
+      allFinished &&
+      lastKo != null &&
+      nowMs > lastKo + MATCHDAY_DISPLAY_HOLD_MS
+    if (!expired) return day
+  }
+
+  return days[days.length - 1] ?? null
+}
+
+function formatKickoff(match: Match): string {
+  const raw = match.matchDateTimeUTC || match.matchDateTime
+  if (!raw) return ''
+  const d = new Date(raw)
+  if (Number.isNaN(d.getTime())) return ''
+  return d.toLocaleString('de-DE', {
+    weekday: 'short',
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+/** Alle Partien eines Spieltags für die Ergebnis-Übersicht. */
+export function listMatchdayFixtures(
+  matches: Match[],
+  matchday: number,
+  nowMs: number = Date.now(),
+): MatchdayFixtureView[] {
+  const dayMatches = matches
+    .filter((m) => m.group.groupOrderID === matchday)
+    .sort((a, b) => {
+      const ta = kickoffMs(a) ?? 0
+      const tb = kickoffMs(b) ?? 0
+      if (ta !== tb) return ta - tb
+      return a.matchID - b.matchID
+    })
+
+  return dayMatches.map((match) => {
+    const kickoffLabel = formatKickoff(match)
+    if (match.matchIsFinished) {
+      const end = finalResult(match)
+      return {
+        match,
+        status: 'finished' as const,
+        homeGoals: end?.pointsTeam1 ?? null,
+        awayGoals: end?.pointsTeam2 ?? null,
+        hasScore: end != null,
+        resultName: end?.resultName ?? 'Endstand',
+        kickoffLabel,
+      }
+    }
+    if (isLiveMatch(match, nowMs)) {
+      const live = liveScoreResult(match)
+      return {
+        match,
+        status: 'live' as const,
+        homeGoals: live?.pointsTeam1 ?? 0,
+        awayGoals: live?.pointsTeam2 ?? 0,
+        hasScore: live != null,
+        resultName: live?.resultName ?? 'Live',
+        kickoffLabel,
+      }
+    }
+    return {
+      match,
+      status: 'upcoming' as const,
+      homeGoals: null,
+      awayGoals: null,
+      hasScore: false,
+      resultName: null,
+      kickoffLabel,
+    }
+  })
+}
+
 /** Zwischenstände als Szenarien für buildStandings (nur wenn Score vorliegt). */
 export function liveMatchesToScenarios(live: LiveMatchView[]): ScenarioResult[] {
   return live
@@ -95,6 +222,6 @@ export function mergeScenarios(
   return [...map.values()]
 }
 
-export function scoreKey(homeGoals: number, awayGoals: number): string {
-  return `${homeGoals}:${awayGoals}`
+export function scoreKey(homeGoals: number | null, awayGoals: number | null): string {
+  return `${homeGoals ?? '-'}:${awayGoals ?? '-'}`
 }

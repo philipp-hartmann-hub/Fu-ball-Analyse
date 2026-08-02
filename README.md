@@ -19,7 +19,7 @@ Echtzeit-Analyse für die **1. und 2. Bundesliga**: Tabelle, Restprogramm und m�
 ### Features
 
 - Live-Tabelle mit Zonen (BL1: CL/EL/Abstieg · BL2: Aufstieg/Abstieg)
-- **Live-Spiele**: laufende Partien über der Tabelle; Polling 20s während Live, sonst 60s; optional Zwischenstände einrechnen
+- **Live-Spiele**: Ergebnisübersicht des aktuellen Spieltags unter der Tabelle (aufklappbar); 2 Tage nach letztem Spiel → nächster Spieltag; Polling 20s bei Live
 - Spalte **Möglich**: Best-/Schlechtfall bis Saisonende (**Spanne**) oder Monte-Carlo-**Prognose** (umschaltbar)
 - Optionale Spalte **Härte**: Restprogramm-Härte 0–100 (Toggle „Restprogramm“; auf Mobile ausgeblendet)
 - Vereinsanalyse: **nach nächstem Spieltag** (exakt) und **Saisonende** (heuristisch), inkl. Restprogramm-Härte
@@ -57,6 +57,16 @@ src/
 ---
 
 ## Änderungsprotokoll
+
+### 2026-08-02 — Prompt 46
+
+**User:** Live-Ergebnisübersicht unter die Tabelle (aufklappbar); Spieltag 2 Tage nach letztem Spiel → neuer Spieltag.
+
+**Aktion:**
+- `resolveResultsMatchday` / `listMatchdayFixtures` in `live.ts`
+- `LiveMatchesBar` unter Tabelle, collapsible, ganzer Spieltag (Ende/Live/Termin)
+
+**Status:** erledigt
 
 ### 2026-08-02 — Prompt 45
 
