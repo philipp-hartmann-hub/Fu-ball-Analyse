@@ -5,6 +5,7 @@ import {
   type ExplainTopic,
 } from '../lib/modelExplanations'
 import {
+  ConditionsExplainBody,
   ForecastExplainBody,
   HardnessExplainBody,
   SpanExplainBody,
@@ -26,6 +27,8 @@ function ExplainContent({ topic }: { topic: ExplainTopic }) {
       return <ThresholdsExplainBody />
     case 'hardness':
       return <HardnessExplainBody />
+    case 'conditions':
+      return <ConditionsExplainBody />
   }
 }
 

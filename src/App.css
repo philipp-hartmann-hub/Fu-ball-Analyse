@@ -1373,6 +1373,136 @@ button.linkish.explain-inline {
   padding: 1rem;
 }
 
+button.range-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+button.range-btn:hover:not(:disabled):not(.is-static) {
+  background: rgba(196, 240, 97, 0.06);
+}
+
+button.range-btn.is-open {
+  background: rgba(196, 240, 97, 0.1);
+}
+
+button.range-btn:disabled,
+button.range-btn.is-static {
+  cursor: default;
+}
+
+.range-hint {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.72rem;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.conditions-panel {
+  margin-top: 0.75rem;
+  padding: 0.85rem 0.9rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--line);
+  background: rgba(15, 31, 23, 0.4);
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.conditions-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.conditions-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.conditions-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.conditions-close {
+  font-size: 0.78rem;
+}
+
+.conditions-block {
+  padding: 0.55rem 0.65rem;
+  border-radius: 0.55rem;
+  border: 1px solid transparent;
+}
+
+.conditions-block h4 {
+  margin: 0 0 0.35rem;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.conditions-block.block-own {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 28%, var(--line));
+}
+
+.conditions-block.block-must {
+  background: color-mix(in srgb, #d4a574 10%, transparent);
+  border-color: color-mix(in srgb, #d4a574 25%, var(--line));
+}
+
+.conditions-block.block-flex {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: var(--line);
+}
+
+.conditions-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.conditions-list.muted {
+  color: var(--muted);
+}
+
+.conditions-meta {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.conditions-flex-toggle {
+  font-size: 0.82rem;
+  padding-inline: 0;
+}
+
+.conditions-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+  padding-top: 0.15rem;
+}
+
 .table-wrap {
   overflow-x: auto;
   border: 1px solid var(--line);

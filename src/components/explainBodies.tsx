@@ -152,3 +152,37 @@ export function HardnessExplainBody() {
     </>
   )
 }
+
+export function ConditionsExplainBody() {
+  return (
+    <>
+      <p className="modal-lead">
+        Die Bedingungs-Analyse zerlegt den Best- bzw. Schlechtfall-Raum in{' '}
+        <strong>was fest sein muss</strong> und <strong>was egal ist</strong> – kein einzelner
+        Beispielweg und keine nackte Konstellations-Zählung.
+      </p>
+      <h3>Nächster Spieltag (exakt)</h3>
+      <p>
+        Aus allen Ergebnis-Kombinationen, die den Best- bzw. Schlechtfall-Platz erreichen, wird
+        pro Spiel geprüft: Kommt in <em>jedem</em> dieser Wege derselbe Ausgang vor, ist er{' '}
+        <strong>notwendig</strong>. Variieren die Ausgänge, ist das Spiel <strong>egal</strong>.
+        Dein eigenes Spiel steht separat als Vorgabe (im Bestfall bevorzugt Sieg, im Schlechtfall
+        Niederlage).
+      </p>
+      <p>
+        „Muss passieren“ heißt nur: gilt in jedem optimalen Weg bei dieser Vorgabe. Es sagt nichts
+        darüber, ob alle egalen Spiele beliebig kombinierbar sind.
+      </p>
+      <h3>Gesamte Saison (heuristisch)</h3>
+      <p>
+        Zu viele Restspiele für eine volle Enumeration. Stattdessen: eigenes Restprogramm als
+        Vorgabe (alles siegen bzw. verlieren), Konkurrenten in Tabellen-Reichweite vs. Spiele ohne
+        Einfluss – klar als Schätzung gekennzeichnet.
+      </p>
+      <p className="modal-footnote">
+        „Als Szenario übernehmen“ setzt nur Vorgabe und notwendige Fremdergebnisse im Simulator;
+        egale Spiele bleiben offen.
+      </p>
+    </>
+  )
+}

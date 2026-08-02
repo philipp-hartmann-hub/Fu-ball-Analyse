@@ -22,6 +22,7 @@ import {
   computePositionRanges,
   computeSeasonOutlook,
   enumerateMatchdayOutcomes,
+  scenariosFromConditions,
   seasonExtremeOutcomes,
 } from './lib/scenarios'
 import { deriveThresholdLines } from './lib/thresholds'
@@ -609,6 +610,14 @@ export default function App() {
                   }
                   leagueTeamCount={baseStandings.length}
                   onExplain={openExplain}
+                  onApplyConditions={(cond) => {
+                    const added = scenariosFromConditions(cond)
+                    setScenarios((prev) => {
+                      const map = new Map(prev.map((s) => [s.matchId, s]))
+                      for (const s of added) map.set(s.matchId, s)
+                      return [...map.values()]
+                    })
+                  }}
                 />
                 <ScenarioPanel
                   matches={openMatches}
