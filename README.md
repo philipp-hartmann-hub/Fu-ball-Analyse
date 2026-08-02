@@ -19,7 +19,7 @@ Echtzeit-Analyse für die **1. und 2. Bundesliga**: Tabelle, Restprogramm und m�
 
 ### Features
 
-- Live-Tabelle mit Zonen (BL1: CL/EL/Abstieg · BL2: Aufstieg/Abstieg)
+- Live-Tabelle mit Zonen (BL1: CL/EL/Abstieg · BL2: Aufstieg/Abstieg); **Cache**: zuletzt geladene Daten sofort aus localStorage, Refresh im Hintergrund
 - **Live-Spiele**: Ergebnisübersicht des aktuellen Spieltags unter der Tabelle (aufklappbar); 2 Tage nach letztem Spiel → nächster Spieltag; Polling 20s bei Live
 - Spalte **Möglich**: Best-/Schlechtfall bis Saisonende (**Spanne**) oder Monte-Carlo-**Prognose** (umschaltbar)
 - Optionale Spalte **Härte**: Restprogramm-Härte 0–100 (Toggle „Restprogramm“; auf Mobile ausgeblendet)
@@ -58,6 +58,17 @@ src/
 ---
 
 ## Änderungsprotokoll
+
+### 2026-08-02 — Prompt 49
+
+**User:** Sofort Cache-Tabelle zeigen, Hintergrund-Refresh.
+
+**Aktion:**
+- `leagueCache.ts` (localStorage, 24h TTL, try/catch, Zod-Revalidierung)
+- `useLeagueData`: Cache hydratisieren → `load(true)`; ohne Cache wie bisher
+- Statuszeile „Aktualisiere…“ während Refresh
+
+**Status:** erledigt
 
 ### 2026-08-02 — Prompt 48
 

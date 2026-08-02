@@ -377,9 +377,11 @@ export default function App() {
           <div className="status-row">
             <span className={`pulse ${refreshing ? 'on' : ''}`} aria-hidden />
             <span>
-              {updatedAt
-                ? `Aktualisiert ${updatedAt.toLocaleTimeString('de-DE')}`
-                : 'Lade…'}
+              {refreshing
+                ? 'Aktualisiere…'
+                : updatedAt
+                  ? `Aktualisiert ${updatedAt.toLocaleTimeString('de-DE')}`
+                  : 'Lade…'}
               {matches.length > 0 ? ` · Saison ${seasonProgress}%` : ''}
             </span>
             <button type="button" className="ghost" onClick={() => void reload()}>

@@ -3,6 +3,7 @@ import { fetchLeagueMatches } from '../api/dataSource'
 import type { League } from '../leagues'
 import type { Match } from '../types'
 import { LIVE_POLL_MS, POLL_MS, listLiveMatches } from '../lib/live'
+import { readLeagueCache, writeLeagueCache } from '../lib/leagueCache'
 
 export function useLeagueData(leagueId: string, season: number) {
   const [matches, setMatches] = useState<Match[]>([])
@@ -11,6 +12,7 @@ export function useLeagueData(leagueId: string, season: number) {
   const [error, setError] = useState<string | null>(null)
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null)
   const [refreshing, setRefreshing] = useState(false)
+  const [fromCache, setFromCache] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
 
   const liveMatches = useMemo(() => listLiveMatches(matches), [matches])
@@ -29,12 +31,21 @@ export function useLeagueData(leagueId: string, season: number) {
       try {
         const next = await fetchLeagueMatches(leagueId, season)
         if (ac.signal.aborted) return
+        const now = new Date()
         setMatches(next.matches)
         setLeague(next.league)
-        setUpdatedAt(new Date())
+        setUpdatedAt(now)
+        setFromCache(false)
+        writeLeagueCache(leagueId, season, next.matches, next.league, now)
       } catch (e) {
         if (ac.signal.aborted) return
-        setMatches([])
+        // Bei stillem Refresh vorhandene (Cache-)Daten behalten
+        if (!silent) {
+          setMatches([])
+          setLeague(null)
+          setUpdatedAt(null)
+          setFromCache(false)
+        }
         setError(e instanceof Error ? e.message : 'Laden fehlgeschlagen')
       } finally {
         if (!ac.signal.aborted) {
@@ -46,16 +57,30 @@ export function useLeagueData(leagueId: string, season: number) {
     [leagueId, season],
   )
 
-  // Erstladen / Liga- oder Saisonwechsel – Abort nur hier beim Teardown
+  // Cache hydratisieren, dann laden (silent wenn Cache da)
   useEffect(() => {
-    void load(false)
+    const cached = readLeagueCache(leagueId, season)
+    if (cached) {
+      setMatches(cached.matches)
+      setLeague(cached.league)
+      setUpdatedAt(new Date(cached.updatedAt))
+      setLoading(false)
+      setError(null)
+      setFromCache(true)
+      void load(true)
+    } else {
+      setMatches([])
+      setLeague(null)
+      setUpdatedAt(null)
+      setFromCache(false)
+      void load(false)
+    }
     return () => {
       abortRef.current?.abort()
     }
-  }, [load])
+  }, [load, leagueId, season])
 
-  // Polling: Intervall wechseln ohne den Aktiven Request unnötig zu killen
-  // (Cleanup löscht nur den Timer, kein Abort).
+  // Polling: nur Timer cleanup, kein Abort
   useEffect(() => {
     const id = window.setInterval(() => void load(true), pollMs)
     return () => {
@@ -70,6 +95,7 @@ export function useLeagueData(leagueId: string, season: number) {
     error,
     updatedAt,
     refreshing,
+    fromCache,
     reload: () => load(false),
     liveMatches,
     pollMs,
