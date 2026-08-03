@@ -3,9 +3,7 @@
 declare const __APP_BUILD__: string
 
 interface ImportMetaEnv {
-  readonly DEV: boolean
-  readonly PROD: boolean
-  readonly MODE: string
+  readonly VITE_FOOTBALL_DATA_TOKEN?: string
 }
 
 interface ImportMeta {

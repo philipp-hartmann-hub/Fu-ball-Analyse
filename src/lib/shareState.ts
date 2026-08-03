@@ -24,18 +24,8 @@ type WireV1 = {
   s?: [number, number, number][]
 }
 
-const LEAGUE_IDS = new Set<LeagueId>([
-  'bl1',
-  'bl2',
-  'bl3',
-  'pl',
-  'pd',
-  'sa',
-  'fl1',
-])
-
 function isLeagueId(value: unknown): value is LeagueId {
-  return typeof value === 'string' && LEAGUE_IDS.has(value as LeagueId)
+  return value === 'bl1' || value === 'bl2' || value === 'bl3'
 }
 
 function clampGoals(n: number): number {

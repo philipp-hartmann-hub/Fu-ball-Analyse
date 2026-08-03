@@ -1,6 +1,6 @@
 # Tabellenblick
 
-Echtzeit-Analyse für **deutsche Ligen** (OpenLigaDB) und die **Top-5** (fixturedownload.com, ohne Token): Tabelle, Restprogramm und mögliche Endplätze unter Szenarien.
+Echtzeit-Analyse für die **1., 2. und 3. Liga**: Tabelle, Restprogramm und mögliche Endplätze unter Szenarien.
 
 > Living Documentation — nach **jedem** User-Prompt aktualisieren (`.cursor/rules/readme-doku.mdc`).
 
@@ -12,14 +12,15 @@ Echtzeit-Analyse für **deutsche Ligen** (OpenLigaDB) und die **Top-5** (fixture
 |---|---|
 | **Repo** | https://github.com/philipp-hartmann-hub/Fu-ball-Analyse |
 | **Stack** | React 19 · TypeScript · Vite 8 · Vitest · Zod |
-| **Daten** | [OpenLigaDB](https://www.openligadb.de/) (`bl1` / `bl2` / `bl3`) · [fixturedownload.com](https://fixturedownload.com/) (`pl` / `pd` / `sa` / `fl1`, kein Token) |
-| **Scope** | 1.–3. Liga DE · Premier League · La Liga · Serie A · Ligue 1 |
+
+| **Daten** | [OpenLigaDB](https://www.openligadb.de/) (`bl1` / `bl2` / `bl3`) – ohne API-Token |
+| **Scope** | 1. Bundesliga, 2. Bundesliga und 3. Liga |
 | **Tests** | `npm run test` · Watch: `npm run test:watch` |
 
 ### Features
 
-- Live-Tabelle mit Zonen (BL1/Top-5: CL/EL/Abstieg · BL2/3. Liga: Aufstieg/Abstieg); **Cache**: zuletzt geladene Daten sofort aus localStorage, Refresh im Hintergrund
-- **Ergebnisse**: Spieltag wählbar; Wappen; Live-Updates (OpenLiga); Top-5: öffentlicher Fixture-Feed (**kein Live-Ticker**)
+- Live-Tabelle mit Zonen (BL1: CL/EL/Abstieg · BL2/3. Liga: Aufstieg/Abstieg); **Cache**: zuletzt geladene Daten sofort aus localStorage, Refresh im Hintergrund
+- **Ergebnisse**: Spieltag wählbar (durchklicken); Wappen; Live-Updates; 2 Tage nach letztem Spiel → nächster Spieltag als Default
 - Spalte **Möglich**: Best-/Schlechtfall bis Saisonende (**Spanne**) oder Monte-Carlo-**Prognose** (umschaltbar)
 - Optionale Spalte **Härte**: Restprogramm-Härte 0–100 (Toggle „Restprogramm“; auf Mobile ausgeblendet)
 - Seitenleiste: **Verein** (Überblick + Spieltag-Analyse + Saison) · **Ergebnisse** · **Szenario** · **Vergleich**
@@ -36,8 +37,6 @@ npm install
 npm run dev
 ```
 
-Keine API-Tokens nötig. Top-5 laufen über den Proxy `/api/fixtures` → fixturedownload.com.
-
 Build: `npm run build`
 
 ---
@@ -46,41 +45,26 @@ Build: `npm run build`
 
 ```
 src/
-  leagues.ts                      # source: openliga | fixtures
-  api/openliga.ts / fixtureDownload.ts / matchSchema.ts / dataSource.ts
+  leagues.ts
+  api/openliga.ts / matchSchema.ts / dataSource.ts
   hooks/useLeagueData.ts
-  lib/table.ts / scenarios.ts / schedule.ts / simulation.ts / …
-  components/…
+  lib/table.ts / scenarios.ts / schedule.ts / simulation.ts / thresholds.ts / live.ts
+  components/…             # UI
   App.tsx
-api/fixtures/[...path].ts         # Vercel Edge-Proxy (CORS, kein Token)
 ```
 
 ---
 
 ## Änderungsprotokoll
 
-### 2026-08-03 — Prompt 63
+### 2026-08-03 — Prompt 64
 
-**User:** Anderen Weg ohne Token – keinen football-data.org-Token wollen.
+**User:** Top-5 wieder raus – zurück zum Commit davor.
 
 **Aktion:**
-- football-data.org entfernt (Adapter, Token-Proxy, Env)
-- Top-5 umgestellt auf fixturedownload.com (`fixtureDownload.ts` + `/api/fixtures`-Proxy)
-- Kein Token mehr nötig; UX-Hinweis „Kein Live-Ticker“; Tests + README
+- Revert des Top-5-/fixturedownload-Commits; wieder nur OpenLigaDB (`bl1`/`bl2`/`bl3`)
 
 **Status:** erledigt
-
-### 2026-08-03 — Prompt 62
-
-**User:** Top-5-Ligen via football-data.org (Plan umsetzen).
-
-**Aktion:**
-- Adapter `footballData.ts` + Match-Mapping; Dev-Proxy in `vite.config.ts`; Vercel Edge `api/football-data/[...path].ts`
-- Ligen `pl`/`pd`/`sa`/`fl1` mit `source`-Routing in `dataSource.ts`; Token nur als `FOOTBALL_DATA_TOKEN`
-- Zonen, Forecast, Thresholds, ZoneLegend, Share-State, Vorsprung-Kennzahl für Top-5 / Ligue 1
-- UX: „Ergebnisse verzögert“, langsameres Polling, Token-Fehler; Tests + README
-
-**Status:** erledigt (später durch Prompt 63 abgelöst)
 
 ### 2026-08-03 — Prompt 61
 

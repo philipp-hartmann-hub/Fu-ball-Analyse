@@ -22,12 +22,6 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/openliga/, ''),
       },
-      '/api/fixtures': {
-        target: 'https://fixturedownload.com',
-        changeOrigin: true,
-        rewrite: (path) =>
-          path.replace(/^\/api\/fixtures/, '/feed/json'),
-      },
     },
   },
   test: {

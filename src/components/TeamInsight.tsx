@@ -8,7 +8,7 @@ import type {
   SeasonOutlook,
   StandingRow,
 } from '../types'
-import { relegationCutoffRank, zoneLabelFor } from '../lib/table'
+import { zoneLabelFor } from '../lib/table'
 import type { ThresholdLine } from '../lib/thresholds'
 import {
   hardnessTone,
@@ -639,7 +639,7 @@ export function TeamInsight({
           {pointsAboveRelegation != null && (
             <div>
               <span className="label">
-                Vorsprung Platz {relegationCutoffRank(league)}
+                Vorsprung Platz {league === 'bl3' ? 17 : 16}
               </span>
               <strong>
                 {pointsAboveRelegation >= 0
