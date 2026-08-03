@@ -1,6 +1,6 @@
 # Tabellenblick
 
-Echtzeit-Analyse für die **1. und 2. Bundesliga**: Tabelle, Restprogramm und mögliche Endplätze unter Szenarien.
+Echtzeit-Analyse für die **1., 2. und 3. Liga**: Tabelle, Restprogramm und mögliche Endplätze unter Szenarien.
 
 > Living Documentation — nach **jedem** User-Prompt aktualisieren (`.cursor/rules/readme-doku.mdc`).
 
@@ -13,13 +13,13 @@ Echtzeit-Analyse für die **1. und 2. Bundesliga**: Tabelle, Restprogramm und m�
 | **Repo** | https://github.com/philipp-hartmann-hub/Fu-ball-Analyse |
 | **Stack** | React 19 · TypeScript · Vite 8 · Vitest · Zod |
 
-| **Daten** | [OpenLigaDB](https://www.openligadb.de/) (`bl1` / `bl2`) – ohne API-Token |
-| **Scope** | Nur 1. und 2. Bundesliga (andere Wettbewerbe bewusst zurückgestellt) |
+| **Daten** | [OpenLigaDB](https://www.openligadb.de/) (`bl1` / `bl2` / `bl3`) – ohne API-Token |
+| **Scope** | 1. Bundesliga, 2. Bundesliga und 3. Liga |
 | **Tests** | `npm run test` · Watch: `npm run test:watch` |
 
 ### Features
 
-- Live-Tabelle mit Zonen (BL1: CL/EL/Abstieg · BL2: Aufstieg/Abstieg); **Cache**: zuletzt geladene Daten sofort aus localStorage, Refresh im Hintergrund
+- Live-Tabelle mit Zonen (BL1: CL/EL/Abstieg · BL2/3. Liga: Aufstieg/Abstieg); **Cache**: zuletzt geladene Daten sofort aus localStorage, Refresh im Hintergrund
 - **Ergebnisse**: Spieltag wählbar (durchklicken); Wappen; Live-Updates; 2 Tage nach letztem Spiel → nächster Spieltag als Default
 - Spalte **Möglich**: Best-/Schlechtfall bis Saisonende (**Spanne**) oder Monte-Carlo-**Prognose** (umschaltbar)
 - Optionale Spalte **Härte**: Restprogramm-Härte 0–100 (Toggle „Restprogramm“; auf Mobile ausgeblendet)
@@ -56,6 +56,17 @@ src/
 ---
 
 ## Änderungsprotokoll
+
+### 2026-08-03 — Prompt 61
+
+**User:** 3. Liga unterstützen.
+
+**Aktion:**
+- Liga `bl3` (OpenLigaDB, 20 Teams) in `leagues.ts` + Share-State
+- Zonen: Direktaufstieg 1–2, Relegation Aufstieg Platz 3, Abstieg 17–20
+- Forecast/Thresholds/ZoneLegend/Vorsprung-Kennzahl angepasst
+
+**Status:** erledigt
 
 ### 2026-08-03 — Prompt 60
 

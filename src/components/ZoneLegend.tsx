@@ -1,12 +1,21 @@
 import type { LeagueZoneId } from '../lib/table'
-import { ZONE_LEGEND_BL1, ZONE_LEGEND_BL2 } from '../lib/table'
+import {
+  ZONE_LEGEND_BL1,
+  ZONE_LEGEND_BL2,
+  ZONE_LEGEND_BL3,
+} from '../lib/table'
 
 interface Props {
   league: LeagueZoneId
 }
 
 export function ZoneLegend({ league }: Props) {
-  const items = league === 'bl2' ? ZONE_LEGEND_BL2 : ZONE_LEGEND_BL1
+  const items =
+    league === 'bl3'
+      ? ZONE_LEGEND_BL3
+      : league === 'bl2'
+        ? ZONE_LEGEND_BL2
+        : ZONE_LEGEND_BL1
   return (
     <ul className="zone-legend" aria-label="Tabellenzonen">
       {items.map((item) => (

@@ -638,7 +638,9 @@ export function TeamInsight({
           )}
           {pointsAboveRelegation != null && (
             <div>
-              <span className="label">Vorsprung Platz 16</span>
+              <span className="label">
+                Vorsprung Platz {league === 'bl3' ? 17 : 16}
+              </span>
               <strong>
                 {pointsAboveRelegation >= 0
                   ? `+${pointsAboveRelegation}`

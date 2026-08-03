@@ -249,7 +249,7 @@ function ForecastCell({
 }
 
 function shortZoneLabel(zone: string, league: LeagueZoneId): string {
-  if (league === 'bl2') {
+  if (league === 'bl2' || league === 'bl3') {
     if (zone === 'champion') return 'Aufstieg'
     if (zone === 'cl') return 'Rel.↑'
     if (zone === 'relegation') return 'Rel.↓'

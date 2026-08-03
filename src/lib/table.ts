@@ -303,10 +303,24 @@ export function currentMatchday(matches: Match[]): number {
   return Math.min(...unfinished.map((m) => m.group.groupOrderID))
 }
 
-export type LeagueZoneId = 'bl1' | 'bl2'
+export type LeagueZoneId = 'bl1' | 'bl2' | 'bl3'
+
+/**
+ * Erster Abstiegsplatz (für „Vorsprung“-Kennzahl).
+ * BL1/BL2: Platz 16 (Relegation) · 3. Liga: Platz 17 (direkter Abstieg).
+ */
+export function relegationCutoffRank(league: LeagueZoneId): number {
+  return league === 'bl3' ? 17 : 16
+}
 
 /** Zonenfarben für Tabellenzeilen */
 export function zoneForRank(rank: number, league: LeagueZoneId = 'bl1'): string {
+  if (league === 'bl3') {
+    if (rank <= 2) return 'champion' // Direktaufstieg
+    if (rank === 3) return 'cl' // Relegation Aufstieg
+    if (rank >= 17) return 'direct-relegation'
+    return 'mid'
+  }
   if (league === 'bl2') {
     if (rank <= 2) return 'champion' // Aufstieg
     if (rank === 3) return 'cl' // Relegation Aufstieg
@@ -325,6 +339,12 @@ export function zoneForRank(rank: number, league: LeagueZoneId = 'bl1'): string 
 }
 
 export function zoneLabelFor(rank: number, league: LeagueZoneId = 'bl1'): string {
+  if (league === 'bl3') {
+    if (rank <= 2) return 'Direktaufstieg'
+    if (rank === 3) return 'Relegation (Aufstieg)'
+    if (rank >= 17) return 'Abstieg'
+    return 'Mittelfeld'
+  }
   if (league === 'bl2') {
     if (rank <= 2) return 'Direktaufstieg'
     if (rank === 3) return 'Relegation (Aufstieg)'
@@ -354,5 +374,11 @@ export const ZONE_LEGEND_BL2: { zone: string; label: string }[] = [
   { zone: 'champion', label: 'Direktaufstieg' },
   { zone: 'cl', label: 'Relegation Aufstieg' },
   { zone: 'relegation', label: 'Relegation Abstieg' },
+  { zone: 'direct-relegation', label: 'Abstieg' },
+]
+
+export const ZONE_LEGEND_BL3: { zone: string; label: string }[] = [
+  { zone: 'champion', label: 'Direktaufstieg' },
+  { zone: 'cl', label: 'Relegation Aufstieg' },
   { zone: 'direct-relegation', label: 'Abstieg' },
 ]

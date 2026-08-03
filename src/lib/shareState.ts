@@ -25,7 +25,7 @@ type WireV1 = {
 }
 
 function isLeagueId(value: unknown): value is LeagueId {
-  return value === 'bl1' || value === 'bl2'
+  return value === 'bl1' || value === 'bl2' || value === 'bl3'
 }
 
 function clampGoals(n: number): number {

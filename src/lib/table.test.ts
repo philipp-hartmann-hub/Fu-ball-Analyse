@@ -358,4 +358,14 @@ describe('zoneForRank', () => {
     expect(zoneForRank(16, 'bl2')).toBe('relegation')
     expect(zoneForRank(17, 'bl2')).toBe('direct-relegation')
   })
+
+  it('3. Liga: Aufstieg, Relegation Platz 3, Abstieg 17–20', () => {
+    expect(zoneForRank(1, 'bl3')).toBe('champion')
+    expect(zoneForRank(2, 'bl3')).toBe('champion')
+    expect(zoneForRank(3, 'bl3')).toBe('cl')
+    expect(zoneForRank(4, 'bl3')).toBe('mid')
+    expect(zoneForRank(16, 'bl3')).toBe('mid')
+    expect(zoneForRank(17, 'bl3')).toBe('direct-relegation')
+    expect(zoneForRank(20, 'bl3')).toBe('direct-relegation')
+  })
 })

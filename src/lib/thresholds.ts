@@ -35,12 +35,13 @@ export function isRelegationRank(rank: number, league: LeagueZoneId): boolean {
 
 /** BL1: CL-Plätze 1–4; BL2: Direktaufstieg 1–2 */
 export function isTopTargetRank(rank: number, league: LeagueZoneId): boolean {
-  if (league === 'bl2') return rank <= 2
+  if (league === 'bl2' || league === 'bl3') return rank <= 2
   return rank <= 4
 }
 
 export function topTargetLabel(league: LeagueZoneId): string {
-  return league === 'bl2' ? 'Aufstieg' : 'CL'
+  if (league === 'bl2' || league === 'bl3') return 'Aufstieg'
+  return 'CL'
 }
 
 function neededPoints(threshold: number, currentPoints: number): string | undefined {

@@ -38,6 +38,7 @@ import {
   buildStandings,
   currentMatchday,
   matchdays,
+  relegationCutoffRank,
   remainingMatches,
   resolveMatchScores,
 } from './lib/table'
@@ -293,7 +294,9 @@ export default function App() {
   }, [selectedTeam, baseStandings, openMatches, playedScores, leagueId])
 
   const leaderPoints = projectedStandings[0]?.points ?? 0
-  const relegLine = projectedStandings.find((s) => s.rank === 16)?.points ?? 0
+  const relegCutoff = relegationCutoffRank(leagueId)
+  const relegLine =
+    projectedStandings.find((s) => s.rank === relegCutoff)?.points ?? 0
   const seasonProgress =
     matches.length > 0 ? Math.round((finishedCount / matches.length) * 100) : 0
 
