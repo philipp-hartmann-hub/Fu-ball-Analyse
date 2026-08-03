@@ -127,6 +127,64 @@ describe('CaseConditions (nächster Spieltag)', () => {
     return table.find((t) => t.teamId === teamId)!.rank
   }
 
+  type OpenSlot = { matchId: number; outcomes: MatchOutcome[] }
+
+  function openSlotsFromConditions(
+    cond: NonNullable<
+      NonNullable<ReturnType<typeof computeNextMatchdayOutlook>>['bestConditions']
+    >,
+  ): OpenSlot[] {
+    return [
+      ...cond.partiallyConstrained.map((p) => ({
+        matchId: p.matchId,
+        outcomes: p.allowedOutcomes,
+      })),
+      ...cond.flexible.map((f) => ({
+        matchId: f.matchId,
+        outcomes: [...OUTCOMES],
+      })),
+    ]
+  }
+
+  /** Alle Belegungen der offenen Slots (kartesisches Produkt der outcome-Listen). */
+  function* enumerateOpenAssignments(
+    slots: OpenSlot[],
+  ): Generator<ReturnType<typeof scenarioFromOutcome>[]> {
+    if (slots.length === 0) {
+      yield []
+      return
+    }
+    const totals = slots.map((s) => s.outcomes.length)
+    const total = totals.reduce((a, b) => a * b, 1)
+    for (let mask = 0; mask < total; mask++) {
+      let x = mask
+      const scenarios: ReturnType<typeof scenarioFromOutcome>[] = []
+      for (let i = 0; i < slots.length; i++) {
+        const slot = slots[i]!
+        const n = totals[i]!
+        const oi = x % n
+        x = Math.floor(x / n)
+        scenarios.push(scenarioFromOutcome(slot.matchId, slot.outcomes[oi]!))
+      }
+      yield scenarios
+    }
+  }
+
+  function withOutcome(
+    fixed: ReturnType<typeof scenarioFromOutcome>[],
+    matchId: number,
+    outcome: MatchOutcome,
+  ) {
+    return [
+      ...fixed.filter((s) => s.matchId !== matchId),
+      scenarioFromOutcome(matchId, outcome),
+    ]
+  }
+
+  /**
+   * Vier getrennte Checks — keine universelle Kombinierbarkeit der offenen Spiele.
+   * (Korrelierte Fremdspiele: jedes einzeln ok, aber nicht jede Kombination.)
+   */
   function assertConditionsConsistent(opts: {
     matches: Match[]
     teamId: number
@@ -139,30 +197,109 @@ describe('CaseConditions (nächster Spieltag)', () => {
     expect(cond.mode).toBe('exact')
 
     const fixed = scenariosFromConditions(cond)
-    const partial = cond.partiallyConstrained
-    const flex = cond.flexible
+    const slots = openSlotsFromConditions(cond)
 
-    const partialTotals = partial.map((p) => p.allowedOutcomes.length)
-    const partialCombos = partialTotals.reduce((a, b) => a * b, 1)
-    const flexTotal = 3 ** flex.length
-    const total = partialCombos * flexTotal
-
-    for (let mask = 0; mask < total; mask++) {
-      let x = mask
-      const scenarios = [...fixed]
-      for (const p of partial) {
-        const n = p.allowedOutcomes.length
-        const oi = x % n
-        x = Math.floor(x / n)
-        scenarios.push(scenarioFromOutcome(p.matchId, p.allowedOutcomes[oi]!))
+    // 1. Existenz: mind. eine Belegung der offenen Spiele trifft claimedRank
+    let exists = false
+    for (const open of enumerateOpenAssignments(slots)) {
+      if (
+        rankAfterScenarios(opts.matches, opts.teamId, [...fixed, ...open]) ===
+        opts.claimedRank
+      ) {
+        exists = true
+        break
       }
-      for (const f of flex) {
-        scenarios.push(scenarioFromOutcome(f.matchId, OUTCOMES[x % 3]!))
-        x = Math.floor(x / 3)
-      }
-      const rank = rankAfterScenarios(opts.matches, opts.teamId, scenarios)
-      expect(rank).toBe(opts.claimedRank)
     }
+    expect(exists).toBe(true)
+
+    // 2. required-Korrektheit: anderer Ausgang → claimedRank nirgends erreichbar
+    for (const req of cond.required) {
+      for (const alt of OUTCOMES) {
+        if (alt === req.outcome) continue
+        const fixedAlt = withOutcome(fixed, req.matchId, alt)
+        let hit = false
+        for (const open of enumerateOpenAssignments(slots)) {
+          if (
+            rankAfterScenarios(opts.matches, opts.teamId, [
+              ...fixedAlt,
+              ...open,
+            ]) === opts.claimedRank
+          ) {
+            hit = true
+            break
+          }
+        }
+        expect(hit).toBe(false)
+      }
+    }
+
+    // 3. forbidden-Korrektheit (partiallyConstrained)
+    for (const partial of cond.partiallyConstrained) {
+      const allowed = new Set(partial.allowedOutcomes)
+      const otherSlots = slots.filter((s) => s.matchId !== partial.matchId)
+      for (const forbidden of OUTCOMES) {
+        if (allowed.has(forbidden)) continue
+        const pinned = scenarioFromOutcome(partial.matchId, forbidden)
+        let hit = false
+        for (const open of enumerateOpenAssignments(otherSlots)) {
+          if (
+            rankAfterScenarios(opts.matches, opts.teamId, [
+              ...fixed,
+              pinned,
+              ...open,
+            ]) === opts.claimedRank
+          ) {
+            hit = true
+            break
+          }
+        }
+        expect(hit).toBe(false)
+      }
+    }
+
+    // 4. Marginal: jeder erlaubte Einzelausgang ist mit IRGENDEINER Restbelegung ok
+    for (const slot of slots) {
+      const otherSlots = slots.filter((s) => s.matchId !== slot.matchId)
+      for (const outcome of slot.outcomes) {
+        const pinned = scenarioFromOutcome(slot.matchId, outcome)
+        let hit = false
+        for (const open of enumerateOpenAssignments(otherSlots)) {
+          if (
+            rankAfterScenarios(opts.matches, opts.teamId, [
+              ...fixed,
+              pinned,
+              ...open,
+            ]) === opts.claimedRank
+          ) {
+            hit = true
+            break
+          }
+        }
+        expect(hit).toBe(true)
+      }
+    }
+  }
+
+  /** Alte universelle Invariante — nur zum Kontrast im Korrelations-Test. */
+  function universalOpenCombosAllHitClaimedRank(opts: {
+    matches: Match[]
+    teamId: number
+    claimedRank: number
+    conditions: NonNullable<
+      NonNullable<ReturnType<typeof computeNextMatchdayOutlook>>['bestConditions']
+    >
+  }): boolean {
+    const fixed = scenariosFromConditions(opts.conditions)
+    const slots = openSlotsFromConditions(opts.conditions)
+    for (const open of enumerateOpenAssignments(slots)) {
+      if (
+        rankAfterScenarios(opts.matches, opts.teamId, [...fixed, ...open]) !==
+        opts.claimedRank
+      ) {
+        return false
+      }
+    }
+    return true
   }
 
   it('Bestfall Alpha: nur eigene Vorgabe nötig, Fremdspiel flexibel', () => {
@@ -329,6 +466,152 @@ describe('CaseConditions (nächster Spieltag)', () => {
       claimedRank: outlook.range.bestRank,
       conditions: best,
     })
+  })
+
+  it('korrelierte Fremdspiele: marginal ok, aber nicht jede Kombi (alte Invariante würde rot)', () => {
+    /**
+     * Focus spielfrei auf 10 Pkt.; RivalA/RivalB auf 9.
+     * Genau einer der Rivalen siegt → Focus Platz 2.
+     * Beide siegen → Platz 3; keiner → Platz 1.
+     * Beide Fremdspiele sind einzeln in Platz-2-Masken mit allen 3 Ausgängen vertreten
+     * (flexibel), aber RivalA-Sieg ∧ RivalB-Sieg ist nicht optimal für Platz 2.
+     *
+     * Die alte universelle Invariante (∀ Kombis der offenen Spiele: rank===claimed)
+     * wäre hier rot; die neuen Checks 1–4 bleiben grün.
+     */
+    const FOCUS: TeamInfo = {
+      teamId: 21,
+      teamName: 'Focus',
+      shortName: 'Focus',
+      teamIconUrl: '',
+    }
+    const RIVALA: TeamInfo = {
+      teamId: 22,
+      teamName: 'RivalA',
+      shortName: 'RivalA',
+      teamIconUrl: '',
+    }
+    const RIVALB: TeamInfo = {
+      teamId: 23,
+      teamName: 'RivalB',
+      shortName: 'RivalB',
+      teamIconUrl: '',
+    }
+    const WEAKA: TeamInfo = {
+      teamId: 24,
+      teamName: 'WeakA',
+      shortName: 'WeakA',
+      teamIconUrl: '',
+    }
+    const WEAKB: TeamInfo = {
+      teamId: 25,
+      teamName: 'WeakB',
+      shortName: 'WeakB',
+      teamIconUrl: '',
+    }
+    const PAD: TeamInfo = {
+      teamId: 26,
+      teamName: 'Pad',
+      shortName: 'Pad',
+      teamIconUrl: '',
+    }
+
+    function stubMatch(
+      id: number,
+      home: TeamInfo,
+      away: TeamInfo,
+      finished: boolean,
+      score?: [number, number],
+    ): Match {
+      return {
+        matchID: id,
+        matchDateTime: '2025-08-01T15:30:00',
+        matchDateTimeUTC: '2025-08-01T13:30:00Z',
+        leagueName: 'Corr-Test',
+        leagueSeason: 2025,
+        leagueShortcut: 'corr',
+        lastUpdateDateTime: '2025-08-01T17:00:00',
+        group: {
+          groupName: finished ? '1. Spieltag' : '2. Spieltag',
+          groupOrderID: finished ? 1 : 2,
+          groupID: finished ? 1 : 2,
+        },
+        team1: home,
+        team2: away,
+        matchIsFinished: finished,
+        matchResults: score
+          ? [
+              {
+                resultID: 1,
+                resultName: 'Endergebnis',
+                pointsTeam1: score[0],
+                pointsTeam2: score[1],
+                resultOrderID: 2,
+                resultTypeID: 2,
+              },
+            ]
+          : [],
+      }
+    }
+
+    // Focus 10 Pkt, RivalA/B 9 — Focus spielt nicht am ST2.
+    const md1 = [
+      stubMatch(301, FOCUS, WEAKA, true, [1, 0]), // Focus 3
+      stubMatch(302, FOCUS, WEAKB, true, [1, 0]), // Focus 6
+      stubMatch(303, FOCUS, PAD, true, [1, 1]), // Focus 7
+      stubMatch(304, RIVALA, FOCUS, true, [0, 1]), // Focus 10, RivalA 0
+      stubMatch(305, RIVALA, WEAKA, true, [1, 0]), // RivalA 3
+      stubMatch(306, RIVALA, WEAKB, true, [1, 0]), // RivalA 6
+      stubMatch(307, RIVALA, PAD, true, [1, 0]), // RivalA 9
+      stubMatch(308, RIVALB, WEAKA, true, [1, 0]), // RivalB 3
+      stubMatch(309, RIVALB, WEAKB, true, [1, 0]), // RivalB 6
+      stubMatch(310, RIVALB, PAD, true, [1, 0]), // RivalB 9
+      stubMatch(311, WEAKA, PAD, true, [1, 0]),
+      stubMatch(312, WEAKB, PAD, true, [0, 0]),
+    ]
+
+    const open = [
+      stubMatch(401, RIVALA, WEAKA, false),
+      stubMatch(402, RIVALB, WEAKB, false),
+    ]
+
+    const all = [...md1, ...open]
+    const base = buildStandings(all, { maxMatchday: 1 })
+    expect(base.find((t) => t.teamId === FOCUS.teamId)!.points).toBe(10)
+    expect(base.find((t) => t.teamId === RIVALA.teamId)!.points).toBe(9)
+    expect(base.find((t) => t.teamId === RIVALB.teamId)!.points).toBe(9)
+
+    const outlook = computeTargetMatchdayOutlook(
+      base,
+      open,
+      FOCUS.teamId,
+      2,
+      'exact',
+    )!
+    expect(outlook.reachable).toBe(true)
+    expect(outlook.conditions).toBeTruthy()
+
+    const cond = outlook.conditions!
+    // Beide Rivalen-Spiele offen/flexibel (kein required) — Korrelation nur joint
+    expect(cond.required).toEqual([])
+    expect(cond.flexible.map((f) => f.matchId).sort()).toEqual([401, 402])
+
+    assertConditionsConsistent({
+      matches: all,
+      teamId: FOCUS.teamId,
+      claimedRank: 2,
+      conditions: cond,
+    })
+
+    // Kontrast: ∀ offenen Kombis rank===2 gilt hier nicht (beide-Sieg → Platz 3)
+    expect(
+      universalOpenCombosAllHitClaimedRank({
+        matches: all,
+        teamId: FOCUS.teamId,
+        claimedRank: 2,
+        conditions: cond,
+      }),
+    ).toBe(false)
   })
 })
 

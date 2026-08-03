@@ -57,6 +57,16 @@ src/
 
 ## Änderungsprotokoll
 
+### 2026-08-03 — Prompt 66
+
+**User:** `assertConditionsConsistent` entschärfen — keine universelle Kombinierbarkeit offener Spiele.
+
+**Aktion:**
+- Vier Checks: Existenz, required-, forbidden-, marginale Korrektheit
+- Neuer Fixture mit korrelierten Rivalen-Spielen; alte ∀-Invariante dort bewusst rot, neue Checks grün
+
+**Status:** erledigt
+
 ### 2026-08-03 — Prompt 65
 
 **User:** Wunschplatzierungs-Funktion in der Vereinsanalyse (Spieltag exakt + Saison Sim/Heuristik).
