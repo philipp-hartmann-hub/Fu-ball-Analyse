@@ -209,7 +209,7 @@ export function ScenarioPanel({
       </div>
       <p className="hint">
         {mode === 'grob'
-          ? '1 = Heim siegt, X = Unentschieden, 2 = Auswärts siegt.'
+          ? 'Sieg Heim, Sieg Auswärts oder Unentschieden tippen.'
           : 'Tore tippen (Heim : Auswärts). Ohne Auswahl gilt 0:0 beim Fokus der Felder.'}
       </p>
 
@@ -261,20 +261,17 @@ export function ScenarioPanel({
                         {
                           key: 'home' as const,
                           label: `Sieg ${homeName}`,
-                          short: '1',
                         },
                         {
                           key: 'draw' as const,
                           label: 'Unentschieden',
-                          short: 'X',
                         },
                         {
                           key: 'away' as const,
                           label: `Sieg ${awayName}`,
-                          short: '2',
                         },
                       ] as const
-                    ).map(({ key, label, short }) => (
+                    ).map(({ key, label }) => (
                       <button
                         key={key}
                         type="button"
@@ -284,7 +281,7 @@ export function ScenarioPanel({
                           setCoarse(match.matchID, current === key ? null : key)
                         }
                       >
-                        {short}
+                        {label}
                       </button>
                     ))}
                   </div>

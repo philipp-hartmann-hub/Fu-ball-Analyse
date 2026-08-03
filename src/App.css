@@ -2251,12 +2251,6 @@ button.range-btn.is-static {
   flex-shrink: 0;
 }
 
-.outcome-btns.coarse button {
-  min-width: 2.4rem;
-  font-variant-numeric: tabular-nums;
-  font-weight: 700;
-}
-
 .matchday-nav {
   min-width: 2.25rem;
   padding: 0.35rem 0.5rem;

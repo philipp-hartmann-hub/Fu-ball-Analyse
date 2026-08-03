@@ -24,7 +24,7 @@ Echtzeit-Analyse für die **1. und 2. Bundesliga**: Tabelle, Restprogramm und m�
 - Spalte **Möglich**: Best-/Schlechtfall bis Saisonende (**Spanne**) oder Monte-Carlo-**Prognose** (umschaltbar)
 - Optionale Spalte **Härte**: Restprogramm-Härte 0–100 (Toggle „Restprogramm“; auf Mobile ausgeblendet)
 - Seitenleiste: **Verein** (Überblick + Spieltag-Analyse + Saison) · **Ergebnisse** · **Szenario** · **Vergleich**
-- **Szenario-Simulator**: Partien mit Wappen, Grob 1/X/2 oder Fein-Tore; teilbar via `?s=`
+- **Szenario-Simulator**: Partien mit Wappen; Grob (Sieg/Unentschieden) oder Fein-Tore; teilbar via `?s=`
 - **Stand nach Spieltag**: Slider für historischen Stand
 - Toolbar: **Link teilen** (Zwischenablage) und **Zurücksetzen** (Szenarien + `?s=`)
 
@@ -56,6 +56,15 @@ src/
 ---
 
 ## Änderungsprotokoll
+
+### 2026-08-03 — Prompt 60
+
+**User:** Szenario wieder mit 1/X/2 — bitte normale Sieg-Beschriftungen.
+
+**Aktion:**
+- Grob-Tipps wieder „Sieg …“ / „Unentschieden“; Wappen bleiben
+
+**Status:** erledigt
 
 ### 2026-08-03 — Prompt 59
 
