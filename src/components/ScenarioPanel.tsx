@@ -7,8 +7,6 @@ interface Props {
   scenarios: ScenarioResult[]
   onChange: (scenarios: ScenarioResult[]) => void
   focusTeamId: number | null
-  /** Optional: Vergleichsteams hervorheben / filtern */
-  compareTeamIds?: number[]
 }
 
 type DetailMode = 'grob' | 'fein'
@@ -59,15 +57,11 @@ export function ScenarioPanel({
   scenarios,
   onChange,
   focusTeamId,
-  compareTeamIds = [],
 }: Props) {
   const [onlyFocus, setOnlyFocus] = useState(false)
-  const [onlyCompare, setOnlyCompare] = useState(false)
   const [mode, setMode] = useState<DetailMode>('grob')
   const [selectedDay, setSelectedDay] = useState<number | null>(null)
   const map = new Map(scenarios.map((s) => [s.matchId, s]))
-  const compareSet = useMemo(() => new Set(compareTeamIds), [compareTeamIds])
-  const hasComparePair = compareTeamIds.length >= 2
 
   const openDays = useMemo(() => {
     const set = new Set(matches.map((m) => m.group.groupOrderID))
@@ -85,10 +79,6 @@ export function ScenarioPanel({
     )
   }, [openDays])
 
-  useEffect(() => {
-    if (!hasComparePair) setOnlyCompare(false)
-  }, [hasComparePair])
-
   const activeDay = selectedDay ?? openDays[0] ?? null
 
   const dayMatches = useMemo(() => {
@@ -97,27 +87,13 @@ export function ScenarioPanel({
   }, [matches, activeDay])
 
   const fixtures = useMemo(() => {
-    let list = dayMatches
     if (onlyFocus && focusTeamId != null) {
-      list = list.filter(
+      return dayMatches.filter(
         (m) => m.team1.teamId === focusTeamId || m.team2.teamId === focusTeamId,
       )
     }
-    if (onlyCompare && hasComparePair) {
-      list = list.filter(
-        (m) =>
-          compareSet.has(m.team1.teamId) || compareSet.has(m.team2.teamId),
-      )
-    }
-    return list
-  }, [
-    dayMatches,
-    onlyFocus,
-    focusTeamId,
-    onlyCompare,
-    hasComparePair,
-    compareSet,
-  ])
+    return dayMatches
+  }, [dayMatches, onlyFocus, focusTeamId])
 
   const upsert = (result: ScenarioResult | null, matchId: number) => {
     const next = scenarios.filter((s) => s.matchId !== matchId)
@@ -233,30 +209,19 @@ export function ScenarioPanel({
       </div>
       <p className="hint">
         {mode === 'grob'
-          ? 'Sieg Heim, Sieg Auswärts oder Unentschieden — Vergleich unten aktualisiert sich mit.'
+          ? '1 = Heim siegt, X = Unentschieden, 2 = Auswärts siegt.'
           : 'Tore tippen (Heim : Auswärts). Ohne Auswahl gilt 0:0 beim Fokus der Felder.'}
       </p>
 
-      <div className="scenario-filters">
-        <label className="toggle compact">
-          <input
-            type="checkbox"
-            checked={onlyFocus}
-            disabled={focusTeamId == null}
-            onChange={(e) => setOnlyFocus(e.target.checked)}
-          />
-          Nur Spiele des Fokusvereins
-        </label>
-        <label className="toggle compact">
-          <input
-            type="checkbox"
-            checked={onlyCompare}
-            disabled={!hasComparePair}
-            onChange={(e) => setOnlyCompare(e.target.checked)}
-          />
-          Nur Spiele der Vergleichsteams
-        </label>
-      </div>
+      <label className="toggle compact">
+        <input
+          type="checkbox"
+          checked={onlyFocus}
+          disabled={focusTeamId == null}
+          onChange={(e) => setOnlyFocus(e.target.checked)}
+        />
+        Nur Spiele des Fokusvereins
+      </label>
 
       <div className="matchday-list single-day">
         <ul className="fixture-list">
@@ -267,24 +232,13 @@ export function ScenarioPanel({
               focusTeamId != null &&
               (match.team1.teamId === focusTeamId ||
                 match.team2.teamId === focusTeamId)
-            const involvesCompare =
-              compareSet.has(match.team1.teamId) ||
-              compareSet.has(match.team2.teamId)
             const homeGoals = scenario?.homeGoals ?? 0
             const awayGoals = scenario?.awayGoals ?? 0
             const homeName = match.team1.shortName || match.team1.teamName
             const awayName = match.team2.shortName || match.team2.teamName
 
             return (
-              <li
-                key={match.matchID}
-                className={[
-                  involvesFocus ? 'focus' : '',
-                  involvesCompare ? 'compare-hit' : '',
-                ]
-                  .filter(Boolean)
-                  .join(' ')}
-              >
+              <li key={match.matchID} className={involvesFocus ? 'focus' : ''}>
                 <div className="fixture-meta">
                   <span className="fixture-date">{formatDate(match.matchDateTime)}</span>
                   <div className="fixture-teams with-crests">
@@ -400,11 +354,9 @@ export function ScenarioPanel({
       </div>
       {fixtures.length === 0 && (
         <p className="hint">
-          {onlyCompare
-            ? 'Kein Spiel der Vergleichsteams an diesem Spieltag – anderen Spieltag wählen.'
-            : onlyFocus
-              ? 'Kein Spiel des Fokusvereins an diesem Spieltag – anderen Spieltag wählen.'
-              : 'Keine Spiele an diesem Spieltag.'}
+          {onlyFocus
+            ? 'Kein Spiel des Fokusvereins an diesem Spieltag – anderen Spieltag wählen.'
+            : 'Keine Spiele an diesem Spieltag.'}
         </p>
       )}
     </div>

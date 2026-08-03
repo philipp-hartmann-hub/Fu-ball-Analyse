@@ -2229,19 +2229,6 @@ button.range-btn.is-static {
   overflow: visible;
 }
 
-.scenario-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 0.85rem;
-}
-
-.scenario-filters {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  margin: 0.5rem 0 0.65rem;
-}
-
 .fixture-teams.with-crests {
   display: flex;
   align-items: center;
@@ -2262,11 +2249,6 @@ button.range-btn.is-static {
 
 .scenario-crest {
   flex-shrink: 0;
-}
-
-.fixture-list li.compare-hit {
-  border-color: color-mix(in srgb, var(--accent) 35%, var(--line));
-  background: color-mix(in srgb, var(--accent) 6%, transparent);
 }
 
 .outcome-btns.coarse button {
