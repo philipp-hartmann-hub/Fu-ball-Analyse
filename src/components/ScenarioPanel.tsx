@@ -7,6 +7,8 @@ interface Props {
   scenarios: ScenarioResult[]
   onChange: (scenarios: ScenarioResult[]) => void
   focusTeamId: number | null
+  /** Optional: Vergleichsteams hervorheben / filtern */
+  compareTeamIds?: number[]
 }
 
 type DetailMode = 'grob' | 'fein'
@@ -33,11 +35,39 @@ function parseGoals(raw: string): number {
   return Math.min(20, Number(digits))
 }
 
-export function ScenarioPanel({ matches, scenarios, onChange, focusTeamId }: Props) {
+function Crest({ url, name }: { url?: string; name: string }) {
+  if (url) {
+    return (
+      <img
+        className="crest-img scenario-crest"
+        src={url}
+        alt=""
+        width={22}
+        height={22}
+        title={name}
+        loading="lazy"
+      />
+    )
+  }
+  return (
+    <span className="crest-fallback scenario-crest" aria-hidden title={name} />
+  )
+}
+
+export function ScenarioPanel({
+  matches,
+  scenarios,
+  onChange,
+  focusTeamId,
+  compareTeamIds = [],
+}: Props) {
   const [onlyFocus, setOnlyFocus] = useState(false)
+  const [onlyCompare, setOnlyCompare] = useState(false)
   const [mode, setMode] = useState<DetailMode>('grob')
   const [selectedDay, setSelectedDay] = useState<number | null>(null)
   const map = new Map(scenarios.map((s) => [s.matchId, s]))
+  const compareSet = useMemo(() => new Set(compareTeamIds), [compareTeamIds])
+  const hasComparePair = compareTeamIds.length >= 2
 
   const openDays = useMemo(() => {
     const set = new Set(matches.map((m) => m.group.groupOrderID))
@@ -55,6 +85,10 @@ export function ScenarioPanel({ matches, scenarios, onChange, focusTeamId }: Pro
     )
   }, [openDays])
 
+  useEffect(() => {
+    if (!hasComparePair) setOnlyCompare(false)
+  }, [hasComparePair])
+
   const activeDay = selectedDay ?? openDays[0] ?? null
 
   const dayMatches = useMemo(() => {
@@ -62,12 +96,28 @@ export function ScenarioPanel({ matches, scenarios, onChange, focusTeamId }: Pro
     return matches.filter((m) => m.group.groupOrderID === activeDay)
   }, [matches, activeDay])
 
-  const fixtures =
-    onlyFocus && focusTeamId != null
-      ? dayMatches.filter(
-          (m) => m.team1.teamId === focusTeamId || m.team2.teamId === focusTeamId,
-        )
-      : dayMatches
+  const fixtures = useMemo(() => {
+    let list = dayMatches
+    if (onlyFocus && focusTeamId != null) {
+      list = list.filter(
+        (m) => m.team1.teamId === focusTeamId || m.team2.teamId === focusTeamId,
+      )
+    }
+    if (onlyCompare && hasComparePair) {
+      list = list.filter(
+        (m) =>
+          compareSet.has(m.team1.teamId) || compareSet.has(m.team2.teamId),
+      )
+    }
+    return list
+  }, [
+    dayMatches,
+    onlyFocus,
+    focusTeamId,
+    onlyCompare,
+    hasComparePair,
+    compareSet,
+  ])
 
   const upsert = (result: ScenarioResult | null, matchId: number) => {
     const next = scenarios.filter((s) => s.matchId !== matchId)
@@ -183,19 +233,30 @@ export function ScenarioPanel({ matches, scenarios, onChange, focusTeamId }: Pro
       </div>
       <p className="hint">
         {mode === 'grob'
-          ? 'Sieg Verein 1, Sieg Verein 2 oder Unentschieden.'
+          ? 'Sieg Heim, Sieg Auswärts oder Unentschieden — Vergleich unten aktualisiert sich mit.'
           : 'Tore tippen (Heim : Auswärts). Ohne Auswahl gilt 0:0 beim Fokus der Felder.'}
       </p>
 
-      <label className="toggle compact">
-        <input
-          type="checkbox"
-          checked={onlyFocus}
-          disabled={focusTeamId == null}
-          onChange={(e) => setOnlyFocus(e.target.checked)}
-        />
-        Nur Spiele des Fokusvereins
-      </label>
+      <div className="scenario-filters">
+        <label className="toggle compact">
+          <input
+            type="checkbox"
+            checked={onlyFocus}
+            disabled={focusTeamId == null}
+            onChange={(e) => setOnlyFocus(e.target.checked)}
+          />
+          Nur Spiele des Fokusvereins
+        </label>
+        <label className="toggle compact">
+          <input
+            type="checkbox"
+            checked={onlyCompare}
+            disabled={!hasComparePair}
+            onChange={(e) => setOnlyCompare(e.target.checked)}
+          />
+          Nur Spiele der Vergleichsteams
+        </label>
+      </div>
 
       <div className="matchday-list single-day">
         <ul className="fixture-list">
@@ -206,17 +267,36 @@ export function ScenarioPanel({ matches, scenarios, onChange, focusTeamId }: Pro
               focusTeamId != null &&
               (match.team1.teamId === focusTeamId ||
                 match.team2.teamId === focusTeamId)
+            const involvesCompare =
+              compareSet.has(match.team1.teamId) ||
+              compareSet.has(match.team2.teamId)
             const homeGoals = scenario?.homeGoals ?? 0
             const awayGoals = scenario?.awayGoals ?? 0
+            const homeName = match.team1.shortName || match.team1.teamName
+            const awayName = match.team2.shortName || match.team2.teamName
 
             return (
-              <li key={match.matchID} className={involvesFocus ? 'focus' : ''}>
+              <li
+                key={match.matchID}
+                className={[
+                  involvesFocus ? 'focus' : '',
+                  involvesCompare ? 'compare-hit' : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+              >
                 <div className="fixture-meta">
                   <span className="fixture-date">{formatDate(match.matchDateTime)}</span>
-                  <div className="fixture-teams">
-                    <span>{match.team1.shortName || match.team1.teamName}</span>
+                  <div className="fixture-teams with-crests">
+                    <span className="fixture-side">
+                      <Crest url={match.team1.teamIconUrl} name={homeName} />
+                      {homeName}
+                    </span>
                     <span className="vs">–</span>
-                    <span>{match.team2.shortName || match.team2.teamName}</span>
+                    <span className="fixture-side away">
+                      {awayName}
+                      <Crest url={match.team2.teamIconUrl} name={awayName} />
+                    </span>
                   </div>
                 </div>
 
@@ -226,15 +306,21 @@ export function ScenarioPanel({ matches, scenarios, onChange, focusTeamId }: Pro
                       [
                         {
                           key: 'home' as const,
-                          label: `Sieg ${match.team1.shortName || match.team1.teamName}`,
+                          label: `Sieg ${homeName}`,
+                          short: '1',
+                        },
+                        {
+                          key: 'draw' as const,
+                          label: 'Unentschieden',
+                          short: 'X',
                         },
                         {
                           key: 'away' as const,
-                          label: `Sieg ${match.team2.shortName || match.team2.teamName}`,
+                          label: `Sieg ${awayName}`,
+                          short: '2',
                         },
-                        { key: 'draw' as const, label: 'Unentschieden' },
                       ] as const
-                    ).map(({ key, label }) => (
+                    ).map(({ key, label, short }) => (
                       <button
                         key={key}
                         type="button"
@@ -244,7 +330,7 @@ export function ScenarioPanel({ matches, scenarios, onChange, focusTeamId }: Pro
                           setCoarse(match.matchID, current === key ? null : key)
                         }
                       >
-                        {label}
+                        {short}
                       </button>
                     ))}
                   </div>
@@ -314,9 +400,11 @@ export function ScenarioPanel({ matches, scenarios, onChange, focusTeamId }: Pro
       </div>
       {fixtures.length === 0 && (
         <p className="hint">
-          {onlyFocus
-            ? 'Kein Spiel des Fokusvereins an diesem Spieltag – anderen Spieltag wählen.'
-            : 'Keine Spiele an diesem Spieltag.'}
+          {onlyCompare
+            ? 'Kein Spiel der Vergleichsteams an diesem Spieltag – anderen Spieltag wählen.'
+            : onlyFocus
+              ? 'Kein Spiel des Fokusvereins an diesem Spieltag – anderen Spieltag wählen.'
+              : 'Keine Spiele an diesem Spieltag.'}
         </p>
       )}
     </div>

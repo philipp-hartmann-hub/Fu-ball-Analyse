@@ -23,7 +23,7 @@ Echtzeit-Analyse für die **1. und 2. Bundesliga**: Tabelle, Restprogramm und m�
 - **Ergebnisse**: Spieltag wählbar (durchklicken); Wappen; Live-Updates; 2 Tage nach letztem Spiel → nächster Spieltag als Default
 - Spalte **Möglich**: Best-/Schlechtfall bis Saisonende (**Spanne**) oder Monte-Carlo-**Prognose** (umschaltbar)
 - Optionale Spalte **Härte**: Restprogramm-Härte 0–100 (Toggle „Restprogramm“; auf Mobile ausgeblendet)
-- Seitenleiste: **Verein** (Überblick + Spieltag-Analyse + Saison) · **Ergebnisse** · **Szenario** · **Vergleich**
+- Seitenleiste: **Verein** (Überblick + Spieltag-Analyse + Saison) · **Ergebnisse** · **Szenario** (inkl. Vergleich) · **Vergleich**
 - **Stand nach Spieltag**: Slider für historischen Stand
 - Toolbar: **Link teilen** (Zwischenablage) und **Zurücksetzen** (Szenarien + `?s=`)
 
@@ -55,6 +55,16 @@ src/
 ---
 
 ## Änderungsprotokoll
+
+### 2026-08-03 — Prompt 59
+
+**User:** Beim Szenario auch mit Vergleichen arbeiten.
+
+**Aktion:**
+- Szenario-Reiter: Vereinsvergleich darunter (gleiche Team-Auswahl); Filter „Nur Spiele der Vergleichsteams“
+- Szenario-Partien mit Wappen; Grob-Tipps als 1/X/2
+
+**Status:** erledigt
 
 ### 2026-08-02 — Prompt 58
 

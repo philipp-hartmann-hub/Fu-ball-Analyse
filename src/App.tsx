@@ -565,7 +565,11 @@ export default function App() {
                   aria-selected={sideTab === tab.id}
                   onClick={() => {
                     setSideTab(tab.id)
-                    if (tab.id === 'compare' && compareA == null && selectedTeamId != null) {
+                    if (
+                      (tab.id === 'compare' || tab.id === 'scenario') &&
+                      compareA == null &&
+                      selectedTeamId != null
+                    ) {
                       setCompareA(selectedTeamId)
                     }
                   }}
@@ -584,12 +588,29 @@ export default function App() {
                 variant="panel"
               />
             ) : sideTab === 'scenario' ? (
-              <ScenarioPanel
-                matches={openMatches}
-                scenarios={scenarios}
-                onChange={setScenarios}
-                focusTeamId={selectedTeamId}
-              />
+              <div className="scenario-stack">
+                <ScenarioPanel
+                  matches={openMatches}
+                  scenarios={scenarios}
+                  onChange={setScenarios}
+                  focusTeamId={selectedTeamId}
+                  compareTeamIds={
+                    compareA != null || compareB != null
+                      ? [compareA, compareB].filter((id): id is number => id != null)
+                      : undefined
+                  }
+                />
+                <TeamCompare
+                  standings={projectedStandings}
+                  remaining={openMatches}
+                  hardnessByTeam={hardnessByTeam}
+                  teamAId={compareA}
+                  teamBId={compareB}
+                  onChangeTeamA={setCompareA}
+                  onChangeTeamB={setCompareB}
+                  onExplain={openExplain}
+                />
+              </div>
             ) : sideTab === 'compare' ? (
               <TeamCompare
                 standings={projectedStandings}

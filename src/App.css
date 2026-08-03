@@ -2229,11 +2229,50 @@ button.range-btn.is-static {
   overflow: visible;
 }
 
-.matchday-picker {
+.scenario-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.scenario-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0.5rem 0 0.65rem;
+}
+
+.fixture-teams.with-crests {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  margin: 0.75rem 0 0.25rem;
+  min-width: 0;
+}
+
+.fixture-side {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.fixture-side.away {
+  justify-content: flex-end;
+}
+
+.scenario-crest {
+  flex-shrink: 0;
+}
+
+.fixture-list li.compare-hit {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--line));
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+
+.outcome-btns.coarse button {
+  min-width: 2.4rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
 }
 
 .matchday-nav {
