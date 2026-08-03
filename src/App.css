@@ -67,25 +67,38 @@
 
 .segmented {
   display: inline-flex;
+  flex-wrap: wrap;
   padding: 0.2rem;
   background: var(--bg-elevated);
   border: 1px solid var(--line);
   border-radius: 999px;
+  max-width: 100%;
+  gap: 0.1rem;
 }
 
 .segmented button {
   border: 0;
   background: transparent;
-  padding: 0.45rem 0.95rem;
+  padding: 0.4rem 0.7rem;
   border-radius: 999px;
   color: var(--muted);
   transition: background 0.2s, color 0.2s;
+  font-size: 0.85rem;
 }
 
 .segmented button.active {
   background: var(--accent);
   color: #132016;
   font-weight: 600;
+}
+
+.delay-hint {
+  font-size: 0.78rem;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  white-space: nowrap;
 }
 
 .season-label {

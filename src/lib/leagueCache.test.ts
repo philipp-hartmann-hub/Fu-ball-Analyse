@@ -10,6 +10,7 @@ import { MATCH_MD2_ALPHA_GAMMA } from './__fixtures__/miniLeague'
 const league: League = {
   id: 'bl1',
   shortcut: 'bl1',
+  source: 'openliga',
   label: '1. Bundesliga',
   shortLabel: '1. BL',
   size: 18,

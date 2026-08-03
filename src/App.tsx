@@ -369,7 +369,10 @@ export default function App() {
             <span className="hero-sub">Tabellen-Szenarien</span>
           </h1>
           <p className="lead">
-            Wo landet dein Verein noch? Restprogramm setzen, Tabelle live aus OpenLigaDB.
+            Wo landet dein Verein noch? Restprogramm setzen
+            {meta?.source === 'fixtures'
+              ? ', Tabelle via fixturedownload.com.'
+              : ', Tabelle live aus OpenLigaDB.'}
           </p>
         </div>
         <div className="hero-meta">
@@ -390,6 +393,14 @@ export default function App() {
                   : 'Lade…'}
               {matches.length > 0 ? ` · Saison ${seasonProgress}%` : ''}
             </span>
+            {meta?.delayedScores && (
+              <span
+                className="delay-hint"
+                title="Öffentlicher Fixture-Feed – kein Live-Ticker"
+              >
+                Kein Live-Ticker
+              </span>
+            )}
             <button type="button" className="ghost" onClick={() => void reload()}>
               Neu laden
             </button>
@@ -651,8 +662,15 @@ export default function App() {
       )}
 
       <footer className="footer">
-        Daten: OpenLigaDB · Aktualisierung alle 60 Sekunden · Keine Wettberatung · Build{' '}
-        <code>{__APP_BUILD__}</code>
+        Daten:{' '}
+        {meta?.source === 'fixtures'
+          ? 'fixturedownload.com'
+          : 'OpenLigaDB'}{' '}
+        ·{' '}
+        {meta?.source === 'fixtures'
+          ? 'Aktualisierung alle 5 Minuten'
+          : 'Aktualisierung alle 60 Sekunden'}{' '}
+        · Keine Wettberatung · Build <code>{__APP_BUILD__}</code>
       </footer>
 
       <ExplainModal topic={explainTopic} onClose={() => setExplainTopic(null)} />

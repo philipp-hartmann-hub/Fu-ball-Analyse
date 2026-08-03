@@ -51,6 +51,23 @@ export const FORECAST_ZONES_BL3 = [
   'direct-relegation',
 ] as const
 
+export const FORECAST_ZONES_TOP5_20 = [
+  'champion',
+  'cl',
+  'el',
+  'ecl',
+  'direct-relegation',
+] as const
+
+export const FORECAST_ZONES_FL1 = [
+  'champion',
+  'cl',
+  'el',
+  'ecl',
+  'relegation',
+  'direct-relegation',
+] as const
+
 export type Rng = () => number
 
 export interface TeamStrength {
@@ -179,6 +196,10 @@ function medianFromCounts(counts: number[], runs: number): number {
 function relevantZones(league: LeagueZoneId): readonly string[] {
   if (league === 'bl3') return FORECAST_ZONES_BL3
   if (league === 'bl2') return FORECAST_ZONES_BL2
+  if (league === 'fl1') return FORECAST_ZONES_FL1
+  if (league === 'pl' || league === 'pd' || league === 'sa') {
+    return FORECAST_ZONES_TOP5_20
+  }
   return FORECAST_ZONES_BL1
 }
 

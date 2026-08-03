@@ -33,9 +33,10 @@ export function isRelegationRank(rank: number, league: LeagueZoneId): boolean {
   return z === 'relegation' || z === 'direct-relegation'
 }
 
-/** BL1: CL-Plätze 1–4; BL2: Direktaufstieg 1–2 */
+/** BL1/PL/PD/SA: CL 1–4; FL1: CL 1–3; BL2/BL3: Direktaufstieg 1–2 */
 export function isTopTargetRank(rank: number, league: LeagueZoneId): boolean {
   if (league === 'bl2' || league === 'bl3') return rank <= 2
+  if (league === 'fl1') return rank <= 3
   return rank <= 4
 }
 

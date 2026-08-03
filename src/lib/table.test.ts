@@ -17,6 +17,7 @@ import {
   finalResult,
   matchdays,
   rankStandings,
+  relegationCutoffRank,
   remainingMatches,
   zoneForRank,
 } from './table'
@@ -367,5 +368,36 @@ describe('zoneForRank', () => {
     expect(zoneForRank(16, 'bl3')).toBe('mid')
     expect(zoneForRank(17, 'bl3')).toBe('direct-relegation')
     expect(zoneForRank(20, 'bl3')).toBe('direct-relegation')
+  })
+
+  it('PL (20 Teams): CL 1–4, EL 5, ECL 6, Abstieg 18–20', () => {
+    expect(zoneForRank(1, 'pl')).toBe('champion')
+    expect(zoneForRank(4, 'pl')).toBe('cl')
+    expect(zoneForRank(5, 'pl')).toBe('el')
+    expect(zoneForRank(6, 'pl')).toBe('ecl')
+    expect(zoneForRank(7, 'pl')).toBe('mid')
+    expect(zoneForRank(17, 'pl')).toBe('mid')
+    expect(zoneForRank(18, 'pl')).toBe('direct-relegation')
+    expect(zoneForRank(20, 'pl')).toBe('direct-relegation')
+  })
+
+  it('Ligue 1 (18 Teams): CL 1–3, EL 4, ECL 5, Rel. 16, Abstieg 17–18', () => {
+    expect(zoneForRank(1, 'fl1')).toBe('champion')
+    expect(zoneForRank(3, 'fl1')).toBe('cl')
+    expect(zoneForRank(4, 'fl1')).toBe('el')
+    expect(zoneForRank(5, 'fl1')).toBe('ecl')
+    expect(zoneForRank(6, 'fl1')).toBe('mid')
+    expect(zoneForRank(16, 'fl1')).toBe('relegation')
+    expect(zoneForRank(17, 'fl1')).toBe('direct-relegation')
+    expect(zoneForRank(18, 'fl1')).toBe('direct-relegation')
+  })
+})
+
+describe('relegationCutoffRank', () => {
+  it('liefert ersten Abstiegsplatz je Liga', () => {
+    expect(relegationCutoffRank('bl1')).toBe(16)
+    expect(relegationCutoffRank('bl3')).toBe(17)
+    expect(relegationCutoffRank('pl')).toBe(18)
+    expect(relegationCutoffRank('fl1')).toBe(16)
   })
 })

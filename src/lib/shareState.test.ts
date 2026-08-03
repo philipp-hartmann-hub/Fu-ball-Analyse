@@ -40,6 +40,11 @@ describe('shareState encode/decode', () => {
     expect(decodeShareState(b)?.season).toBe(2024)
   })
 
+  it('akzeptiert Top-5-Ligen im Share-State', () => {
+    const token = encodeShareState({ ...sample, leagueId: 'pl' })
+    expect(decodeShareState(token)?.leagueId).toBe('pl')
+  })
+
   it('clampt Tore beim Encode', () => {
     const token = encodeShareState({
       ...sample,

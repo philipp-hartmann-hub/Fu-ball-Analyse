@@ -303,14 +303,27 @@ export function currentMatchday(matches: Match[]): number {
   return Math.min(...unfinished.map((m) => m.group.groupOrderID))
 }
 
-export type LeagueZoneId = 'bl1' | 'bl2' | 'bl3'
+export type LeagueZoneId =
+  | 'bl1'
+  | 'bl2'
+  | 'bl3'
+  | 'pl'
+  | 'pd'
+  | 'sa'
+  | 'fl1'
 
 /**
  * Erster Abstiegsplatz (für „Vorsprung“-Kennzahl).
- * BL1/BL2: Platz 16 (Relegation) · 3. Liga: Platz 17 (direkter Abstieg).
+ * BL1/BL2/FL1: 16 · 3. Liga: 17 · PL/PD/SA: 18.
  */
 export function relegationCutoffRank(league: LeagueZoneId): number {
-  return league === 'bl3' ? 17 : 16
+  if (league === 'bl3') return 17
+  if (league === 'pl' || league === 'pd' || league === 'sa') return 18
+  return 16
+}
+
+function isTopFiveUefa20(league: LeagueZoneId): boolean {
+  return league === 'pl' || league === 'pd' || league === 'sa'
 }
 
 /** Zonenfarben für Tabellenzeilen */
@@ -326,6 +339,23 @@ export function zoneForRank(rank: number, league: LeagueZoneId = 'bl1'): string 
     if (rank === 3) return 'cl' // Relegation Aufstieg
     if (rank === 16) return 'relegation'
     if (rank >= 17) return 'direct-relegation'
+    return 'mid'
+  }
+  if (league === 'fl1') {
+    if (rank === 1) return 'champion'
+    if (rank <= 3) return 'cl'
+    if (rank === 4) return 'el'
+    if (rank === 5) return 'ecl'
+    if (rank === 16) return 'relegation'
+    if (rank >= 17) return 'direct-relegation'
+    return 'mid'
+  }
+  if (isTopFiveUefa20(league)) {
+    if (rank === 1) return 'champion'
+    if (rank <= 4) return 'cl'
+    if (rank === 5) return 'el'
+    if (rank === 6) return 'ecl'
+    if (rank >= 18) return 'direct-relegation'
     return 'mid'
   }
   // 1. Bundesliga
@@ -350,6 +380,23 @@ export function zoneLabelFor(rank: number, league: LeagueZoneId = 'bl1'): string
     if (rank === 3) return 'Relegation (Aufstieg)'
     if (rank === 16) return 'Relegation (Abstieg)'
     if (rank >= 17) return 'Abstieg'
+    return 'Mittelfeld'
+  }
+  if (league === 'fl1') {
+    if (rank === 1) return 'Meister'
+    if (rank <= 3) return 'Champions League'
+    if (rank === 4) return 'Europa League'
+    if (rank === 5) return 'Conference League'
+    if (rank === 16) return 'Relegation'
+    if (rank >= 17) return 'Abstieg'
+    return 'Mittelfeld'
+  }
+  if (isTopFiveUefa20(league)) {
+    if (rank === 1) return 'Meister'
+    if (rank <= 4) return 'Champions League'
+    if (rank === 5) return 'Europa League'
+    if (rank === 6) return 'Conference League'
+    if (rank >= 18) return 'Abstieg'
     return 'Mittelfeld'
   }
   if (rank === 1) return 'Meister'
@@ -380,5 +427,24 @@ export const ZONE_LEGEND_BL2: { zone: string; label: string }[] = [
 export const ZONE_LEGEND_BL3: { zone: string; label: string }[] = [
   { zone: 'champion', label: 'Direktaufstieg' },
   { zone: 'cl', label: 'Relegation Aufstieg' },
+  { zone: 'direct-relegation', label: 'Abstieg' },
+]
+
+/** PL / La Liga / Serie A — 20 Teams, Abstieg 18–20 direkt */
+export const ZONE_LEGEND_TOP5_20: { zone: string; label: string }[] = [
+  { zone: 'champion', label: 'Meister' },
+  { zone: 'cl', label: 'Champions League' },
+  { zone: 'el', label: 'Europa League' },
+  { zone: 'ecl', label: 'Conference League' },
+  { zone: 'direct-relegation', label: 'Abstieg' },
+]
+
+/** Ligue 1 — 18 Teams, Platz 16 Relegation */
+export const ZONE_LEGEND_FL1: { zone: string; label: string }[] = [
+  { zone: 'champion', label: 'Meister' },
+  { zone: 'cl', label: 'Champions League' },
+  { zone: 'el', label: 'Europa League' },
+  { zone: 'ecl', label: 'Conference League' },
+  { zone: 'relegation', label: 'Relegation' },
   { zone: 'direct-relegation', label: 'Abstieg' },
 ]

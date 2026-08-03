@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { fetchLeagueMatches } from '../api/dataSource'
-import type { League } from '../leagues'
+import { getLeague, type League } from '../leagues'
 import type { Match } from '../types'
 import { LIVE_POLL_MS, POLL_MS, listLiveMatches } from '../lib/live'
 import { readLeagueCache, writeLeagueCache } from '../lib/leagueCache'
+
+/** Top-5-Feeds: langsamere Aktualisierung (kein echtes Live). */
+const FIXTURE_POLL_MS = 5 * 60_000
 
 export function useLeagueData(leagueId: string, season: number) {
   const [matches, setMatches] = useState<Match[]>([])
@@ -15,8 +18,18 @@ export function useLeagueData(leagueId: string, season: number) {
   const [fromCache, setFromCache] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
 
-  const liveMatches = useMemo(() => listLiveMatches(matches), [matches])
-  const pollMs = liveMatches.length > 0 ? LIVE_POLL_MS : POLL_MS
+  const meta = league ?? getLeague(leagueId)
+  const isFixtureFeed = meta?.source === 'fixtures'
+
+  const liveMatches = useMemo(
+    () => (isFixtureFeed ? [] : listLiveMatches(matches)),
+    [matches, isFixtureFeed],
+  )
+  const pollMs = isFixtureFeed
+    ? FIXTURE_POLL_MS
+    : liveMatches.length > 0
+      ? LIVE_POLL_MS
+      : POLL_MS
 
   const load = useCallback(
     async (silent = false) => {
