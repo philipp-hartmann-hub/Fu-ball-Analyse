@@ -23,7 +23,7 @@ Echtzeit-Analyse für die **1., 2. und 3. Liga**: Tabelle, Restprogramm und mög
 - **Ergebnisse**: Spieltag wählbar (durchklicken); Wappen; Live-Updates; 2 Tage nach letztem Spiel → nächster Spieltag als Default
 - Spalte **Möglich**: Best-/Schlechtfall bis Saisonende (**Spanne**) oder Monte-Carlo-**Prognose** (umschaltbar)
 - Optionale Spalte **Härte**: Restprogramm-Härte 0–100 (Toggle „Restprogramm“; auf Mobile ausgeblendet)
-- Seitenleiste: **Verein** (Überblick + Spieltag-Analyse + Saison) · **Ergebnisse** · **Szenario** · **Vergleich**
+- Seitenleiste: **Verein** (Überblick + Spieltag-Analyse + Saison + **Wunschplatz**) · **Ergebnisse** · **Szenario** · **Vergleich**
 - **Szenario-Simulator**: Partien mit Wappen; Grob (Sieg/Unentschieden) oder Fein-Tore; teilbar via `?s=`
 - **Stand nach Spieltag**: Slider für historischen Stand
 - Toolbar: **Link teilen** (Zwischenablage) und **Zurücksetzen** (Szenarien + `?s=`)
@@ -56,6 +56,18 @@ src/
 ---
 
 ## Änderungsprotokoll
+
+### 2026-08-03 — Prompt 65
+
+**User:** Wunschplatzierungs-Funktion in der Vereinsanalyse (Spieltag exakt + Saison Sim/Heuristik).
+
+**Aktion:**
+- `computeTargetMatchdayOutlook` / `computeTargetSeasonOutlook` in `scenarios.ts`; Enumeration über `enumerateMatchdayRanksByMask` geteilt
+- `deriveExactCaseConditions` um mode `target`, `partiallyConstrained`, `ownOptions` (Remis vor Sieg)
+- Monte-Carlo: `pointsByRank` / `collectTargetPointsSamples` für Median-Punkte im Ziel
+- TeamInsight: Wunschplatz getrennt für Spieltag und Saison (genau/oder besser); Tests + README
+
+**Status:** erledigt
 
 ### 2026-08-03 — Prompt 64
 

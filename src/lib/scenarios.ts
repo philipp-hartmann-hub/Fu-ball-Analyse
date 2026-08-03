@@ -7,6 +7,9 @@ import type {
   ScenarioResult,
   SeasonOutlook,
   StandingRow,
+  TargetComparator,
+  TargetOutlook,
+  TargetOwnOption,
 } from '../types'
 import {
   buildStandings,
@@ -110,6 +113,7 @@ function emptyConditions(mode: 'exact' | 'heuristic'): CaseConditions {
     ownMatch: null,
     ownRest: [],
     required: [],
+    partiallyConstrained: [],
     flexible: [],
     relevantRivals: [],
     totalWays: 0,
@@ -127,17 +131,33 @@ function matchLabel(m: Match): { homeName: string; awayName: string } {
   }
 }
 
+/** Aufwand der eigenen Vorgabe: Remis < Sieg < Niederlage. */
+function ownEffort(focusResult: 'win' | 'draw' | 'loss'): number {
+  if (focusResult === 'draw') return 0
+  if (focusResult === 'win') return 1
+  return 2
+}
+
+function focusResultLabelShort(fr: 'win' | 'draw' | 'loss'): string {
+  if (fr === 'win') return 'Sieg'
+  if (fr === 'draw') return 'Remis'
+  return 'Niederlage'
+}
+
 /**
- * Zerlegt optimale Masken in notwendige vs. flexible Fremdergebnisse.
+ * Zerlegt Masken in notwendige / teilweise eingeschränkte / flexible Fremdergebnisse.
  *
- * Korrektheit: „required“ heißt „gilt in JEDEM optimalen Weg“ (bei fixer eigener Vorgabe).
- * Keine Aussage über gemeinsame Kombinierbarkeit der flexiblen Spiele.
+ * mode:
+ * - best/worst: bei mehreren eigenen Outcomes Win bzw. Loss bevorzugen
+ * - target: geringsten eigenen Aufwand (Remis vor Sieg vor Niederlage)
+ *
+ * Korrektheit: „required“ heißt „gilt in JEDEM Weg“ (bei fixer eigener Vorgabe).
  */
 export function deriveExactCaseConditions(
   fixtures: Match[],
   teamId: number,
   optimalMasks: number[],
-  mode: 'best' | 'worst',
+  mode: 'best' | 'worst' | 'target',
 ): CaseConditions {
   const base = emptyConditions('exact')
   if (!optimalMasks.length || !fixtures.length) return base
@@ -149,7 +169,6 @@ export function deriveExactCaseConditions(
   const outcomeAt = (mask: number, fi: number) =>
     Math.floor(mask / 3 ** fi) % 3
 
-  // Eigene Vorgabe: eindeutiger Ausgang, sonst Win (Best) / Loss (Schlecht) wenn möglich
   let ownOutcomeIdx: number | null = null
   if (ownIdx >= 0) {
     const ownSet = new Set(optimalMasks.map((m) => outcomeAt(m, ownIdx)))
@@ -158,23 +177,34 @@ export function deriveExactCaseConditions(
     } else {
       const own = fixtures[ownIdx]!
       const isHome = own.team1.teamId === teamId
-      const preferWin = mode === 'best'
-      for (const oi of ownSet) {
-        const fr = focusResultFromOutcome(isHome, outcomeFromIndex(oi))
-        if (preferWin && fr === 'win') {
-          ownOutcomeIdx = oi
-          break
+      if (mode === 'target') {
+        let bestEffort = Infinity
+        for (const oi of ownSet) {
+          const fr = focusResultFromOutcome(isHome, outcomeFromIndex(oi))
+          const e = ownEffort(fr)
+          if (e < bestEffort) {
+            bestEffort = e
+            ownOutcomeIdx = oi
+          }
         }
-        if (!preferWin && fr === 'loss') {
-          ownOutcomeIdx = oi
-          break
+      } else {
+        const preferWin = mode === 'best'
+        for (const oi of ownSet) {
+          const fr = focusResultFromOutcome(isHome, outcomeFromIndex(oi))
+          if (preferWin && fr === 'win') {
+            ownOutcomeIdx = oi
+            break
+          }
+          if (!preferWin && fr === 'loss') {
+            ownOutcomeIdx = oi
+            break
+          }
         }
       }
       if (ownOutcomeIdx == null) ownOutcomeIdx = [...ownSet][0]!
     }
   }
 
-  // Masken auf gewählte eigene Vorgabe einschränken
   const filtered =
     ownIdx < 0 || ownOutcomeIdx == null
       ? optimalMasks
@@ -213,6 +243,18 @@ export function deriveExactCaseConditions(
         awayIconUrl: match.team2.teamIconUrl,
         outcome: outcomeFromIndex(oi),
       })
+    } else if (set.size === 2) {
+      const allowed = [...set]
+        .sort((a, b) => a - b)
+        .map((oi) => outcomeFromIndex(oi))
+      base.partiallyConstrained.push({
+        matchId: match.matchID,
+        homeName: names.homeName,
+        awayName: names.awayName,
+        homeIconUrl: match.team1.teamIconUrl,
+        awayIconUrl: match.team2.teamIconUrl,
+        allowedOutcomes: allowed,
+      })
     } else {
       base.flexible.push({
         matchId: match.matchID,
@@ -226,6 +268,41 @@ export function deriveExactCaseConditions(
 
   base.totalWays = filtered.length
   return base
+}
+
+/** Alle eigenen Ausgänge in den Masken, die das Ziel erreichen (für ownOptions). */
+export function collectOwnTargetOptions(
+  fixtures: Match[],
+  teamId: number,
+  targetMasks: number[],
+  defaultFocus: 'win' | 'draw' | 'loss' | null,
+): TargetOwnOption[] {
+  const ownIdx = fixtures.findIndex(
+    (m) => m.team1.teamId === teamId || m.team2.teamId === teamId,
+  )
+  if (ownIdx < 0 || !targetMasks.length) return []
+  const own = fixtures[ownIdx]!
+  const isHome = own.team1.teamId === teamId
+  const outcomeAt = (mask: number) => Math.floor(mask / 3 ** ownIdx) % 3
+  const byFocus = new Map<'win' | 'draw' | 'loss', MatchOutcome>()
+  for (const mask of targetMasks) {
+    const oi = outcomeAt(mask)
+    const outcome = outcomeFromIndex(oi)
+    const fr = focusResultFromOutcome(isHome, outcome)
+    if (!byFocus.has(fr)) byFocus.set(fr, outcome)
+  }
+  const opts: TargetOwnOption[] = []
+  for (const fr of ['draw', 'win', 'loss'] as const) {
+    const outcome = byFocus.get(fr)
+    if (outcome == null) continue
+    if (defaultFocus != null && fr === defaultFocus) continue
+    opts.push({
+      focusResult: fr,
+      outcome,
+      label: `Ziel auch mit ${focusResultLabelShort(fr)} erreichbar`,
+    })
+  }
+  return opts
 }
 
 /** Punkte-Fenster: Konkurrenten, die den Fokusplatz noch erreichen könnten. */
@@ -489,6 +566,78 @@ export function matchesOnMatchday(remaining: Match[], matchday: number): Match[]
   return remaining.filter((m) => m.group.groupOrderID === matchday)
 }
 
+function matchesTargetRank(
+  rank: number,
+  target: number,
+  comparator: TargetComparator,
+): boolean {
+  return comparator === 'exact' ? rank === target : rank <= target
+}
+
+/** Exhaustive 3^n-Enumeration: Rang je Maske. null wenn zu viele Spiele. */
+export function enumerateMatchdayRanksByMask(
+  baseStandings: StandingRow[],
+  fixtures: Match[],
+  teamId: number,
+  priorScores: MatchScore[] = [],
+): { ranksByMask: number[]; bestRank: number; worstRank: number } | null {
+  if (!fixtures.length || fixtures.length > 12) return null
+
+  let bestRank = baseStandings.length
+  let worstRank = 1
+  const total = 3 ** fixtures.length
+  const ranksByMask: number[] = new Array(total)
+
+  for (let mask = 0; mask < total; mask++) {
+    const map = new Map(baseStandings.map((s) => [s.teamId, cloneRow(s)]))
+    const scores: MatchScore[] = [...priorScores]
+    let x = mask
+    for (const match of fixtures) {
+      const outcome = OUTCOMES[x % 3]!
+      x = Math.floor(x / 3)
+      applyOutcome(
+        map,
+        match.team1.teamId,
+        match.team2.teamId,
+        outcome[0],
+        outcome[1],
+      )
+      scores.push({
+        matchId: match.matchID,
+        homeId: match.team1.teamId,
+        awayId: match.team2.teamId,
+        homeGoals: outcome[0],
+        awayGoals: outcome[1],
+      })
+    }
+    const rank = rankOf([...map.values()], teamId, scores)
+    ranksByMask[mask] = rank
+    if (rank < bestRank) bestRank = rank
+    if (rank > worstRank) worstRank = rank
+  }
+
+  return { ranksByMask, bestRank, worstRank }
+}
+
+function nearestReachableRank(
+  ranksByMask: number[],
+  target: number,
+): number | undefined {
+  let best: number | undefined
+  let bestDist = Infinity
+  const seen = new Set<number>()
+  for (const rank of ranksByMask) {
+    if (seen.has(rank)) continue
+    seen.add(rank)
+    const dist = Math.abs(rank - target)
+    if (dist < bestDist || (dist === bestDist && (best == null || rank < best))) {
+      bestDist = dist
+      best = rank
+    }
+  }
+  return best
+}
+
 /** Exakte Best-/Schlechtfall-Platzierung nach dem nächsten Spieltag. */
 export function computeNextMatchdayOutlook(
   baseStandings: StandingRow[],
@@ -550,42 +699,18 @@ export function computeNextMatchdayOutlook(
     }
   }
 
-  let bestRank = baseStandings.length
-  let worstRank = 1
-  const total = 3 ** fixtures.length
-  const ranksByMask: number[] = new Array(total)
+  const enumerated = enumerateMatchdayRanksByMask(
+    baseStandings,
+    fixtures,
+    teamId,
+    priorScores,
+  )
+  if (!enumerated) return null
 
-  for (let mask = 0; mask < total; mask++) {
-    const map = new Map(baseStandings.map((s) => [s.teamId, cloneRow(s)]))
-    const scores: MatchScore[] = [...priorScores]
-    let x = mask
-    for (const match of fixtures) {
-      const outcome = OUTCOMES[x % 3]!
-      x = Math.floor(x / 3)
-      applyOutcome(
-        map,
-        match.team1.teamId,
-        match.team2.teamId,
-        outcome[0],
-        outcome[1],
-      )
-      scores.push({
-        matchId: match.matchID,
-        homeId: match.team1.teamId,
-        awayId: match.team2.teamId,
-        homeGoals: outcome[0],
-        awayGoals: outcome[1],
-      })
-    }
-    const rank = rankOf([...map.values()], teamId, scores)
-    ranksByMask[mask] = rank
-    if (rank < bestRank) bestRank = rank
-    if (rank > worstRank) worstRank = rank
-  }
-
+  const { ranksByMask, bestRank, worstRank } = enumerated
   const bestMasks: number[] = []
   const worstMasks: number[] = []
-  for (let mask = 0; mask < total; mask++) {
+  for (let mask = 0; mask < ranksByMask.length; mask++) {
     if (ranksByMask[mask] === bestRank) bestMasks.push(mask)
     if (ranksByMask[mask] === worstRank) worstMasks.push(mask)
   }
@@ -605,6 +730,213 @@ export function computeNextMatchdayOutlook(
       worstMasks,
       'worst',
     ),
+  }
+}
+
+/**
+ * Wunschplatz nach dem nächsten Spieltag (exakte Enumeration).
+ * comparator exact: Rang == target · atLeast: Rang <= target.
+ */
+export function computeTargetMatchdayOutlook(
+  baseStandings: StandingRow[],
+  remaining: Match[],
+  teamId: number,
+  target: number,
+  comparator: TargetComparator,
+  priorScores: MatchScore[] = [],
+): TargetOutlook | null {
+  const matchday = nextOpenMatchday(remaining)
+  if (matchday == null) return null
+  const fixtures = matchesOnMatchday(remaining, matchday)
+  if (!fixtures.length) return null
+
+  const clampedTarget = Math.max(1, Math.min(baseStandings.length, Math.floor(target)))
+
+  if (fixtures.length > 12) {
+    const best = simulateExtremeFinish(
+      baseStandings,
+      fixtures,
+      teamId,
+      'best',
+      priorScores,
+    )
+    const worst = simulateExtremeFinish(
+      baseStandings,
+      fixtures,
+      teamId,
+      'worst',
+      priorScores,
+    )
+    const lo = Math.min(best.rank, worst.rank)
+    const hi = Math.max(best.rank, worst.rank)
+    const reachable =
+      comparator === 'exact'
+        ? clampedTarget >= lo && clampedTarget <= hi
+        : lo <= clampedTarget
+    return {
+      target: clampedTarget,
+      comparator,
+      reachable,
+      nearestReachable: reachable
+        ? undefined
+        : Math.abs(lo - clampedTarget) <= Math.abs(hi - clampedTarget)
+          ? lo
+          : hi,
+    }
+  }
+
+  const enumerated = enumerateMatchdayRanksByMask(
+    baseStandings,
+    fixtures,
+    teamId,
+    priorScores,
+  )
+  if (!enumerated) return null
+
+  const { ranksByMask } = enumerated
+  const targetMasks: number[] = []
+  for (let mask = 0; mask < ranksByMask.length; mask++) {
+    if (matchesTargetRank(ranksByMask[mask]!, clampedTarget, comparator)) {
+      targetMasks.push(mask)
+    }
+  }
+
+  if (!targetMasks.length) {
+    return {
+      target: clampedTarget,
+      comparator,
+      reachable: false,
+      nearestReachable: nearestReachableRank(ranksByMask, clampedTarget),
+    }
+  }
+
+  const conditions = deriveExactCaseConditions(
+    fixtures,
+    teamId,
+    targetMasks,
+    'target',
+  )
+  const ownOptions = collectOwnTargetOptions(
+    fixtures,
+    teamId,
+    targetMasks,
+    conditions.ownMatch?.focusResult ?? null,
+  )
+
+  return {
+    target: clampedTarget,
+    comparator,
+    reachable: true,
+    conditions,
+    ownOptions: ownOptions.length > 0 ? ownOptions : undefined,
+  }
+}
+
+/**
+ * Wunschplatz über die Saison: Heuristik + optional Monte-Carlo-Stats.
+ * forecast null → nur heuristische Richtung (kein Wahrscheinlichkeits-Block).
+ */
+export function computeTargetSeasonOutlook(
+  baseStandings: StandingRow[],
+  remaining: Match[],
+  teamId: number,
+  target: number,
+  comparator: TargetComparator,
+  priorScores: MatchScore[] = [],
+  forecast: {
+    runs: number
+    rankCounts: number[]
+    /** Punkte je Lauf, in denen Rang dem Ziel genügt (optional) */
+    targetPointsSamples?: number[]
+  } | null = null,
+): TargetOutlook | null {
+  const focus = baseStandings.find((s) => s.teamId === teamId)
+  if (!focus) return null
+
+  const clampedTarget = Math.max(1, Math.min(baseStandings.length, Math.floor(target)))
+  const extremes = seasonExtremeOutcomes(
+    baseStandings,
+    remaining,
+    teamId,
+    priorScores,
+  )
+  if (!extremes?.length) return null
+
+  const bestRank = Math.min(...extremes.map((e) => e.rank))
+  const worstRank = Math.max(...extremes.map((e) => e.rank))
+
+  let reachable =
+    comparator === 'exact'
+      ? clampedTarget >= bestRank && clampedTarget <= worstRank
+      : bestRank <= clampedTarget
+
+  let season: TargetOutlook['season']
+  if (forecast && forecast.runs > 0) {
+    const counts = forecast.rankCounts
+    let exact = 0
+    let atLeast = 0
+    for (let i = 0; i < counts.length; i++) {
+      const c = counts[i] ?? 0
+      const rank = i + 1
+      if (rank === clampedTarget) exact += c
+      if (rank <= clampedTarget) atLeast += c
+    }
+    const pExact = exact / forecast.runs
+    const pAtLeast = atLeast / forecast.runs
+    const hitProb = comparator === 'exact' ? pExact : pAtLeast
+    if (hitProb <= 0) reachable = false
+
+    const samples = forecast.targetPointsSamples ?? []
+    let medianPoints: number | null = null
+    if (samples.length > 0) {
+      const sorted = [...samples].sort((a, b) => a - b)
+      const mid = Math.floor(sorted.length / 2)
+      medianPoints =
+        sorted.length % 2 === 1
+          ? sorted[mid]!
+          : (sorted[mid - 1]! + sorted[mid]!) / 2
+    }
+    season = {
+      pExact,
+      pAtLeast,
+      medianPoints,
+      pointsNeeded:
+        medianPoints != null ? Math.max(0, medianPoints - focus.points) : null,
+    }
+  }
+
+  if (!reachable) {
+    const nearest =
+      comparator === 'atLeast'
+        ? bestRank
+        : Math.abs(bestRank - clampedTarget) <= Math.abs(worstRank - clampedTarget)
+          ? bestRank
+          : worstRank
+    return {
+      target: clampedTarget,
+      comparator,
+      reachable: false,
+      nearestReachable: nearest,
+      season,
+    }
+  }
+
+  const heuristicMode: 'best' | 'worst' =
+    clampedTarget < focus.rank ? 'best' : clampedTarget > focus.rank ? 'worst' : 'best'
+
+  const conditions = deriveHeuristicSeasonConditions(
+    baseStandings,
+    remaining,
+    teamId,
+    heuristicMode,
+  )
+
+  return {
+    target: clampedTarget,
+    comparator,
+    reachable: true,
+    conditions,
+    season,
   }
 }
 

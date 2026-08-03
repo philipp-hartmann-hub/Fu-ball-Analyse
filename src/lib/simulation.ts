@@ -69,6 +69,11 @@ export interface TeamForecast {
   zoneProbabilities: Record<string, number>
   /** Häufigkeit je Rang (Index 0 = Platz 1) */
   rankCounts: number[]
+  /**
+   * Punkte je Lauf, gruppiert nach Endrang (Index 0 = Platz 1).
+   * Für Wunschplatz-Median; kann leer sein wenn nicht gesammelt.
+   */
+  pointsByRank?: number[][]
 }
 
 export interface SeasonSimulationResult {
@@ -87,6 +92,11 @@ export interface SeasonSimulationInput {
   playedScores?: MatchScore[]
   runs?: number
   seed?: number
+  /**
+   * Wenn true: Punkte je Endrang sammeln (Wunschplatz-Median).
+   * Default false (weniger Speicher / PostMessage-Last).
+   */
+  collectPointsByRank?: boolean
 }
 
 /** Mulberry32 – schneller, seedbarer PRNG in [0,1). */
@@ -202,11 +212,19 @@ export function runSeasonSimulation(
   const rankCounts = new Map<number, number[]>()
   const pointsSum = new Map<number, number>()
   const zoneCounts = new Map<number, Map<string, number>>()
+  const collectPoints = input.collectPointsByRank === true
+  const pointsByRank = new Map<number, number[][]>()
 
   for (const id of teamIds) {
     rankCounts.set(id, Array.from({ length: nTeams }, () => 0))
     pointsSum.set(id, 0)
     zoneCounts.set(id, new Map())
+    if (collectPoints) {
+      pointsByRank.set(
+        id,
+        Array.from({ length: nTeams }, () => [] as number[]),
+      )
+    }
   }
 
   for (let run = 0; run < runs; run++) {
@@ -269,6 +287,9 @@ export function runSeasonSimulation(
       const zone = zoneForRank(row.rank, input.league)
       const zmap = zoneCounts.get(row.teamId)!
       zmap.set(zone, (zmap.get(zone) ?? 0) + 1)
+      if (collectPoints) {
+        pointsByRank.get(row.teamId)![row.rank - 1]!.push(row.points)
+      }
     }
   }
 
@@ -286,10 +307,30 @@ export function runSeasonSimulation(
       medianRank: medianFromCounts(counts, runs),
       zoneProbabilities,
       rankCounts: counts,
+      pointsByRank: collectPoints ? pointsByRank.get(teamId) : undefined,
     }
   })
 
   return { runs, seed, teams }
+}
+
+/** Punkte-Samples aus dem Forecast für einen Zielrang / atLeast. */
+export function collectTargetPointsSamples(
+  forecast: TeamForecast,
+  target: number,
+  comparator: 'exact' | 'atLeast',
+): number[] {
+  const byRank = forecast.pointsByRank
+  if (!byRank?.length) return []
+  const out: number[] = []
+  for (let i = 0; i < byRank.length; i++) {
+    const rank = i + 1
+    const hit = comparator === 'exact' ? rank === target : rank <= target
+    if (!hit) continue
+    const bucket = byRank[i]
+    if (bucket?.length) out.push(...bucket)
+  }
+  return out
 }
 
 /** Zone mit höchster Wahrscheinlichkeit (für Tabellen-Headline). */

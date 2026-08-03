@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import type { LeagueZoneId } from '../lib/table'
 import type {
   CaseConditions,
@@ -7,8 +7,11 @@ import type {
   PositionRange,
   SeasonOutlook,
   StandingRow,
+  TargetComparator,
+  TargetOutlook,
+  TargetOwnOption,
 } from '../types'
-import { zoneLabelFor } from '../lib/table'
+import { relegationCutoffRank, zoneLabelFor } from '../lib/table'
 import type { ThresholdLine } from '../lib/thresholds'
 import {
   hardnessTone,
@@ -21,6 +24,16 @@ interface Props {
   team: StandingRow | null
   seasonOutlook: SeasonOutlook | null
   nextMatchday: NextMatchdayOutlook | null
+  matchdayTargetOutlook?: TargetOutlook | null
+  seasonTargetOutlook?: TargetOutlook | null
+  matchdayTargetRank: number
+  matchdayTargetComparator: TargetComparator
+  seasonTargetRank: number
+  seasonTargetComparator: TargetComparator
+  onMatchdayTargetRankChange: (rank: number) => void
+  onMatchdayTargetComparatorChange: (c: TargetComparator) => void
+  onSeasonTargetRankChange: (rank: number) => void
+  onSeasonTargetComparatorChange: (c: TargetComparator) => void
   remainingCount: number
   league: LeagueZoneId
   pointsToFirst?: number | null
@@ -174,23 +187,26 @@ function ConditionsPanel({
   targetRank,
   conditions,
   focusTeam,
+  ownOptions,
   onApply,
   onExplain,
   onClose,
 }: {
-  kind: 'best' | 'worst'
+  kind: 'best' | 'worst' | 'target'
   targetRank: number
   conditions: CaseConditions
   focusTeam?: StandingRow | null
+  ownOptions?: TargetOwnOption[]
   onApply?: (conditions: CaseConditions) => void
   onExplain?: (topic: ExplainTopic) => void
   onClose: () => void
 }) {
   const [flexOpen, setFlexOpen] = useState(false)
   const heuristic = conditions.mode === 'heuristic'
-  const caseLabel = kind === 'best' ? 'Bestfall' : 'Schlechtfall'
+  const caseLabel =
+    kind === 'best' ? 'Bestfall' : kind === 'worst' ? 'Schlechtfall' : 'Wunschplatz'
   const heading = heuristic
-    ? `${caseLabel}: Platz ${targetRank} — das muss passieren (heuristisch)`
+    ? `${caseLabel}: Platz ${targetRank} — grobe Richtung (heuristisch)`
     : `${caseLabel}: Platz ${targetRank} — das muss passieren`
 
   const ownItems =
@@ -256,6 +272,13 @@ function ConditionsPanel({
             })}
           </ul>
         )}
+        {ownOptions && ownOptions.length > 0 && (
+          <ul className="conditions-own-options">
+            {ownOptions.map((o) => (
+              <li key={o.focusResult}>{o.label}</li>
+            ))}
+          </ul>
+        )}
         {heuristic && conditions.ownRest.length > 1 && (
           <p className="hint tight">Alle eigenen Restspiele als Vorgabe.</p>
         )}
@@ -271,7 +294,9 @@ function ConditionsPanel({
               <p className="hint tight">
                 {kind === 'best'
                   ? 'Diese Teams liegen in Reichweite — ihre Patzer helfen dem Bestfall.'
-                  : 'Diese Teams können dich noch überholen — ihre Erfolge belasten den Schlechtfall.'}
+                  : kind === 'worst'
+                    ? 'Diese Teams können dich noch überholen — ihre Erfolge belasten den Schlechtfall.'
+                    : 'Konkurrenten in Reichweite deines Wunschplatzes.'}
               </p>
               <ul className="conditions-list crest-list">
                 {conditions.relevantRivals.map((r) => (
@@ -291,9 +316,11 @@ function ConditionsPanel({
           )
         ) : conditions.required.length === 0 ? (
           <p className="hint tight">
-            {kind === 'best'
-              ? 'Nur dein eigenes Ergebnis zählt für den Bestfall.'
-              : 'Nur dein eigenes Ergebnis zählt für den Schlechtfall.'}
+            {kind === 'target'
+              ? 'Nur dein eigenes Ergebnis ist für diesen Wunschplatz fest.'
+              : kind === 'best'
+                ? 'Nur dein eigenes Ergebnis zählt für den Bestfall.'
+                : 'Nur dein eigenes Ergebnis zählt für den Schlechtfall.'}
           </p>
         ) : (
           <ul className="conditions-list crest-list">
@@ -312,6 +339,30 @@ function ConditionsPanel({
           </ul>
         )}
       </div>
+
+      {!heuristic && conditions.partiallyConstrained.length > 0 && (
+        <div className="conditions-block block-partial">
+          <h4>Eingeschränkt</h4>
+          <p className="hint tight">
+            Nicht jedes Ergebnis ist möglich — aber es bleibt mehr als ein Ausgang.
+          </p>
+          <ul className="conditions-list crest-list">
+            {conditions.partiallyConstrained.map((p) => (
+              <li key={p.matchId}>
+                <FixtureCrestRow
+                  homeName={p.homeName}
+                  awayName={p.awayName}
+                  homeIconUrl={p.homeIconUrl}
+                  awayIconUrl={p.awayIconUrl}
+                  detail={`Erlaubt: ${p.allowedOutcomes
+                    .map((o) => outcomeBadgeLabel(o))
+                    .join(' / ')}`}
+                />
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="conditions-block block-flex">
         <h4>{heuristic ? 'Ohne Einfluss' : 'Egal'}</h4>
@@ -350,6 +401,18 @@ function ConditionsPanel({
         )}
       </div>
 
+      {!heuristic && (
+        <p className="hint tight conditions-disclaimer">
+          Einzelne Bedingungen — nicht jede Kombination der offenen Spiele führt zum Ziel.
+          Im Simulator prüfbar.
+        </p>
+      )}
+      {heuristic && (
+        <p className="hint tight conditions-disclaimer">
+          Grobe Richtung, nicht exakt — keine „muss“-/Exakt-Aussage für die Saison.
+        </p>
+      )}
+
       {canApply && (
         <div className="conditions-actions">
           <button
@@ -370,6 +433,135 @@ function ConditionsPanel({
   )
 }
 
+function TargetWishBlock({
+  scopeLabel,
+  outlook,
+  leagueSize,
+  targetRank,
+  comparator,
+  onTargetRankChange,
+  onComparatorChange,
+  focusTeam,
+  onApplyConditions,
+  onExplain,
+}: {
+  scopeLabel: string
+  outlook: TargetOutlook | null | undefined
+  leagueSize: number
+  targetRank: number
+  comparator: TargetComparator
+  onTargetRankChange: (rank: number) => void
+  onComparatorChange: (c: TargetComparator) => void
+  focusTeam: StandingRow
+  onApplyConditions?: (conditions: CaseConditions) => void
+  onExplain?: (topic: ExplainTopic) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ranks = useMemo(
+    () => Array.from({ length: leagueSize }, (_, i) => i + 1),
+    [leagueSize],
+  )
+
+  const unreachableHint =
+    outlook && !outlook.reachable
+      ? `Platz ${outlook.target} ist ${
+          scopeLabel === 'Spieltag' ? 'diesen Spieltag' : 'diese Saison'
+        } nicht drin — machbar wäre ${
+          comparator === 'atLeast' ? 'frühestens' : 'am ehesten'
+        } Platz ${outlook.nearestReachable ?? '–'}.`
+      : null
+
+  return (
+    <div className="target-wish">
+      <div className="target-wish-controls">
+        <label className="target-wish-label">
+          Wunschplatz
+          <select
+            value={targetRank}
+            onChange={(e) => onTargetRankChange(Number(e.target.value))}
+            aria-label={`Wunschplatz ${scopeLabel}`}
+          >
+            {ranks.map((r) => (
+              <option key={r} value={r}>
+                {r}.
+              </option>
+            ))}
+          </select>
+        </label>
+        <div className="segmented target-comparator" role="group" aria-label="Vergleich">
+          <button
+            type="button"
+            className={comparator === 'exact' ? 'active' : ''}
+            onClick={() => onComparatorChange('exact')}
+          >
+            genau
+          </button>
+          <button
+            type="button"
+            className={comparator === 'atLeast' ? 'active' : ''}
+            onClick={() => onComparatorChange('atLeast')}
+          >
+            oder besser
+          </button>
+        </div>
+      </div>
+
+      {unreachableHint && (
+        <p className="hint tight target-unreachable" role="status">
+          {unreachableHint}
+        </p>
+      )}
+
+      {outlook?.reachable && outlook.season && (
+        <div className="target-season-stats">
+          <p className="hint tight">
+            Sim: genau Platz {outlook.target}{' '}
+            <strong>{Math.round(outlook.season.pExact * 100)}%</strong>
+            {' · '}
+            Platz {outlook.target} oder besser{' '}
+            <strong>{Math.round(outlook.season.pAtLeast * 100)}%</strong>
+          </p>
+          {outlook.season.medianPoints != null && (
+            <p className="hint tight">
+              In Ziel-Läufen im Schnitt ~{Math.round(outlook.season.medianPoints)}{' '}
+              Punkte
+              {outlook.season.pointsNeeded != null && outlook.season.pointsNeeded > 0
+                ? ` — noch ~${Math.round(outlook.season.pointsNeeded)}`
+                : ''}
+              .
+            </p>
+          )}
+        </div>
+      )}
+
+      {outlook?.reachable && outlook.conditions && (
+        <>
+          <button
+            type="button"
+            className={`ghost target-open-btn${open ? ' is-open' : ''}`}
+            onClick={() => setOpen((v) => !v)}
+            aria-expanded={open}
+          >
+            {open ? 'Bedingungen ausblenden' : 'Was muss passieren?'}
+          </button>
+          {open && (
+            <ConditionsPanel
+              kind="target"
+              targetRank={outlook.target}
+              conditions={outlook.conditions}
+              focusTeam={focusTeam}
+              ownOptions={outlook.ownOptions}
+              onApply={onApplyConditions}
+              onExplain={onExplain}
+              onClose={() => setOpen(false)}
+            />
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
 function VariantPanel({
   heading,
   range,
@@ -385,6 +577,7 @@ function VariantPanel({
   onApplyConditions,
   focusTeam,
   matchup,
+  targetSlot,
 }: {
   heading: string
   range: PositionRange | null
@@ -405,6 +598,7 @@ function VariantPanel({
     homeAway: 'H' | 'A'
     matchday: number
   } | null
+  targetSlot?: ReactNode
 }) {
   const [openCase, setOpenCase] = useState<'best' | 'worst' | null>(null)
 
@@ -528,6 +722,8 @@ function VariantPanel({
             </div>
           )}
 
+          {targetSlot}
+
           {thresholds && thresholds.length > 0 && (
             <ThresholdList
               lines={thresholds}
@@ -555,6 +751,16 @@ export function TeamInsight({
   team,
   seasonOutlook,
   nextMatchday,
+  matchdayTargetOutlook = null,
+  seasonTargetOutlook = null,
+  matchdayTargetRank,
+  matchdayTargetComparator,
+  seasonTargetRank,
+  seasonTargetComparator,
+  onMatchdayTargetRankChange,
+  onMatchdayTargetComparatorChange,
+  onSeasonTargetRankChange,
+  onSeasonTargetComparatorChange,
   remainingCount,
   league,
   pointsToFirst,
@@ -607,6 +813,8 @@ export function TeamInsight({
         }
       : null
 
+  const relegCutoff = relegationCutoffRank(league)
+
   return (
     <div className="insight-column">
       <div className="panel insight">
@@ -638,9 +846,7 @@ export function TeamInsight({
           )}
           {pointsAboveRelegation != null && (
             <div>
-              <span className="label">
-                Vorsprung Platz {league === 'bl3' ? 17 : 16}
-              </span>
+              <span className="label">Vorsprung Platz {relegCutoff}</span>
               <strong>
                 {pointsAboveRelegation >= 0
                   ? `+${pointsAboveRelegation}`
@@ -710,6 +916,20 @@ export function TeamInsight({
         bestConditions={nextMatchday?.bestConditions ?? null}
         worstConditions={nextMatchday?.worstConditions ?? null}
         onApplyConditions={onApplyConditions}
+        targetSlot={
+          <TargetWishBlock
+            scopeLabel="Spieltag"
+            outlook={matchdayTargetOutlook}
+            leagueSize={leagueTeamCount}
+            targetRank={matchdayTargetRank}
+            comparator={matchdayTargetComparator}
+            onTargetRankChange={onMatchdayTargetRankChange}
+            onComparatorChange={onMatchdayTargetComparatorChange}
+            focusTeam={team}
+            onApplyConditions={onApplyConditions}
+            onExplain={onExplain}
+          />
+        }
         note={
           nextMatchday && !nextMatchday.plays
             ? 'Kein eigenes Spiel an diesem Spieltag — trotzdem relevant über Fremdergebnisse.'
@@ -740,6 +960,20 @@ export function TeamInsight({
         bestConditions={seasonOutlook?.bestConditions ?? null}
         worstConditions={seasonOutlook?.worstConditions ?? null}
         onApplyConditions={onApplyConditions}
+        targetSlot={
+          <TargetWishBlock
+            scopeLabel="Saison"
+            outlook={seasonTargetOutlook}
+            leagueSize={leagueTeamCount}
+            targetRank={seasonTargetRank}
+            comparator={seasonTargetComparator}
+            onTargetRankChange={onSeasonTargetRankChange}
+            onComparatorChange={onSeasonTargetComparatorChange}
+            focusTeam={team}
+            onApplyConditions={onApplyConditions}
+            onExplain={onExplain}
+          />
+        }
         note="Schätzung über alle Restspiele. Bedingungen heuristisch — tippe Best-/Schlechtfall."
         empty="Keine Saison-Spanne berechenbar."
       />

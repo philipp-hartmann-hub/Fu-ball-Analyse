@@ -38,8 +38,9 @@ export interface PositionRange {
 }
 
 /**
- * Zerlegung eines Best-/Schlechtfall-Raums.
+ * Zerlegung eines Best-/Schlechtfall- bzw. Zielplatz-Raums.
  * exact: „required“ gilt in JEDEM optimalen Weg (bei fixer eigener Vorgabe).
+ * partiallyConstrained: Ausgang eingeschränkt (nicht alle 3 möglich), aber nicht eindeutig.
  * Keine Aussage über gemeinsame Kombinierbarkeit der flexiblen Spiele.
  */
 export interface CaseConditions {
@@ -76,6 +77,18 @@ export interface CaseConditions {
     awayIconUrl: string
     outcome: MatchOutcome
   }>
+  /**
+   * Fremdspiele mit eingeschränktem, aber nicht eindeutigem Ausgang (exact).
+   * z.B. „nicht Auswärtssieg“ → allowedOutcomes length 2.
+   */
+  partiallyConstrained: Array<{
+    matchId: number
+    homeName: string
+    awayName: string
+    homeIconUrl: string
+    awayIconUrl: string
+    allowedOutcomes: MatchOutcome[]
+  }>
   /** Fremdspiele ohne festen Ausgang (exact) bzw. ohne Einfluss (Heuristik) */
   flexible: Array<{
     matchId: number
@@ -94,6 +107,40 @@ export interface CaseConditions {
   }>
   /** Anzahl optimaler Kombinationen (exact); bei Heuristik 0 */
   totalWays: number
+}
+
+export type TargetComparator = 'exact' | 'atLeast'
+
+/** Eigene Ausgänge, die das Ziel ebenfalls erreichen (neben dem Default in ownMatch). */
+export interface TargetOwnOption {
+  focusResult: 'win' | 'draw' | 'loss'
+  outcome: MatchOutcome
+  /** Kurzhinweis für die UI */
+  label: string
+}
+
+export interface TargetSeasonStats {
+  /** P(Rang == target) */
+  pExact: number
+  /** P(Rang <= target) */
+  pAtLeast: number
+  /** Median-Punkte in Läufen, die das Ziel erfüllen; null wenn keine */
+  medianPoints: number | null
+  /** medianPoints − aktuelle Punkte; null wenn medianPoints fehlt */
+  pointsNeeded: number | null
+}
+
+/** Wunschplatz: Spieltag (exakt) und/oder Saison (Sim + Heuristik). */
+export interface TargetOutlook {
+  target: number
+  comparator: TargetComparator
+  reachable: boolean
+  /** Nächstliegender erreichbarer Rang, wenn reachable=false */
+  nearestReachable?: number
+  conditions?: CaseConditions
+  /** Weitere eigene Ausgänge, die das Ziel auch erreichen */
+  ownOptions?: TargetOwnOption[]
+  season?: TargetSeasonStats
 }
 
 /** Best-/Schlechtfall nach dem nächsten Spieltag */

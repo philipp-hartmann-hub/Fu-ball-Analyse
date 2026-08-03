@@ -8,6 +8,7 @@ import {
 import {
   computeNextMatchdayOutlook,
   computeSeasonOutlook,
+  computeTargetMatchdayOutlook,
   scenarioFromOutcome,
   scenarioFromScore,
   scenariosFromConditions,
@@ -138,12 +139,23 @@ describe('CaseConditions (nächster Spieltag)', () => {
     expect(cond.mode).toBe('exact')
 
     const fixed = scenariosFromConditions(cond)
+    const partial = cond.partiallyConstrained
     const flex = cond.flexible
-    const flexTotal = 3 ** flex.length
 
-    for (let mask = 0; mask < flexTotal; mask++) {
+    const partialTotals = partial.map((p) => p.allowedOutcomes.length)
+    const partialCombos = partialTotals.reduce((a, b) => a * b, 1)
+    const flexTotal = 3 ** flex.length
+    const total = partialCombos * flexTotal
+
+    for (let mask = 0; mask < total; mask++) {
       let x = mask
       const scenarios = [...fixed]
+      for (const p of partial) {
+        const n = p.allowedOutcomes.length
+        const oi = x % n
+        x = Math.floor(x / n)
+        scenarios.push(scenarioFromOutcome(p.matchId, p.allowedOutcomes[oi]!))
+      }
       for (const f of flex) {
         scenarios.push(scenarioFromOutcome(f.matchId, OUTCOMES[x % 3]!))
         x = Math.floor(x / 3)
@@ -352,5 +364,93 @@ describe('computeSeasonOutlook', () => {
     expect(outlook.bestConditions!.ownRest[0]?.focusResult).toBe('win')
     expect(outlook.bestConditions!.required).toEqual([])
     expect(outlook.worstConditions!.ownRest[0]?.focusResult).toBe('loss')
+  })
+})
+
+describe('computeTargetMatchdayOutlook', () => {
+  it('Zielplatz exakt erreichbar: Bedingungen konsistent', () => {
+    const base = buildStandings(MINI_LEAGUE_MATCHES, { maxMatchday: 1 })
+    const remaining = [MATCH_MD2_ALPHA_GAMMA, MATCH_MD2_BETA_DELTA]
+    const outlook = computeTargetMatchdayOutlook(
+      base,
+      remaining,
+      TEAM_ALPHA.teamId,
+      1,
+      'exact',
+    )!
+
+    expect(outlook.reachable).toBe(true)
+    expect(outlook.conditions).toBeTruthy()
+    expect(outlook.conditions!.mode).toBe('exact')
+
+    const OUTCOMES: MatchOutcome[] = ['home', 'draw', 'away']
+    const cond = outlook.conditions!
+    const fixed = scenariosFromConditions(cond)
+    const flexTotal = 3 ** cond.flexible.length
+    for (let mask = 0; mask < flexTotal; mask++) {
+      let x = mask
+      const scenarios = [...fixed]
+      for (const f of cond.flexible) {
+        scenarios.push(scenarioFromOutcome(f.matchId, OUTCOMES[x % 3]!))
+        x = Math.floor(x / 3)
+      }
+      const table = buildStandings(MINI_LEAGUE_MATCHES, { scenarios })
+      expect(table.find((t) => t.teamId === TEAM_ALPHA.teamId)!.rank).toBe(1)
+    }
+  })
+
+  it('unerreichbarer Zielplatz: reachable false + nearestReachable', () => {
+    const base = buildStandings(MINI_LEAGUE_MATCHES, { maxMatchday: 1 })
+    const outlook = computeTargetMatchdayOutlook(
+      base,
+      [MATCH_MD2_BETA_DELTA],
+      TEAM_ALPHA.teamId,
+      4,
+      'exact',
+    )!
+    expect(outlook.reachable).toBe(false)
+    expect(outlook.nearestReachable).toBeTypeOf('number')
+    expect(outlook.nearestReachable!).toBeGreaterThanOrEqual(1)
+    expect(outlook.nearestReachable!).toBeLessThanOrEqual(4)
+  })
+
+  it('atLeast ist Obermenge von exact (Masken-Anzahl)', () => {
+    const base = buildStandings(MINI_LEAGUE_MATCHES, { maxMatchday: 1 })
+    const remaining = [MATCH_MD2_ALPHA_GAMMA, MATCH_MD2_BETA_DELTA]
+    const exact = computeTargetMatchdayOutlook(
+      base,
+      remaining,
+      TEAM_ALPHA.teamId,
+      2,
+      'exact',
+    )!
+    const atLeast = computeTargetMatchdayOutlook(
+      base,
+      remaining,
+      TEAM_ALPHA.teamId,
+      2,
+      'atLeast',
+    )!
+    expect(exact.reachable).toBe(true)
+    expect(atLeast.reachable).toBe(true)
+    expect(atLeast.conditions!.totalWays).toBeGreaterThanOrEqual(
+      exact.conditions!.totalWays,
+    )
+  })
+
+  it('ownOptions: Remis und Sieg reichen → Default Remis, Sieg als Alternative', () => {
+    const base = buildStandings(MINI_LEAGUE_MATCHES, { maxMatchday: 1 })
+    const remaining = [MATCH_MD2_ALPHA_GAMMA, MATCH_MD2_BETA_DELTA]
+    const outlook = computeTargetMatchdayOutlook(
+      base,
+      remaining,
+      TEAM_ALPHA.teamId,
+      1,
+      'exact',
+    )!
+    expect(outlook.reachable).toBe(true)
+    expect(outlook.conditions!.ownMatch?.focusResult).toBe('draw')
+    expect(outlook.ownOptions?.some((o) => o.focusResult === 'win')).toBe(true)
+    expect(outlook.ownOptions?.some((o) => o.focusResult === 'draw')).toBeFalsy()
   })
 })

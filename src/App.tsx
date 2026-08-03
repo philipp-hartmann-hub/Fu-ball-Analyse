@@ -21,10 +21,13 @@ import {
   computeNextMatchdayOutlook,
   computePositionRanges,
   computeSeasonOutlook,
+  computeTargetMatchdayOutlook,
+  computeTargetSeasonOutlook,
   enumerateMatchdayOutcomes,
   scenariosFromConditions,
   seasonExtremeOutcomes,
 } from './lib/scenarios'
+import { collectTargetPointsSamples } from './lib/simulation'
 import { deriveThresholdLines } from './lib/thresholds'
 import { computeScheduleHardness } from './lib/schedule'
 import {
@@ -42,7 +45,7 @@ import {
   remainingMatches,
   resolveMatchScores,
 } from './lib/table'
-import type { ScenarioResult } from './types'
+import type { ScenarioResult, TargetComparator } from './types'
 import './App.css'
 
 function seasonOptions(base: number): number[] {
@@ -64,6 +67,12 @@ export default function App() {
   )
   const [season, setSeason] = useState(() => initialShare?.season ?? baseSeason)
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null)
+  const [matchdayTargetRank, setMatchdayTargetRank] = useState(4)
+  const [matchdayTargetComparator, setMatchdayTargetComparator] =
+    useState<TargetComparator>('atLeast')
+  const [seasonTargetRank, setSeasonTargetRank] = useState(4)
+  const [seasonTargetComparator, setSeasonTargetComparator] =
+    useState<TargetComparator>('atLeast')
   const [scenarios, setScenarios] = useState<ScenarioResult[]>(
     () => initialShare?.scenarios ?? [],
   )
@@ -210,12 +219,15 @@ export default function App() {
     loading: forecastLoading,
     error: forecastError,
   } = useSeasonForecast({
-    enabled: tableView === 'forecast' && baseStandings.length > 0,
+    enabled:
+      (tableView === 'forecast' || selectedTeamId != null) &&
+      baseStandings.length > 0,
     baseStandings,
     remaining: openMatches,
     league: leagueId,
     fixedScenarios: tableScenarios,
     playedScores,
+    collectPointsByRank: selectedTeamId != null,
   })
 
   const selectedTeam =
@@ -242,6 +254,78 @@ export default function App() {
       playedScores,
     )
   }, [baseStandings, openMatches, selectedTeamId, playedScores])
+
+  const clampedMatchdayTarget = useMemo(() => {
+    const n = Math.max(1, baseStandings.length)
+    return Math.max(1, Math.min(n, matchdayTargetRank))
+  }, [baseStandings.length, matchdayTargetRank])
+
+  const clampedSeasonTarget = useMemo(() => {
+    const n = Math.max(1, baseStandings.length)
+    return Math.max(1, Math.min(n, seasonTargetRank))
+  }, [baseStandings.length, seasonTargetRank])
+
+  useEffect(() => {
+    const n = baseStandings.length
+    if (n <= 0) return
+    if (matchdayTargetRank > n) setMatchdayTargetRank(n)
+    if (seasonTargetRank > n) setSeasonTargetRank(n)
+  }, [baseStandings.length, matchdayTargetRank, seasonTargetRank])
+
+  const matchdayTargetOutlook = useMemo(() => {
+    if (selectedTeamId == null) return null
+    return computeTargetMatchdayOutlook(
+      baseStandings,
+      openMatches,
+      selectedTeamId,
+      clampedMatchdayTarget,
+      matchdayTargetComparator,
+      playedScores,
+    )
+  }, [
+    baseStandings,
+    openMatches,
+    selectedTeamId,
+    clampedMatchdayTarget,
+    matchdayTargetComparator,
+    playedScores,
+  ])
+
+  const seasonTargetOutlook = useMemo(() => {
+    if (selectedTeamId == null) return null
+    const teamForecast = forecastResult?.teams.find(
+      (t) => t.teamId === selectedTeamId,
+    )
+    const forecast =
+      forecastResult && teamForecast
+        ? {
+            runs: forecastResult.runs,
+            rankCounts: teamForecast.rankCounts,
+            targetPointsSamples: collectTargetPointsSamples(
+              teamForecast,
+              clampedSeasonTarget,
+              seasonTargetComparator,
+            ),
+          }
+        : null
+    return computeTargetSeasonOutlook(
+      baseStandings,
+      openMatches,
+      selectedTeamId,
+      clampedSeasonTarget,
+      seasonTargetComparator,
+      playedScores,
+      forecast,
+    )
+  }, [
+    baseStandings,
+    openMatches,
+    selectedTeamId,
+    clampedSeasonTarget,
+    seasonTargetComparator,
+    playedScores,
+    forecastResult,
+  ])
 
   const matchdayThresholds = useMemo(() => {
     if (!selectedTeam) return []
@@ -609,6 +693,16 @@ export default function App() {
                 team={selectedTeam}
                 seasonOutlook={seasonOutlook}
                 nextMatchday={nextMatchdayOutlook}
+                matchdayTargetOutlook={matchdayTargetOutlook}
+                seasonTargetOutlook={seasonTargetOutlook}
+                matchdayTargetRank={clampedMatchdayTarget}
+                matchdayTargetComparator={matchdayTargetComparator}
+                seasonTargetRank={clampedSeasonTarget}
+                seasonTargetComparator={seasonTargetComparator}
+                onMatchdayTargetRankChange={setMatchdayTargetRank}
+                onMatchdayTargetComparatorChange={setMatchdayTargetComparator}
+                onSeasonTargetRankChange={setSeasonTargetRank}
+                onSeasonTargetComparatorChange={setSeasonTargetComparator}
                 league={leagueId}
                 suggestedCutoff={suggestedCutoff}
                 onEnableMatchdayCutoff={enableMatchdayCutoff}

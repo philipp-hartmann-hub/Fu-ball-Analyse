@@ -19,6 +19,7 @@ interface Args {
   fixedScenarios: ScenarioResult[]
   playedScores?: MatchScore[]
   runs?: number
+  collectPointsByRank?: boolean
 }
 
 function fingerprintInput(
@@ -28,10 +29,12 @@ function fingerprintInput(
   fixedScenarios: ScenarioResult[],
   playedScores: MatchScore[],
   runs: number,
+  collectPointsByRank: boolean,
 ): string {
   return JSON.stringify({
     league,
     runs,
+    collectPointsByRank,
     standings: baseStandings.map((s) => [
       s.teamId,
       s.points,
@@ -69,6 +72,7 @@ export function useSeasonForecast({
   fixedScenarios,
   playedScores = [],
   runs = DEFAULT_SIMULATIONS,
+  collectPointsByRank = false,
 }: Args) {
   const [result, setResult] = useState<SeasonSimulationResult | null>(null)
   const [loading, setLoading] = useState(false)
@@ -84,8 +88,17 @@ export function useSeasonForecast({
         fixedScenarios,
         playedScores,
         runs,
+        collectPointsByRank,
       ),
-    [baseStandings, remaining, league, fixedScenarios, playedScores, runs],
+    [
+      baseStandings,
+      remaining,
+      league,
+      fixedScenarios,
+      playedScores,
+      runs,
+      collectPointsByRank,
+    ],
   )
 
   const latest = useRef({
@@ -95,6 +108,7 @@ export function useSeasonForecast({
     fixedScenarios,
     playedScores,
     runs,
+    collectPointsByRank,
   })
   latest.current = {
     baseStandings,
@@ -103,6 +117,7 @@ export function useSeasonForecast({
     fixedScenarios,
     playedScores,
     runs,
+    collectPointsByRank,
   }
 
   useEffect(() => {
@@ -120,6 +135,7 @@ export function useSeasonForecast({
       fixedScenarios: fixed,
       playedScores: played,
       runs: n,
+      collectPointsByRank: collectPts,
     } = latest.current
 
     if (standings.length === 0) {
@@ -143,6 +159,7 @@ export function useSeasonForecast({
           playedScores: played,
           runs: 1,
           seed,
+          collectPointsByRank: collectPts,
         }),
       )
       return
@@ -159,6 +176,7 @@ export function useSeasonForecast({
       playedScores: played,
       runs: n,
       seed,
+      collectPointsByRank: collectPts,
     }
 
     let worker: Worker
