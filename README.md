@@ -57,6 +57,24 @@ src/
 
 ## Änderungsprotokoll
 
+### 2026-08-04 — Prompt 72
+
+**User:** Keine mathematische Variante — nur Heuristik; entsprechenden Stand wiederherstellen.
+
+**Aktion:**
+- Hard-Bounds-Feature (Prompt 71) entfernt; Stand wie nach Prompt 70
+- Möglich = Exact (≤12 relevante Spiele) sonst Heuristik „mind.“
+
+**Status:** erledigt
+
+### 2026-08-04 — Prompt 71
+
+**User:** Harte, garantierte Platzspanne (mathematisch).
+
+**Aktion:** `computeHardBounds` als Möglich-Primärquelle — **zurückgenommen** in Prompt 72.
+
+**Status:** zurückgenommen
+
 ### 2026-08-04 — Prompt 70
 
 **User:** Widersprüchliche Möglich-Ranges — Exact mit Relevanz-Pruning (nicht nur raw Restspiel-Anzahl).
