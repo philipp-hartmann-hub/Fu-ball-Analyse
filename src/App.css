@@ -423,9 +423,16 @@
   min-width: 12rem;
 }
 
-.cutoff input[type='range'] {
+.cutoff-picker {
   flex: 1;
-  accent-color: var(--accent);
+  min-width: 14rem;
+  max-width: 22rem;
+}
+
+.matchday-picker {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
 }
 
 .cutoff-value {
@@ -2135,6 +2142,11 @@ button.range-btn.is-static {
 
   .cutoff {
     min-width: 0;
+    width: 100%;
+  }
+
+  .cutoff-picker {
+    max-width: none;
     width: 100%;
   }
 

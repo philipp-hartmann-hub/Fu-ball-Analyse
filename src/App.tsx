@@ -504,20 +504,55 @@ export default function App() {
           Stand nach Spieltag
         </label>
         {useCutoff && (
-          <label className="cutoff">
-            Spieltag
-            <input
-              type="range"
-              min={0}
-              max={maxDay}
-              value={asOfMatchday ?? 0}
-              onChange={(e) => {
-                setAsOfMatchday(Number(e.target.value))
-                setScenarios([])
+          <div className="matchday-picker cutoff-picker">
+            <button
+              type="button"
+              className="ghost matchday-nav"
+              disabled={(asOfMatchday ?? 0) <= 0}
+              aria-label="Vorheriger Spieltag"
+              onClick={() => {
+                const cur = asOfMatchday ?? 0
+                if (cur > 0) {
+                  setAsOfMatchday(cur - 1)
+                  setScenarios([])
+                }
               }}
-            />
-            <strong className="cutoff-value">{asOfMatchday ?? 0}</strong>
-          </label>
+            >
+              ‹
+            </button>
+            <label className="matchday-select-wrap cutoff">
+              <span className="sr-only">Stand nach Spieltag</span>
+              <select
+                value={asOfMatchday ?? 0}
+                onChange={(e) => {
+                  setAsOfMatchday(Number(e.target.value))
+                  setScenarios([])
+                }}
+                aria-label="Stand nach Spieltag wählen"
+              >
+                {Array.from({ length: maxDay + 1 }, (_, day) => (
+                  <option key={day} value={day}>
+                    {day === 0 ? 'Vor dem 1. Spieltag' : `Nach ${day}. Spieltag`}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              className="ghost matchday-nav"
+              disabled={(asOfMatchday ?? 0) >= maxDay}
+              aria-label="Nächster Spieltag"
+              onClick={() => {
+                const cur = asOfMatchday ?? 0
+                if (cur < maxDay) {
+                  setAsOfMatchday(cur + 1)
+                  setScenarios([])
+                }
+              }}
+            >
+              ›
+            </button>
+          </div>
         )}
         <div className="toolbar-actions">
           <button type="button" className="ghost" onClick={() => void copyShareLink()}>

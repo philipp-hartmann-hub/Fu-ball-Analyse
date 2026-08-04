@@ -25,7 +25,7 @@ Echtzeit-Analyse für die **1., 2. und 3. Liga**: Tabelle, Restprogramm und mög
 - Optionale Spalte **Härte**: Restprogramm-Härte 0–100 (Toggle „Restprogramm“; auf Mobile ausgeblendet)
 - Seitenleiste: **Verein** (Überblick + Spieltag-Analyse + Saison + **Wunschplatz**) · **Ergebnisse** · **Szenario** · **Vergleich**
 - **Szenario-Simulator**: Partien mit Wappen; Grob (Sieg/Unentschieden) oder Fein-Tore; teilbar via `?s=`
-- **Stand nach Spieltag**: Slider für historischen Stand
+- **Stand nach Spieltag**: Auswahl (Dropdown) für historischen Stand
 - Toolbar: **Link teilen** (Zwischenablage) und **Zurücksetzen** (Szenarien + `?s=`)
 
 ---
@@ -56,6 +56,16 @@ src/
 ---
 
 ## Änderungsprotokoll
+
+### 2026-08-04 — Prompt 74
+
+**User:** Spieltag in der Tabelle auswählbar, nicht per Regler/Slider.
+
+**Aktion:**
+- Cutoff-UI: Range-Slider → Dropdown + Vor/Zurück (wie Szenarien/Live)
+- Optionen „Vor dem 1. Spieltag“ … „Nach n. Spieltag“
+
+**Status:** erledigt
 
 ### 2026-08-04 — Prompt 73
 
