@@ -623,8 +623,8 @@ export default function App() {
             ) : (
               <p className="forecast-disclaimer">
                 {canEnumerateExact(baseStandings, openMatches)
-                  ? 'Exakte Best-/Schlechtfall-Spanne über relevante Restspiele – keine Wahrscheinlichkeiten. '
-                  : 'Innere Näherung der Spanne („mindestens“) – real ggf. breiter; keine Wahrscheinlichkeiten. '}
+                  ? 'Exakte Spanne über relevante Restspiele (innerhalb der mathematischen Garantie). '
+                  : 'Mathematisch garantierte Spanne für die ganze Saison – keine Wahrscheinlichkeiten. '}
                 <ExplainLink topic="span" onExplain={openExplain} />
               </p>
             )}
@@ -648,11 +648,6 @@ export default function App() {
               league={leagueId}
               hardnessByTeam={hardnessByTeam}
               showHardness={showHardness}
-              rangesApproximate={
-                tableView === 'range' &&
-                openMatches.length > 0 &&
-                !canEnumerateExact(baseStandings, openMatches)
-              }
               onExplain={openExplain}
             />
           </div>

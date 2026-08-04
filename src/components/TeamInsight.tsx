@@ -606,6 +606,7 @@ function VariantPanel({
   focusTeam,
   matchup,
   targetSlot,
+  showHardGuarantee,
 }: {
   heading: string
   range: PositionRange | null
@@ -627,6 +628,8 @@ function VariantPanel({
     matchday: number
   } | null
   targetSlot?: ReactNode
+  /** Saison: harte Garantie vs. exakt/Näherung klar labeln */
+  showHardGuarantee?: boolean
 }) {
   const [openCase, setOpenCase] = useState<'best' | 'worst' | null>(null)
 
@@ -690,6 +693,30 @@ function VariantPanel({
           {matchup && (
             <p className="range-intro">
               Mögliche Platzierung nach diesem Spieltag — tippe für Bedingungen.
+            </p>
+          )}
+          {showHardGuarantee && (
+            <p className="range-guarantee" role="status">
+              Mathematisch möglich:{' '}
+              <strong>
+                {range.hardBest}.–{range.hardWorst}.
+              </strong>{' '}
+              (garantiert)
+              {range.source === 'exact' &&
+                (range.bestRank !== range.hardBest ||
+                  range.worstRank !== range.hardWorst) && (
+                  <>
+                    {' '}
+                    · Exakt enger:{' '}
+                    <strong>
+                      {range.bestRank}.–{range.worstRank}.
+                    </strong>
+                  </>
+                )}
+              {range.source === 'hard' &&
+                bestConditions?.mode === 'heuristic' && (
+                  <> · Bedingungen darunter sind grobe Richtung, nicht exakt.</>
+                )}
             </p>
           )}
           <div className="range-card" role="group" aria-label="Best- und Schlechtfall">
@@ -989,6 +1016,7 @@ export function TeamInsight({
         bestConditions={seasonOutlook?.bestConditions ?? null}
         worstConditions={seasonOutlook?.worstConditions ?? null}
         onApplyConditions={onApplyConditions}
+        showHardGuarantee
         targetSlot={
           <TargetWishBlock
             scopeLabel="Saison"
@@ -1005,10 +1033,10 @@ export function TeamInsight({
           />
         }
         note={
-          seasonOutlook?.bestConditions?.mode === 'exact'
-            ? 'Exakte Spanne über alle Restspiele — tippe Best-/Schlechtfall.'
+          seasonOutlook?.range.source === 'exact'
+            ? 'Exakte Spanne (innerhalb der Garantie) — tippe Best-/Schlechtfall.'
             : seasonOutlook?.bestConditions?.mode === 'heuristic'
-              ? 'Innere Näherung („mindestens“) — Bedingungen heuristisch; tippe Best-/Schlechtfall.'
+              ? 'Garantie oben; Bedingungen heuristisch — tippe Best-/Schlechtfall.'
               : undefined
         }
         empty="Keine Saison-Spanne berechenbar."

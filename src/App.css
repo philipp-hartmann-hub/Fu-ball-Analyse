@@ -2208,6 +2208,22 @@ button.range-btn.is-static {
   color: var(--muted);
 }
 
+.pill.exact .range-tag {
+  margin-left: 0.3rem;
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.range-guarantee {
+  margin: 0 0 0.55rem;
+  font-size: 0.86rem;
+  line-height: 1.4;
+  color: var(--text);
+}
+
 .panel {
   background: var(--bg-panel);
   border: 1px solid var(--line);

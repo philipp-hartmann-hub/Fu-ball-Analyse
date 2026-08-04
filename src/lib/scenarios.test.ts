@@ -8,6 +8,8 @@ import {
 import {
   EXACT_LIMIT,
   computeExactPositionRanges,
+  computeHardBounds,
+  computeHardRanges,
   computeNextMatchdayOutlook,
   computePositionRanges,
   computeSeasonOutlook,
@@ -101,10 +103,11 @@ describe('computeNextMatchdayOutlook', () => {
     expect(outlook!.fixtureCount).toBe(2)
     expect(outlook!.plays).toBe(true)
     expect(outlook!.opponentName).toBe('Gamma')
-    expect(outlook!.range).toEqual({
+    expect(outlook!.range).toMatchObject({
       teamId: TEAM_ALPHA.teamId,
       bestRank: 1,
       worstRank: 3,
+      source: 'exact',
     })
   })
 
@@ -684,7 +687,7 @@ describe('computeSeasonOutlook', () => {
     const alphaRank = base.find((t) => t.teamId === TEAM_ALPHA.teamId)!.rank
     const outlook = computeSeasonOutlook(base, [], TEAM_ALPHA.teamId)
 
-    expect(outlook!.range).toEqual({
+    expect(outlook!.range).toMatchObject({
       teamId: TEAM_ALPHA.teamId,
       bestRank: alphaRank,
       worstRank: alphaRank,
@@ -920,11 +923,21 @@ describe('computeExactPositionRanges / Saisonende', () => {
     const { standings, remaining } = cologneBremenFixture()
     const exact = computeExactPositionRanges(standings, remaining)!
     const oracle = bruteForceExactRanges(standings, remaining)
-    expect(exact).toEqual(oracle)
+    expect(
+      exact.map((r) => ({
+        teamId: r.teamId,
+        bestRank: r.bestRank,
+        worstRank: r.worstRank,
+      })),
+    ).toEqual(oracle)
 
     for (const row of standings) {
       const outlook = computeSeasonOutlook(standings, remaining, row.teamId)!
-      expect(outlook.range).toEqual(exact.find((r) => r.teamId === row.teamId))
+      const range = exact.find((r) => r.teamId === row.teamId)!
+      expect(outlook.range.bestRank).toBe(range.bestRank)
+      expect(outlook.range.worstRank).toBe(range.worstRank)
+      expect(outlook.hardRange.hardBest).toBeLessThanOrEqual(range.bestRank)
+      expect(outlook.hardRange.hardWorst).toBeGreaterThanOrEqual(range.worstRank)
     }
   })
 
@@ -1050,6 +1063,206 @@ describe('computeExactPositionRanges / Saisonende', () => {
 
     const top = exact!.find((r) => r.teamId === 1)!
     expect(top.bestRank).toBe(top.worstRank)
+  })
+})
+
+describe('computeHardBounds / harte Spanne', () => {
+  // Reuse helpers from sibling describe via local copies
+  function team(id: number, name: string): TeamInfo {
+    return {
+      teamId: id,
+      teamName: name,
+      shortName: name.slice(0, 3),
+      teamIconUrl: '',
+    }
+  }
+
+  function standingRow(
+    partial: Pick<
+      StandingRow,
+      'teamId' | 'teamName' | 'points' | 'goalDiff' | 'goalsFor' | 'rank'
+    > &
+      Partial<StandingRow>,
+  ): StandingRow {
+    const goalsAgainst =
+      partial.goalsAgainst ??
+      Math.max(0, (partial.goalsFor ?? 0) - (partial.goalDiff ?? 0))
+    return {
+      shortName: partial.teamName.slice(0, 3),
+      teamIconUrl: '',
+      played: 33,
+      won: 0,
+      draw: 0,
+      lost: 0,
+      goalsAgainst,
+      ...partial,
+    }
+  }
+
+  function openMatch(
+    matchID: number,
+    home: TeamInfo,
+    away: TeamInfo,
+    day = 34,
+  ): Match {
+    return {
+      matchID,
+      matchDateTime: '2025-05-17T15:30:00',
+      matchDateTimeUTC: '2025-05-17T13:30:00Z',
+      leagueName: 'Test-Liga',
+      leagueSeason: 2025,
+      leagueShortcut: 'test',
+      lastUpdateDateTime: '2025-05-17T12:00:00',
+      group: {
+        groupName: `${day}. Spieltag`,
+        groupOrderID: day,
+        groupID: 1000 + day,
+      },
+      team1: home,
+      team2: away,
+      matchIsFinished: false,
+      matchResults: [],
+    }
+  }
+
+  function cologneBremenFixture() {
+    const standings: StandingRow[] = []
+    for (let i = 1; i <= 18; i++) {
+      if (i <= 13) {
+        standings.push(
+          standingRow({
+            teamId: i,
+            teamName: `Team ${i}`,
+            points: 60 - i,
+            goalDiff: 20 - i,
+            goalsFor: 40 - i,
+            rank: i,
+          }),
+        )
+      } else if (i === 14) {
+        standings.push(
+          standingRow({
+            teamId: 14,
+            teamName: 'Köln',
+            shortName: 'KOE',
+            points: 32,
+            goalDiff: 2,
+            goalsFor: 40,
+            goalsAgainst: 38,
+            rank: 14,
+          }),
+        )
+      } else if (i === 15) {
+        standings.push(
+          standingRow({
+            teamId: 15,
+            teamName: 'Bremen',
+            shortName: 'BRE',
+            points: 32,
+            goalDiff: 1,
+            goalsFor: 38,
+            goalsAgainst: 37,
+            rank: 15,
+          }),
+        )
+      } else {
+        standings.push(
+          standingRow({
+            teamId: i,
+            teamName: `Team ${i}`,
+            points: 20 - (i - 15),
+            goalDiff: -10 - (i - 15),
+            goalsFor: 20,
+            rank: i,
+          }),
+        )
+      }
+    }
+    return {
+      standings,
+      remaining: [openMatch(3401, team(14, 'Köln'), team(15, 'Bremen'))],
+    }
+  }
+
+  it('Soundness: harte Spanne enthält Brute-Force-Extreme', () => {
+    const { standings, remaining } = cologneBremenFixture()
+    const hard = computeHardRanges(standings, remaining)
+    const exact = computeExactPositionRanges(standings, remaining)!
+    for (const e of exact) {
+      const h = hard.find((x) => x.teamId === e.teamId)!
+      expect(h.hardBest).toBeLessThanOrEqual(e.bestRank)
+      expect(h.hardWorst).toBeGreaterThanOrEqual(e.worstRank)
+    }
+  })
+
+  it('Köln/Bremen: beide 14.–15., widerspruchsfrei', () => {
+    const { standings, remaining } = cologneBremenFixture()
+    const ranges = computePositionRanges(standings, remaining)
+    const koe = ranges.find((r) => r.teamId === 14)!
+    const bre = ranges.find((r) => r.teamId === 15)!
+
+    expect(koe.hardBest).toBe(14)
+    expect(koe.hardWorst).toBe(15)
+    expect(bre.hardBest).toBe(14)
+    expect(bre.hardWorst).toBe(15)
+    // Anzeige (exakt) nicht fix, wenn Rivalen den Platz teilen können
+    expect(koe.bestRank).not.toBe(koe.worstRank)
+    expect(bre.bestRank).not.toBe(bre.worstRank)
+  })
+
+  it('Frühe Saison: Spanne nahezu 1.–Ligagröße', () => {
+    const standings: StandingRow[] = Array.from({ length: 18 }, (_, i) =>
+      standingRow({
+        teamId: i + 1,
+        teamName: `T${i + 1}`,
+        points: 0,
+        goalDiff: 0,
+        goalsFor: 0,
+        played: 0,
+        rank: i + 1,
+      }),
+    )
+    // Ein Restspieltag: 9 Partien
+    const remaining: Match[] = []
+    for (let i = 0; i < 9; i++) {
+      remaining.push(
+        openMatch(
+          5000 + i,
+          team(i * 2 + 1, `T${i * 2 + 1}`),
+          team(i * 2 + 2, `T${i * 2 + 2}`),
+          1,
+        ),
+      )
+    }
+    const hard = computeHardRanges(standings, remaining)
+    for (const h of hard) {
+      expect(h.hardBest).toBe(1)
+      expect(h.hardWorst).toBe(18)
+    }
+  })
+
+  it('Gegenprobe hart: kann B Rang r von A erreichen, enthält A r+1', () => {
+    const { standings, remaining } = cologneBremenFixture()
+    const hard = computeHardRanges(standings, remaining)
+    for (const a of hard) {
+      for (const b of hard) {
+        if (a.teamId === b.teamId) continue
+        const r = a.hardBest
+        if (b.hardBest <= r && r <= b.hardWorst) {
+          expect(a.hardWorst).toBeGreaterThanOrEqual(r + 1)
+        }
+      }
+    }
+  })
+
+  it('computeHardBounds stimmt mit computeHardRanges überein', () => {
+    const { standings, remaining } = cologneBremenFixture()
+    const all = computeHardRanges(standings, remaining)
+    for (const row of standings) {
+      expect(computeHardBounds(standings, remaining, row.teamId)).toEqual(
+        all.find((h) => h.teamId === row.teamId),
+      )
+    }
   })
 })
 
