@@ -15,7 +15,8 @@ import {
   HOME_WEIGHT,
   MIN_GAMES_FOR_HARDNESS,
   computeScheduleHardness,
-  hardnessTone,
+  hardnessGrade,
+  hardnessGradeLabel,
   remainingStrength,
   remainingStrengthRaw,
   scaleHardnessIndex,
@@ -164,10 +165,20 @@ describe('computeScheduleHardness', () => {
   })
 })
 
-describe('hardnessTone', () => {
-  it('ordnet Index in leicht/mittel/schwer', () => {
-    expect(hardnessTone(10)).toBe('easy')
-    expect(hardnessTone(50)).toBe('mid')
-    expect(hardnessTone(80)).toBe('hard')
+describe('hardnessGrade', () => {
+  it('ordnet Index in fünf Stufen', () => {
+    expect(hardnessGrade(10)).toBe('very-easy')
+    expect(hardnessGrade(30)).toBe('easy')
+    expect(hardnessGrade(50)).toBe('mid')
+    expect(hardnessGrade(70)).toBe('hard')
+    expect(hardnessGrade(90)).toBe('very-hard')
+  })
+
+  it('liefert deutsche Labels', () => {
+    expect(hardnessGradeLabel('very-easy')).toBe('sehr leicht')
+    expect(hardnessGradeLabel('easy')).toBe('leicht')
+    expect(hardnessGradeLabel('mid')).toBe('mittel')
+    expect(hardnessGradeLabel('hard')).toBe('schwer')
+    expect(hardnessGradeLabel('very-hard')).toBe('sehr schwer')
   })
 })

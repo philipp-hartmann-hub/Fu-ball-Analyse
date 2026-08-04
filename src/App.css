@@ -1396,6 +1396,7 @@ button.linkish.explain-inline {
   font-size: 0.82rem;
 }
 
+.compare-hardness.tone-very-easy,
 .compare-hardness.tone-easy {
   color: var(--accent);
 }
@@ -1404,7 +1405,8 @@ button.linkish.explain-inline {
   color: #e8c547;
 }
 
-.compare-hardness.tone-hard {
+.compare-hardness.tone-hard,
+.compare-hardness.tone-very-hard {
   color: #f87171;
 }
 
@@ -1972,13 +1974,19 @@ button.range-btn.is-static {
 
 .hardness-pill {
   display: inline-block;
-  min-width: 1.75rem;
-  padding: 0.15rem 0.4rem;
+  min-width: 4.5rem;
+  padding: 0.15rem 0.45rem;
   border-radius: 0.4rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
+  font-weight: 600;
   text-align: center;
-  font-size: 0.82rem;
+  font-size: 0.72rem;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.hardness-pill.tone-very-easy {
+  background: rgba(110, 231, 168, 0.28);
+  color: var(--accent);
 }
 
 .hardness-pill.tone-easy {
@@ -1996,16 +2004,23 @@ button.range-btn.is-static {
   color: #f87171;
 }
 
+.hardness-pill.tone-very-hard {
+  background: rgba(248, 113, 113, 0.28);
+  color: #f87171;
+}
+
 .hardness-pill.tone-pending {
   background: rgba(148, 163, 184, 0.12);
   color: var(--muted);
   font-weight: 500;
+  min-width: 1.75rem;
 }
 
 .hardness-empty {
   color: var(--muted);
 }
 
+.hardness-stat.tone-very-easy,
 .hardness-stat.tone-easy {
   color: var(--accent);
 }
@@ -2014,7 +2029,8 @@ button.range-btn.is-static {
   color: #e8c547;
 }
 
-.hardness-stat.tone-hard {
+.hardness-stat.tone-hard,
+.hardness-stat.tone-very-hard {
   color: #f87171;
 }
 

@@ -5,7 +5,8 @@ import {
   type TeamForecast,
 } from '../lib/simulation'
 import {
-  hardnessTone,
+  hardnessGrade,
+  hardnessGradeLabel,
   type ScheduleHardness,
 } from '../lib/schedule'
 import { NOT_ENOUGH_DATA_LABEL } from '../lib/reliability'
@@ -77,10 +78,10 @@ export function StandingsTable({
             <th className="num">Pkt</th>
             {showHardness && (
               <th
-                className="num col-hardness"
-                title="Restprogramm-Härte: 0–100 (höher = schwerer), Rang in der Liga"
+                className="col-hardness"
+                title="Restprogramm: sehr leicht bis sehr schwer (relativ zur Liga)"
               >
-                Härte
+                Restprog.
                 {onExplain && (
                   <span className="th-explain">
                     {' '}
@@ -162,7 +163,7 @@ export function StandingsTable({
                 <td className="num">{row.goalDiff > 0 ? `+${row.goalDiff}` : row.goalDiff}</td>
                 <td className="num pts">{row.points}</td>
                 {showHardness && (
-                  <td className="num col-hardness">
+                  <td className="col-hardness">
                     {hardness && hardness.remainingGames > 0 ? (
                       <HardnessCell hardness={hardness} teamCount={teamCount} />
                     ) : (
@@ -242,14 +243,14 @@ function HardnessCell({
       </span>
     )
   }
-  const tone = hardnessTone(hardness.index)
+  const grade = hardnessGrade(hardness.index)
   const rounded = Math.round(hardness.index)
   return (
     <span
-      className={`hardness-pill tone-${tone}`}
+      className={`hardness-pill tone-${grade}`}
       title={`Index ${rounded}/100 · Rang ${hardness.rank}/${teamCount} (1 = schwerstes Restprogramm)`}
     >
-      {rounded}
+      {hardnessGradeLabel(grade)}
     </span>
   )
 }

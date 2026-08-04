@@ -204,9 +204,35 @@ export function computeScheduleHardness(
   }))
 }
 
-/** Tone für UI: leicht / mittel / schwer anhand Index (nur bei reliable verwenden). */
-export function hardnessTone(index: number): 'easy' | 'mid' | 'hard' {
-  if (index < 35) return 'easy'
-  if (index < 65) return 'mid'
-  return 'hard'
+/** Fünf Stufen für UI (nur bei reliable verwenden). */
+export type HardnessGrade =
+  | 'very-easy'
+  | 'easy'
+  | 'mid'
+  | 'hard'
+  | 'very-hard'
+
+/** Abgestufte Einschätzung anhand Index 0–100. */
+export function hardnessGrade(index: number): HardnessGrade {
+  if (index < 20) return 'very-easy'
+  if (index < 40) return 'easy'
+  if (index < 60) return 'mid'
+  if (index < 80) return 'hard'
+  return 'very-hard'
+}
+
+/** Deutsche Kurzlabels für die Tabelle / UI. */
+export function hardnessGradeLabel(grade: HardnessGrade): string {
+  switch (grade) {
+    case 'very-easy':
+      return 'sehr leicht'
+    case 'easy':
+      return 'leicht'
+    case 'mid':
+      return 'mittel'
+    case 'hard':
+      return 'schwer'
+    case 'very-hard':
+      return 'sehr schwer'
+  }
 }

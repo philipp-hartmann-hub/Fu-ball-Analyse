@@ -148,16 +148,19 @@ export function HardnessExplainBody() {
         gewichten den Gegner mit {home}, Auswärtsspiele mit {away}. Mittelwert über alle Restspiele
         → Rohwert.
       </p>
-      <h3>Index 0–100 und Rang</h3>
+      <h3>Einschätzung und Rang</h3>
       <p>
         Innerhalb der Liga wird der Rohwert linear skaliert (leichtestes Restprogramm → 0,
-        schwerstes → 100). Rang 1 = schwerstes Programm. Sind alle Rohwerte praktisch gleich
-        (Rundungsrauschen), liegen alle bei 50 – kein Schein-Ranking.
+        schwerstes → 100). Daraus entstehen fünf Stufen:{' '}
+        <strong>sehr leicht</strong>, <strong>leicht</strong>, <strong>mittel</strong>,{' '}
+        <strong>schwer</strong>, <strong>sehr schwer</strong>. In der Tabelle steht die Stufe;
+        Tooltip zeigt Index und Liga-Rang (1 = schwerstes Programm). Sind alle Rohwerte
+        praktisch gleich (Rundungsrauschen), liegen alle bei 50 – kein Schein-Ranking.
       </p>
       <h3>Wann die Zahl gilt</h3>
       <p>
         Solange der Median der gespielten Spiele unter {MIN_GAMES} liegt, ist PPG zu
-        verrauscht. Dann zeigt die UI <strong>„noch keine Aussage“</strong> – kein leicht/schwer und
+        verrauscht. Dann zeigt die UI <strong>„noch keine Aussage“</strong> – keine Stufe und
         kein Liga-Rang.
       </p>
       <p className="modal-footnote">

@@ -665,7 +665,7 @@ export default function App() {
             )}
             {showHardness && (
               <p className="forecast-disclaimer">
-                Restprogramm-Härte aus Gegner-PPG (Heim/Auswärts gewichtet).{' '}
+                Restprogramm relativ zur Liga: sehr leicht bis sehr schwer.{' '}
                 <ExplainLink topic="hardness" onExplain={openExplain} />
               </p>
             )}

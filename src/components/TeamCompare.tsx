@@ -1,7 +1,8 @@
 import { useMemo } from 'react'
 import type { Match, StandingRow } from '../types'
 import {
-  hardnessTone,
+  hardnessGrade,
+  hardnessGradeLabel,
   type ScheduleHardness,
 } from '../lib/schedule'
 import type { ExplainTopic } from '../lib/modelExplanations'
@@ -72,14 +73,13 @@ function HardnessBadge({
       </span>
     )
   }
-  const tone = hardnessTone(hardness.index)
-  const label = tone === 'hard' ? 'schwer' : tone === 'easy' ? 'leicht' : 'mittel'
+  const grade = hardnessGrade(hardness.index)
   return (
-    <span className={`compare-hardness tone-${tone}`}>
-      {Math.round(hardness.index)}
+    <span className={`compare-hardness tone-${grade}`}>
+      {hardnessGradeLabel(grade)}
       <span className="compare-hardness-meta">
         {' '}
-        · {hardness.rank}/{leagueSize} · {label}
+        · {Math.round(hardness.index)} · {hardness.rank}/{leagueSize}
       </span>
     </span>
   )

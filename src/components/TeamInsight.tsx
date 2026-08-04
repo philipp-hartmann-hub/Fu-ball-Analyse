@@ -18,7 +18,8 @@ import {
 } from '../lib/table'
 import type { ThresholdLine } from '../lib/thresholds'
 import {
-  hardnessTone,
+  hardnessGrade,
+  hardnessGradeLabel,
   type ScheduleHardness,
 } from '../lib/schedule'
 import {
@@ -906,20 +907,15 @@ export function TeamInsight({
     )
   }
 
-  const hardnessToneValue =
+  const hardnessGradeValue =
     scheduleHardness &&
     scheduleHardness.remainingGames > 0 &&
     scheduleHardness.reliable
-      ? hardnessTone(scheduleHardness.index)
+      ? hardnessGrade(scheduleHardness.index)
       : null
-  const hardnessLabel =
-    hardnessToneValue === 'hard'
-      ? 'schwer'
-      : hardnessToneValue === 'easy'
-        ? 'leicht'
-        : hardnessToneValue === 'mid'
-          ? 'mittel'
-          : null
+  const hardnessLabel = hardnessGradeValue
+    ? hardnessGradeLabel(hardnessGradeValue)
+    : null
 
   const matchup =
     nextMatchday?.plays &&
@@ -993,12 +989,12 @@ export function TeamInsight({
                 )}
               </span>
               {scheduleHardness.reliable ? (
-                <strong className={`hardness-stat tone-${hardnessToneValue}`}>
-                  {Math.round(scheduleHardness.index)}
+                <strong className={`hardness-stat tone-${hardnessGradeValue}`}>
+                  {hardnessLabel}
                   <span className="hardness-stat-meta">
                     {' '}
-                    · {scheduleHardness.rank}/{leagueTeamCount}
-                    {hardnessLabel ? ` · ${hardnessLabel}` : ''}
+                    · {Math.round(scheduleHardness.index)} · {scheduleHardness.rank}/
+                    {leagueTeamCount}
                   </span>
                 </strong>
               ) : (
@@ -1014,8 +1010,8 @@ export function TeamInsight({
           scheduleHardness.remainingGames > 0 &&
           scheduleHardness.reliable && (
             <p className="hint tight">
-              Härte 0–100 (höher = schwerer Gegner-Schnitt, Heim/Auswärts gewichtet). Rang 1 =
-              schwerstes Restprogramm der Liga.
+              Härte relativ zur Liga: sehr leicht → sehr schwer. Rang 1 = schwerstes
+              Restprogramm.
             </p>
           )}
 

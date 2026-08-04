@@ -22,7 +22,7 @@ Echtzeit-Analyse für die **1., 2. und 3. Liga**: Tabelle, Restprogramm und mög
 - Live-Tabelle mit Zonen (BL1: CL/EL/Abstieg · BL2/3. Liga: Aufstieg/Abstieg); **Cache**: zuletzt geladene Daten sofort aus localStorage, Refresh im Hintergrund
 - **Ergebnisse**: Spieltag wählbar (durchklicken); Wappen; Live-Updates; 2 Tage nach letztem Spiel → nächster Spieltag als Default
 - Spalte **Möglich**: Best-/Schlechtfall bis Saisonende (**Spanne**; ≤12 *relevante* Restspiele exakt nach Punkte-Pruning, sonst innere Näherung „mindestens“) oder Monte-Carlo-**Prognose** (umschaltbar; unter `MIN_GAMES` Spielen ohne Prozentanzeige)
-- Optionale Spalte **Härte**: Restprogramm-Härte 0–100 (Toggle „Restprogramm“; auf Mobile ausgeblendet)
+- Optionale Spalte **Restprog.**: Einschätzung sehr leicht → sehr schwer (Toggle „Restprogramm“; auf Mobile ausgeblendet)
 - Seitenleiste: **Verein** (Überblick + Spieltag-Analyse + Saison + **Wunschplatz**) · **Ergebnisse** · **Szenario** · **Vergleich**
 - **Szenario-Simulator**: Partien mit Wappen; Grob (Sieg/Unentschieden) oder Fein-Tore; teilbar via `?s=`
 - **Stand nach Spieltag**: Auswahl (Dropdown) für historischen Stand
@@ -56,6 +56,17 @@ src/
 ---
 
 ## Änderungsprotokoll
+
+### 2026-08-04 — Prompt 75
+
+**User:** Restprogramm in der Tabelle als abgestufte Einschätzung statt Punktzahl.
+
+**Aktion:**
+- `hardnessGrade` / `hardnessGradeLabel`: fünf Stufen (sehr leicht … sehr schwer)
+- Tabellenspalte zeigt Label statt Index; Tooltip behält Index/Rang
+- Vereinsanalyse/Vergleich an Stufen angepasst
+
+**Status:** erledigt
 
 ### 2026-08-04 — Prompt 74
 
