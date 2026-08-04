@@ -119,6 +119,142 @@ describe('computeNextMatchdayOutlook', () => {
     expect(outlook!.opponentName).toBeNull()
     expect(outlook!.fixtureCount).toBe(1)
   })
+
+  /**
+   * Analog Heidenheim nach ST31: 22 Pkt./GD−31 hinter Rivalen mit 25 Pkt./besserer TD.
+   * Mit 1:0 bliebe man Letzter der Dreiergruppe; mit Fokus-Margin + Rivalen-Niederlage
+   * ist Bestfall mindestens ein Platz besser.
+   */
+  it('Bestfall überholt Punkterivalen per Fokus-TD (Heidenheim-Fall)', () => {
+    const HDH: TeamInfo = {
+      teamId: 199,
+      teamName: 'Heidenheim',
+      shortName: 'Heidenheim',
+      teamIconUrl: '',
+    }
+    const WOB: TeamInfo = {
+      teamId: 163,
+      teamName: 'Wolfsburg',
+      shortName: 'Wolfsburg',
+      teamIconUrl: '',
+    }
+    const BAY: TeamInfo = {
+      teamId: 40,
+      teamName: 'Bayern',
+      shortName: 'Bayern',
+      teamIconUrl: '',
+    }
+    const FRE: TeamInfo = {
+      teamId: 7,
+      teamName: 'Freiburg',
+      shortName: 'Freiburg',
+      teamIconUrl: '',
+    }
+
+    const ranked: StandingRow[] = [
+      {
+        teamId: BAY.teamId,
+        teamName: BAY.teamName,
+        shortName: BAY.shortName,
+        teamIconUrl: '',
+        played: 31,
+        won: 20,
+        draw: 5,
+        lost: 6,
+        goalsFor: 70,
+        goalsAgainst: 30,
+        goalDiff: 40,
+        points: 65,
+        rank: 1,
+      },
+      {
+        teamId: WOB.teamId,
+        teamName: WOB.teamName,
+        shortName: WOB.shortName,
+        teamIconUrl: '',
+        played: 31,
+        won: 6,
+        draw: 7,
+        lost: 18,
+        goalsFor: 41,
+        goalsAgainst: 66,
+        goalDiff: -25,
+        points: 25,
+        rank: 2,
+      },
+      {
+        teamId: HDH.teamId,
+        teamName: HDH.teamName,
+        shortName: HDH.shortName,
+        teamIconUrl: '',
+        played: 31,
+        won: 5,
+        draw: 7,
+        lost: 19,
+        goalsFor: 35,
+        goalsAgainst: 66,
+        goalDiff: -31,
+        points: 22,
+        rank: 3,
+      },
+      {
+        teamId: FRE.teamId,
+        teamName: FRE.teamName,
+        shortName: FRE.shortName,
+        teamIconUrl: '',
+        played: 31,
+        won: 3,
+        draw: 4,
+        lost: 24,
+        goalsFor: 20,
+        goalsAgainst: 60,
+        goalDiff: -40,
+        points: 13,
+        rank: 4,
+      },
+    ]
+
+    const bayernVsHdh: Match = {
+      matchID: 3201,
+      matchDateTime: '2026-05-01T15:30:00',
+      matchIsFinished: false,
+      matchResults: [],
+      group: {
+        groupName: '32. Spieltag',
+        groupOrderID: 32,
+        groupID: 1032,
+      },
+      team1: BAY,
+      team2: HDH,
+    }
+    const freiburgVsWob: Match = {
+      matchID: 3202,
+      matchDateTime: '2026-05-01T15:30:00',
+      matchIsFinished: false,
+      matchResults: [],
+      group: {
+        groupName: '32. Spieltag',
+        groupOrderID: 32,
+        groupID: 1032,
+      },
+      team1: FRE,
+      team2: WOB,
+    }
+
+    expect(ranked.find((t) => t.teamId === HDH.teamId)!.rank).toBe(3)
+
+    const outlook = computeNextMatchdayOutlook(
+      ranked,
+      [bayernVsHdh, freiburgVsWob],
+      HDH.teamId,
+    )!
+
+    expect(outlook.plays).toBe(true)
+    // Mit großzügiger TD: HDH 25 Pkt. + bessere GD als WOB nach deren Niederlage → Platz 2
+    expect(outlook.range.bestRank).toBeLessThanOrEqual(2)
+    expect(outlook.bestConditions?.ownMatch?.focusResult).toBe('win')
+    expect(outlook.bestConditions?.ownMatch?.minGoalDiff).toBeGreaterThanOrEqual(6)
+  })
 })
 
 describe('CaseConditions (nächster Spieltag)', () => {
@@ -367,6 +503,7 @@ describe('CaseConditions (nächster Spieltag)', () => {
       focusResult: 'win',
       outcome: 'home',
     })
+    expect(outlook.bestConditions!.ownMatch?.minGoalDiff).toBeGreaterThanOrEqual(1)
     expect(outlook.bestConditions!.required).toEqual([])
     expect(outlook.bestConditions!.flexible).toEqual([
       expect.objectContaining({ matchId: MATCH_MD2_BETA_DELTA.matchID }),
@@ -691,15 +828,14 @@ describe('computeSeasonOutlook', () => {
     })
   })
 
-  it('liefert exakte Bedingungen bei wenigen Restspielen', () => {
+  it('liefert keine Pathway-Bedingungen für die Saison', () => {
     const base = buildStandings(MINI_LEAGUE_MATCHES, { maxMatchday: 1 })
     const remaining = [MATCH_MD2_ALPHA_GAMMA, MATCH_MD2_BETA_DELTA]
     const outlook = computeSeasonOutlook(base, remaining, TEAM_ALPHA.teamId)!
 
-    expect(outlook.bestConditions?.mode).toBe('exact')
-    expect(outlook.bestConditions!.ownMatch?.focusResult).toBe('win')
-    expect(outlook.worstConditions?.mode).toBe('exact')
-    expect(outlook.worstConditions!.ownMatch?.focusResult).toBe('loss')
+    expect(outlook.bestConditions).toBeNull()
+    expect(outlook.worstConditions).toBeNull()
+    expect(outlook.range.bestRank).toBeLessThanOrEqual(outlook.range.worstRank)
   })
 })
 

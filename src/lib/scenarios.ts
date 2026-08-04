@@ -94,6 +94,35 @@ const OUTCOMES: Array<[number, number]> = [
   [0, 1],
 ]
 
+/**
+ * Tordifferenz-Puffer für Fokus-Siege/-Niederlagen (Spieltag + Saison-Fokus/Heuristik).
+ * Fremdspiele bleiben Minimal-Tore (1:0 / 1:1 / 0:1). Wert ≥6, damit typische
+ * GD-/Tore-Überholmanöver (z. B. Heidenheim nach ST31) nicht unterschätzt werden.
+ */
+export const FOCUS_EXTREME_MARGIN = 8
+
+/** Tore für ein Spiel unter Masken-Index; Fokus bekommt Extreme-Margin. */
+export function scorelineForFixture(
+  match: Match,
+  outcomeIdx: number,
+  focusId: number,
+  focusWinMargin: number = FOCUS_EXTREME_MARGIN,
+  focusLossMargin: number = FOCUS_EXTREME_MARGIN,
+): [number, number] {
+  if (outcomeIdx === 1) return [1, 1]
+  const homeWins = outcomeIdx === 0
+  const focusHome = match.team1.teamId === focusId
+  const focusAway = match.team2.teamId === focusId
+  if (!focusHome && !focusAway) {
+    return homeWins ? [1, 0] : [0, 1]
+  }
+  if (focusHome) {
+    return homeWins ? [focusWinMargin, 0] : [0, focusLossMargin]
+  }
+  // Fokus auswärts
+  return homeWins ? [focusLossMargin, 0] : [0, focusWinMargin]
+}
+
 function outcomeFromIndex(i: number): MatchOutcome {
   if (i === 0) return 'home'
   if (i === 1) return 'draw'
@@ -400,19 +429,24 @@ export function deriveHeuristicSeasonConditions(
 /** Szenarien aus exakten Bedingungen (eigen + required); flexible bleiben offen. */
 export function scenariosFromConditions(cond: CaseConditions): ScenarioResult[] {
   const out: ScenarioResult[] = []
-  const pushOutcome = (matchId: number, outcome: MatchOutcome) => {
-    out.push(scenarioFromOutcome(matchId, outcome))
-  }
   if (cond.mode === 'exact' && cond.ownMatch) {
-    pushOutcome(cond.ownMatch.matchId, cond.ownMatch.outcome)
+    const own = cond.ownMatch
+    const gd = Math.max(1, own.minGoalDiff ?? 1)
+    if (own.outcome === 'draw') {
+      out.push(scenarioFromOutcome(own.matchId, 'draw'))
+    } else if (own.outcome === 'home') {
+      out.push(scenarioFromScore(own.matchId, gd, 0))
+    } else {
+      out.push(scenarioFromScore(own.matchId, 0, gd))
+    }
   }
   if (cond.mode === 'heuristic') {
     for (const own of cond.ownRest) {
-      pushOutcome(own.matchId, own.outcome)
+      out.push(scenarioFromOutcome(own.matchId, own.outcome))
     }
   }
   for (const req of cond.required) {
-    pushOutcome(req.matchId, req.outcome)
+    out.push(scenarioFromOutcome(req.matchId, req.outcome))
   }
   return out
 }
@@ -438,11 +472,11 @@ function simulateExtremeFinish(
 
     if (focusHome || focusAway) {
       if (mode === 'best') {
-        homeGoals = focusHome ? 1 : 0
-        awayGoals = focusAway ? 1 : 0
+        homeGoals = focusHome ? FOCUS_EXTREME_MARGIN : 0
+        awayGoals = focusAway ? FOCUS_EXTREME_MARGIN : 0
       } else {
-        homeGoals = focusHome ? 0 : 1
-        awayGoals = focusAway ? 0 : 1
+        homeGoals = focusHome ? 0 : FOCUS_EXTREME_MARGIN
+        awayGoals = focusAway ? 0 : FOCUS_EXTREME_MARGIN
       }
     } else if (mode === 'best') {
       homeGoals = 1
@@ -752,21 +786,16 @@ function enumerateSeasonRanksByMaskForTeam(
     const scores: MatchScore[] = [...priorScores]
     let x = mask
     for (const match of relevantMatches) {
-      const outcome = OUTCOMES[x % 3]!
+      const outcomeIdx = x % 3
       x = Math.floor(x / 3)
-      applyScore(
-        map,
-        match.team1.teamId,
-        match.team2.teamId,
-        outcome[0],
-        outcome[1],
-      )
+      const [hg, ag] = scorelineForFixture(match, outcomeIdx, teamId)
+      applyScore(map, match.team1.teamId, match.team2.teamId, hg, ag)
       scores.push({
         matchId: match.matchID,
         homeId: match.team1.teamId,
         awayId: match.team2.teamId,
-        homeGoals: outcome[0],
-        awayGoals: outcome[1],
+        homeGoals: hg,
+        awayGoals: ag,
       })
     }
     const row = map.get(teamId)!
@@ -835,26 +864,11 @@ export function computeSeasonOutlook(
       if (rank < bestRank) bestRank = rank
       if (rank > worstRank) worstRank = rank
     }
-    const bestMasks: number[] = []
-    const worstMasks: number[] = []
-    for (let mask = 0; mask < ranksByMask.length; mask++) {
-      if (ranksByMask[mask] === bestRank) bestMasks.push(mask)
-      if (ranksByMask[mask] === worstRank) worstMasks.push(mask)
-    }
+    // Saison: nur Spanne — keine Pathway-/Wunschplatz-Bedingungen
     return {
       range: { teamId, bestRank, worstRank },
-      bestConditions: deriveExactCaseConditions(
-        relevantMatches,
-        teamId,
-        bestMasks,
-        'best',
-      ),
-      worstConditions: deriveExactCaseConditions(
-        relevantMatches,
-        teamId,
-        worstMasks,
-        'worst',
-      ),
+      bestConditions: null,
+      worstConditions: null,
     }
   }
 
@@ -878,18 +892,8 @@ export function computeSeasonOutlook(
       bestRank: Math.min(best.rank, worst.rank),
       worstRank: Math.max(best.rank, worst.rank),
     },
-    bestConditions: deriveHeuristicSeasonConditions(
-      baseStandings,
-      remaining,
-      teamId,
-      'best',
-    ),
-    worstConditions: deriveHeuristicSeasonConditions(
-      baseStandings,
-      remaining,
-      teamId,
-      'worst',
-    ),
+    bestConditions: null,
+    worstConditions: null,
   }
 }
 
@@ -955,34 +959,196 @@ export function enumerateMatchdayRanksByMask(
   const ranksByMask: number[] = new Array(total)
 
   for (let mask = 0; mask < total; mask++) {
-    const map = new Map(baseStandings.map((s) => [s.teamId, cloneRow(s)]))
-    const scores: MatchScore[] = [...priorScores]
-    let x = mask
-    for (const match of fixtures) {
-      const outcome = OUTCOMES[x % 3]!
-      x = Math.floor(x / 3)
-      applyOutcome(
-        map,
-        match.team1.teamId,
-        match.team2.teamId,
-        outcome[0],
-        outcome[1],
-      )
-      scores.push({
-        matchId: match.matchID,
-        homeId: match.team1.teamId,
-        awayId: match.team2.teamId,
-        homeGoals: outcome[0],
-        awayGoals: outcome[1],
-      })
-    }
-    const rank = rankOf([...map.values()], teamId, scores)
+    const rank = rankForMatchdayMask(
+      baseStandings,
+      fixtures,
+      teamId,
+      mask,
+      priorScores,
+      FOCUS_EXTREME_MARGIN,
+      FOCUS_EXTREME_MARGIN,
+    )
     ranksByMask[mask] = rank
     if (rank < bestRank) bestRank = rank
     if (rank > worstRank) worstRank = rank
   }
 
   return { ranksByMask, bestRank, worstRank }
+}
+
+function rankForMatchdayMask(
+  baseStandings: StandingRow[],
+  fixtures: Match[],
+  teamId: number,
+  mask: number,
+  priorScores: MatchScore[],
+  focusWinMargin: number,
+  focusLossMargin: number,
+): number {
+  const map = new Map(baseStandings.map((s) => [s.teamId, cloneRow(s)]))
+  const scores: MatchScore[] = [...priorScores]
+  let x = mask
+  for (const match of fixtures) {
+    const outcomeIdx = x % 3
+    x = Math.floor(x / 3)
+    const [hg, ag] = scorelineForFixture(
+      match,
+      outcomeIdx,
+      teamId,
+      focusWinMargin,
+      focusLossMargin,
+    )
+    applyOutcome(map, match.team1.teamId, match.team2.teamId, hg, ag)
+    scores.push({
+      matchId: match.matchID,
+      homeId: match.team1.teamId,
+      awayId: match.team2.teamId,
+      homeGoals: hg,
+      awayGoals: ag,
+    })
+  }
+  return rankOf([...map.values()], teamId, scores)
+}
+
+/**
+ * Kleinste Fokus-Tordifferenz (Sieg/Niederlage), mit der mindestens eine der
+ * Masken den Zielrang noch erreicht. Remis → null.
+ */
+export function minFocusGoalDiffForMasks(
+  baseStandings: StandingRow[],
+  fixtures: Match[],
+  teamId: number,
+  masks: number[],
+  priorScores: MatchScore[],
+  targetRank: number,
+  focusResult: 'win' | 'draw' | 'loss',
+): number | null {
+  if (!masks.length || focusResult === 'draw') return null
+
+  const ownIdx = fixtures.findIndex(
+    (m) => m.team1.teamId === teamId || m.team2.teamId === teamId,
+  )
+  if (ownIdx < 0) return null
+
+  for (let margin = 1; margin <= FOCUS_EXTREME_MARGIN + 2; margin++) {
+    const winM = focusResult === 'win' ? margin : FOCUS_EXTREME_MARGIN
+    const lossM = focusResult === 'loss' ? margin : FOCUS_EXTREME_MARGIN
+    for (const mask of masks) {
+      const rank = rankForMatchdayMask(
+        baseStandings,
+        fixtures,
+        teamId,
+        mask,
+        priorScores,
+        winM,
+        lossM,
+      )
+      if (rank === targetRank) return margin
+    }
+  }
+  return FOCUS_EXTREME_MARGIN
+}
+
+/**
+ * Masken, die mit gegebener Fokus-Margin noch den Zielrang erreichen.
+ * Für engere Muss/Darf-nicht-Klassifikation nach TD-Berechnung.
+ */
+function masksStillAtRankWithMargin(
+  baseStandings: StandingRow[],
+  fixtures: Match[],
+  teamId: number,
+  masks: number[],
+  priorScores: MatchScore[],
+  targetRank: number,
+  focusResult: 'win' | 'draw' | 'loss',
+  margin: number,
+): number[] {
+  if (focusResult === 'draw') return masks
+  const winM = focusResult === 'win' ? margin : FOCUS_EXTREME_MARGIN
+  const lossM = focusResult === 'loss' ? margin : FOCUS_EXTREME_MARGIN
+  return masks.filter(
+    (mask) =>
+      rankForMatchdayMask(
+        baseStandings,
+        fixtures,
+        teamId,
+        mask,
+        priorScores,
+        winM,
+        lossM,
+      ) === targetRank,
+  )
+}
+
+/** Baut Spieltag-Bedingungen inkl. Mindest-TD und engerer Maskenfilterung. */
+function buildMatchdayCaseConditions(
+  baseStandings: StandingRow[],
+  fixtures: Match[],
+  teamId: number,
+  optimalMasks: number[],
+  mode: 'best' | 'worst' | 'target',
+  targetRank: number,
+  priorScores: MatchScore[],
+): CaseConditions {
+  const draft = deriveExactCaseConditions(fixtures, teamId, optimalMasks, mode)
+  const focusResult = draft.ownMatch?.focusResult ?? null
+  if (!focusResult || focusResult === 'draw' || !draft.ownMatch) {
+    return draft
+  }
+
+  const ownIdx = fixtures.findIndex(
+    (m) => m.team1.teamId === teamId || m.team2.teamId === teamId,
+  )
+  const outcomeAt = (mask: number, fi: number) =>
+    Math.floor(mask / 3 ** fi) % 3
+  const ownOi =
+    ownIdx >= 0 && draft.ownMatch
+      ? ['home', 'draw', 'away'].indexOf(draft.ownMatch.outcome)
+      : -1
+  const ownFiltered =
+    ownIdx >= 0 && ownOi >= 0
+      ? optimalMasks.filter((m) => outcomeAt(m, ownIdx) === ownOi)
+      : optimalMasks
+
+  const minGd = minFocusGoalDiffForMasks(
+    baseStandings,
+    fixtures,
+    teamId,
+    ownFiltered,
+    priorScores,
+    targetRank,
+    focusResult,
+  )
+
+  let masksForClassify = ownFiltered
+  if (minGd != null && minGd > 0) {
+    const tight = masksStillAtRankWithMargin(
+      baseStandings,
+      fixtures,
+      teamId,
+      ownFiltered,
+      priorScores,
+      targetRank,
+      focusResult,
+      minGd,
+    )
+    if (tight.length > 0) masksForClassify = tight
+  }
+
+  // Erneut ableiten aus der TD-engeren Menge → mehr Muss / Darf nicht
+  const tightened = deriveExactCaseConditions(
+    fixtures,
+    teamId,
+    masksForClassify,
+    mode,
+  )
+  if (tightened.ownMatch) {
+    tightened.ownMatch = {
+      ...tightened.ownMatch,
+      minGoalDiff: minGd,
+    }
+  }
+  return tightened
 }
 
 function nearestReachableRank(
@@ -1089,12 +1255,23 @@ export function computeNextMatchdayOutlook(
     opponentIconUrl,
     homeAway,
     range: { teamId, bestRank, worstRank },
-    bestConditions: deriveExactCaseConditions(fixtures, teamId, bestMasks, 'best'),
-    worstConditions: deriveExactCaseConditions(
+    bestConditions: buildMatchdayCaseConditions(
+      baseStandings,
+      fixtures,
+      teamId,
+      bestMasks,
+      'best',
+      bestRank,
+      priorScores,
+    ),
+    worstConditions: buildMatchdayCaseConditions(
+      baseStandings,
       fixtures,
       teamId,
       worstMasks,
       'worst',
+      worstRank,
+      priorScores,
     ),
   }
 }
@@ -1176,11 +1353,14 @@ export function computeTargetMatchdayOutlook(
     }
   }
 
-  const conditions = deriveExactCaseConditions(
+  const conditions = buildMatchdayCaseConditions(
+    baseStandings,
     fixtures,
     teamId,
     targetMasks,
     'target',
+    Math.min(...targetMasks.map((m) => ranksByMask[m]!)),
+    priorScores,
   )
   const ownOptions = collectOwnTargetOptions(
     fixtures,
@@ -1343,21 +1523,16 @@ export function enumerateMatchdayOutcomes(
     const scores: MatchScore[] = [...priorScores]
     let x = mask
     for (const match of fixtures) {
-      const outcome = OUTCOMES[x % 3]!
+      const outcomeIdx = x % 3
       x = Math.floor(x / 3)
-      applyOutcome(
-        map,
-        match.team1.teamId,
-        match.team2.teamId,
-        outcome[0],
-        outcome[1],
-      )
+      const [hg, ag] = scorelineForFixture(match, outcomeIdx, teamId)
+      applyOutcome(map, match.team1.teamId, match.team2.teamId, hg, ag)
       scores.push({
         matchId: match.matchID,
         homeId: match.team1.teamId,
         awayId: match.team2.teamId,
-        homeGoals: outcome[0],
-        awayGoals: outcome[1],
+        homeGoals: hg,
+        awayGoals: ag,
       })
     }
     const row = map.get(teamId)!

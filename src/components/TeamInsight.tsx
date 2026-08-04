@@ -35,19 +35,14 @@ interface Props {
   seasonOutlook: SeasonOutlook | null
   nextMatchday: NextMatchdayOutlook | null
   matchdayTargetOutlook?: TargetOutlook | null
-  seasonTargetOutlook?: TargetOutlook | null
   /** false = Monte-Carlo-Prozente in der UI unterdrücken */
   forecastReliable?: boolean
   forecast?: TeamForecast | null
   forecastLoading?: boolean
   matchdayTargetRank: number
   matchdayTargetComparator: TargetComparator
-  seasonTargetRank: number
-  seasonTargetComparator: TargetComparator
   onMatchdayTargetRankChange: (rank: number) => void
   onMatchdayTargetComparatorChange: (c: TargetComparator) => void
-  onSeasonTargetRankChange: (rank: number) => void
-  onSeasonTargetComparatorChange: (c: TargetComparator) => void
   remainingCount: number
   league: LeagueZoneId
   pointsToFirst?: number | null
@@ -284,6 +279,25 @@ function forbiddenOutcomeLine(
   return `${home}–${away} darf nicht remis enden`
 }
 
+function ownMatchDetail(item: {
+  focusResult: 'win' | 'draw' | 'loss'
+  homeAway: 'H' | 'A'
+  minGoalDiff?: number | null
+}): string {
+  const side = item.homeAway === 'H' ? 'Heim' : 'Auswärts'
+  const base = `${focusResultLabel(item.focusResult)} · ${side}`
+  const gd = item.minGoalDiff
+  if (gd == null || gd <= 0 || item.focusResult === 'draw') return base
+  if (item.focusResult === 'win') {
+    return gd <= 1
+      ? `${base} · 1:0 reicht`
+      : `${base} · mind. TD +${gd} (z. B. ${gd}:0)`
+  }
+  return gd <= 1
+    ? `${base} · 0:1`
+    : `${base} · mind. TD −${gd} (z. B. 0:${gd})`
+}
+
 function ConditionsPanel({
   kind,
   targetRank,
@@ -372,9 +386,7 @@ function ConditionsPanel({
                     awayName={awayName}
                     homeIconUrl={homeIcon}
                     awayIconUrl={awayIcon}
-                    detail={`${focusResultLabel(item.focusResult)} · ${
-                      item.homeAway === 'H' ? 'Heim' : 'Auswärts'
-                    }`}
+                    detail={ownMatchDetail(item)}
                   />
                 </li>
               )
@@ -870,18 +882,13 @@ export function TeamInsight({
   seasonOutlook,
   nextMatchday,
   matchdayTargetOutlook = null,
-  seasonTargetOutlook = null,
   forecastReliable = true,
   forecast = null,
   forecastLoading = false,
   matchdayTargetRank,
   matchdayTargetComparator,
-  seasonTargetRank,
-  seasonTargetComparator,
   onMatchdayTargetRankChange,
   onMatchdayTargetComparatorChange,
-  onSeasonTargetRankChange,
-  onSeasonTargetComparatorChange,
   remainingCount,
   league,
   pointsToFirst,
@@ -1081,30 +1088,12 @@ export function TeamInsight({
         thresholds={seasonThresholds}
         thresholdSummary="Saison (Schätzung)"
         onExplain={onExplain}
-        bestConditions={seasonOutlook?.bestConditions ?? null}
-        worstConditions={seasonOutlook?.worstConditions ?? null}
-        onApplyConditions={onApplyConditions}
-        targetSlot={
-          <TargetWishBlock
-            scopeLabel="Saison"
-            outlook={seasonTargetOutlook}
-            leagueSize={leagueTeamCount}
-            targetRank={seasonTargetRank}
-            comparator={seasonTargetComparator}
-            onTargetRankChange={onSeasonTargetRankChange}
-            onComparatorChange={onSeasonTargetComparatorChange}
-            focusTeam={team}
-            onApplyConditions={onApplyConditions}
-            onExplain={onExplain}
-            showSimPercents={forecastReliable}
-          />
-        }
         note={
-          seasonOutlook?.bestConditions?.mode === 'exact'
-            ? 'Exakte Spanne über alle Restspiele — tippe Best-/Schlechtfall.'
-            : seasonOutlook?.bestConditions?.mode === 'heuristic'
-              ? 'Innere Näherung („mindestens“) — Bedingungen heuristisch; tippe Best-/Schlechtfall.'
-              : undefined
+          seasonOutlook?.range
+            ? seasonOutlook.range.bestRank === seasonOutlook.range.worstRank
+              ? 'Platz über die Restspiele in dieser Sicht bereits fest.'
+              : 'Mögliche Endplätze über alle Restspiele (Exact oder Heuristik „mind.“). Keine Pathway-Bedingungen für die Saison.'
+            : undefined
         }
         empty="Keine Saison-Spanne berechenbar."
       />

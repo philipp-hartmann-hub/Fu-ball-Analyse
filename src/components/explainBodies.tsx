@@ -2,6 +2,7 @@ import {
   DEFAULT_SIMULATIONS,
   HOME_ADVANTAGE,
 } from '../lib/simulation'
+import { FOCUS_EXTREME_MARGIN } from '../lib/scenarios'
 import { AWAY_WEIGHT, HOME_WEIGHT } from '../lib/schedule'
 import { MIN_GAMES } from '../lib/reliability'
 
@@ -70,8 +71,12 @@ export function SpanExplainBody() {
       <h3>Nächster Spieltag</h3>
       <p>
         Alle offenen Spiele dieses Spieltags werden in den Varianten 1 / X / 2 durchgespielt
-        (Enumeration). Daraus ergeben sich der beste und der schlechteste mögliche Tabellenplatz{' '}
-        <strong>nach diesem Spieltag</strong>.
+        (Enumeration). <strong>Fremdspiele</strong> mit Minimal-Toren (1:0 / 1:1 / 0:1); das{' '}
+        <strong>eigene Spiel</strong> mit großzügiger Tordifferenz (bis {FOCUS_EXTREME_MARGIN}
+        :0 bzw. 0:{FOCUS_EXTREME_MARGIN}), damit GD-/Tore-Überholmanöver nicht unterschätzt
+        werden. Daraus ergeben sich bester und schlechtester Platz{' '}
+        <strong>nach diesem Spieltag</strong>, plus Muss-/Darf-nicht-Bedingungen und ggf. eine
+        Mindest-Tordifferenz.
       </p>
       <h3>Gesamte Saison</h3>
       <p>
@@ -84,7 +89,8 @@ export function SpanExplainBody() {
         Darüber hinaus eine <strong>Heuristik</strong> (innere Näherung
         „mindestens“): Im Bestfall gewinnt der Fokusverein möglichst oft, Gegner
         holen ungünstig; im Schlechtfall umgekehrt. Die reale Spanne kann breiter
-        sein.
+        sein. Für die Saison gibt es bewusst <strong>keine</strong> Pathway- oder
+        Wunschplatz-Bedingungen.
       </p>
       <h3>Unterschied zur Prognose</h3>
       <p>
@@ -174,13 +180,13 @@ export function ConditionsExplainBody() {
   return (
     <>
       <p className="modal-lead">
-        Die Bedingungs-Analyse zerlegt den Best- bzw. Schlechtfall-Raum in drei Stufen –
-        kein einzelner Beispielweg und keine nackte Konstellations-Zählung.
+        Die Bedingungs-Analyse (nur <strong>nächster Spieltag</strong>) zerlegt den Best- bzw.
+        Schlechtfall-Raum in Muss / Darf nicht / egal – plus ggf. Mindest-Tordifferenz.
       </p>
       <h3>Nächster Spieltag (exakt)</h3>
       <p>
-        Aus allen Ergebnis-Kombinationen, die den Zielrang erreichen, wird pro Fremdspiel die
-        Menge der vorkommenden Ausgänge gebildet:
+        Aus den Kombinationen, die den Zielrang erreichen (nach Filter auf deine Vorgabe und die
+        nötige Tordifferenz), wird pro Fremdspiel die Menge der Ausgänge gebildet:
       </p>
       <ul>
         <li>
@@ -194,14 +200,14 @@ export function ConditionsExplainBody() {
         </li>
       </ul>
       <p>
-        Dein eigenes Spiel steht separat als Vorgabe. Nicht jede Kombination der offenen Spiele
-        führt zum selben Rang — im Simulator prüfbar.
+        Dein eigenes Spiel steht separat; bei Sieg/Niederlage kann eine{' '}
+        <strong>Mindest-Tordifferenz</strong> stehen (z. B. mind. +6), wenn 1:0 für den Platz
+        nicht reicht. Fremdspiele bleiben Minimal-Tore.
       </p>
       <h3>Gesamte Saison</h3>
       <p>
-        Bei wenigen Restspielen dieselbe exakte Zerlegung. Darüber hinaus nur eine{' '}
-        <strong>grobe Richtung, nicht exakt</strong> (eigene Restspiele + Konkurrenten) — ohne
-        „muss“-/Exakt-Aussage, bis Frontier/#3.
+        Nur die Platzspanne – keine Pathway- oder Wunschplatz-Bedingungen (zu viele offene
+        Kombinationen, inhaltlich irreführend).
       </p>
       <p className="modal-footnote">
         „Als Szenario übernehmen“ setzt Vorgabe und notwendige Fremdergebnisse; offene Spiele

@@ -57,6 +57,11 @@ export interface CaseConditions {
     outcome: MatchOutcome
     /** Aus Sicht des Fokusvereins */
     focusResult: 'win' | 'draw' | 'loss'
+    /**
+     * Mindest-Tordifferenz bei Sieg/Niederlage, damit dieser Fall (mit den
+     * übrigen Bedingungen) erreichbar bleibt. Remis → null.
+     */
+    minGoalDiff?: number | null
   } | null
   /** Saison-Heuristik: alle eigenen Restspiele als Vorgabe */
   ownRest: Array<{

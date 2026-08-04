@@ -23,7 +23,7 @@ Echtzeit-Analyse für die **1., 2. und 3. Liga**: Tabelle, Restprogramm und mög
 - **Ergebnisse**: Spieltag wählbar (durchklicken); Wappen; Live-Updates; 2 Tage nach letztem Spiel → nächster Spieltag als Default
 - Spalte **Möglich**: Best-/Schlechtfall bis Saisonende (**Spanne**; ≤12 *relevante* Restspiele exakt nach Punkte-Pruning, sonst innere Näherung „mindestens“) oder Monte-Carlo-**Prognose** (umschaltbar; unter `MIN_GAMES` Spielen ohne Prozentanzeige)
 - Optionale Spalte **Restprog.**: Einschätzung sehr leicht → sehr schwer (Toggle „Restprogramm“; auf Mobile ausgeblendet)
-- Seitenleiste: **Verein** (Überblick + Spieltag-Analyse + Saison + **Wunschplatz**) · **Ergebnisse** · **Szenario** · **Vergleich**
+- Seitenleiste: **Verein** (Überblick + Spieltag mit Wunschplatz/Bedingungen + Saison-Spanne) · **Ergebnisse** · **Szenario** · **Vergleich**
 - **Szenario-Simulator**: Partien mit Wappen; Grob (Sieg/Unentschieden) oder Fein-Tore; teilbar via `?s=`
 - **Stand nach Spieltag**: Auswahl (Dropdown) für historischen Stand
 - Toolbar: **Link teilen** (Zwischenablage) und **Zurücksetzen** (Szenarien + `?s=`)
@@ -56,6 +56,19 @@ src/
 ---
 
 ## Änderungsprotokoll
+
+### 2026-08-04 — Prompt 76
+
+**User:** Saison ohne Pathways/Wunschplatz; Spieltag-Bedingungen stärken; notwendige Tordifferenzen. (Plan: Heidenheim Fokus-TD)
+
+**Aktion:**
+- Saison: keine `bestConditions`/`worstConditions`, kein Wunschplatz-UI
+- `FOCUS_EXTREME_MARGIN=8` für Fokus-Siege/-Niederlagen (Spieltag-Enum, Saison-Fokus-Exact, Heuristik)
+- Fremd weiter 1:0/1:1/0:1; `minGoalDiff` + engere Masken → mehr Muss/Darf-nicht
+- Regressionstest Heidenheim-Fall (Bestfall überholt Punkterivalen per TD)
+- Erklärungstext Spanne/Bedingungen
+
+**Status:** erledigt
 
 ### 2026-08-04 — Prompt 75
 
