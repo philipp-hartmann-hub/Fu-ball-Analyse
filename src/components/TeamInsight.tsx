@@ -26,6 +26,8 @@ interface Props {
   nextMatchday: NextMatchdayOutlook | null
   matchdayTargetOutlook?: TargetOutlook | null
   seasonTargetOutlook?: TargetOutlook | null
+  /** false = Monte-Carlo-Prozente in der UI unterdrücken */
+  forecastReliable?: boolean
   matchdayTargetRank: number
   matchdayTargetComparator: TargetComparator
   seasonTargetRank: number
@@ -182,6 +184,16 @@ function foreignOutcomeLine(
   return `${home} und ${away} trennen sich remis`
 }
 
+function forbiddenOutcomeLine(
+  home: string,
+  away: string,
+  forbidden: MatchOutcome,
+): string {
+  if (forbidden === 'home') return `${home} darf nicht siegen`
+  if (forbidden === 'away') return `${away} darf nicht siegen`
+  return `${home}–${away} darf nicht remis enden`
+}
+
 function ConditionsPanel({
   kind,
   targetRank,
@@ -206,7 +218,7 @@ function ConditionsPanel({
   const caseLabel =
     kind === 'best' ? 'Bestfall' : kind === 'worst' ? 'Schlechtfall' : 'Wunschplatz'
   const heading = heuristic
-    ? `${caseLabel}: Platz ${targetRank} — grobe Richtung (heuristisch)`
+    ? `${caseLabel}: Platz ${targetRank}`
     : `${caseLabel}: Platz ${targetRank} — das muss passieren`
 
   const ownItems =
@@ -239,6 +251,13 @@ function ConditionsPanel({
           </button>
         </div>
       </div>
+
+      {heuristic && (
+        <p className="conditions-heuristic-banner" role="note">
+          Grobe Richtung, nicht exakt — bis zur Frontier-Enumeration keine „muss“-/Exakt-Aussage
+          für die Saison.
+        </p>
+      )}
 
       <div className="conditions-block block-own">
         <h4>Deine Vorgabe</h4>
@@ -280,7 +299,7 @@ function ConditionsPanel({
           </ul>
         )}
         {heuristic && conditions.ownRest.length > 1 && (
-          <p className="hint tight">Alle eigenen Restspiele als Vorgabe.</p>
+          <p className="hint tight">Alle eigenen Restspiele als Richtung (nicht fest).</p>
         )}
       </div>
 
@@ -293,10 +312,10 @@ function ConditionsPanel({
             <>
               <p className="hint tight">
                 {kind === 'best'
-                  ? 'Diese Teams liegen in Reichweite — ihre Patzer helfen dem Bestfall.'
+                  ? 'Diese Teams liegen in Reichweite — ihre Patzer helfen der groben Bestfall-Richtung.'
                   : kind === 'worst'
-                    ? 'Diese Teams können dich noch überholen — ihre Erfolge belasten den Schlechtfall.'
-                    : 'Konkurrenten in Reichweite deines Wunschplatzes.'}
+                    ? 'Diese Teams können dich noch überholen — ihre Erfolge belasten die grobe Schlechtfall-Richtung.'
+                    : 'Konkurrenten in Reichweite deines Wunschplatzes (grobe Richtung).'}
               </p>
               <ul className="conditions-list crest-list">
                 {conditions.relevantRivals.map((r) => (
@@ -340,32 +359,40 @@ function ConditionsPanel({
         )}
       </div>
 
-      {!heuristic && conditions.partiallyConstrained.length > 0 && (
+      {!heuristic && (
         <div className="conditions-block block-partial">
-          <h4>Eingeschränkt</h4>
-          <p className="hint tight">
-            Nicht jedes Ergebnis ist möglich — aber es bleibt mehr als ein Ausgang.
-          </p>
-          <ul className="conditions-list crest-list">
-            {conditions.partiallyConstrained.map((p) => (
-              <li key={p.matchId}>
-                <FixtureCrestRow
-                  homeName={p.homeName}
-                  awayName={p.awayName}
-                  homeIconUrl={p.homeIconUrl}
-                  awayIconUrl={p.awayIconUrl}
-                  detail={`Erlaubt: ${p.allowedOutcomes
-                    .map((o) => outcomeBadgeLabel(o))
-                    .join(' / ')}`}
-                />
-              </li>
-            ))}
-          </ul>
+          <h4>Darf nicht</h4>
+          {conditions.partiallyConstrained.length === 0 ? (
+            <p className="hint tight">Kein Spiel mit genau einem verbotenen Ausgang.</p>
+          ) : (
+            <>
+              <p className="hint tight">
+                Zwei Ausgänge bleiben möglich — einer ist ausgeschlossen.
+              </p>
+              <ul className="conditions-list crest-list">
+                {conditions.partiallyConstrained.map((p) => (
+                  <li key={p.matchId}>
+                    <FixtureCrestRow
+                      homeName={p.homeName}
+                      awayName={p.awayName}
+                      homeIconUrl={p.homeIconUrl}
+                      awayIconUrl={p.awayIconUrl}
+                      detail={forbiddenOutcomeLine(
+                        p.homeName,
+                        p.awayName,
+                        p.forbiddenOutcome,
+                      )}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
         </div>
       )}
 
       <div className="conditions-block block-flex">
-        <h4>{heuristic ? 'Ohne Einfluss' : 'Egal'}</h4>
+        <h4>{heuristic ? 'Ohne Einfluss' : 'Wirklich egal'}</h4>
         {conditions.flexible.length === 0 ? (
           <p className="hint tight">Keine weiteren Spiele in dieser Gruppe.</p>
         ) : (
@@ -379,8 +406,8 @@ function ConditionsPanel({
               {conditions.flexible.length}{' '}
               {conditions.flexible.length === 1 ? 'Spiel' : 'Spiele'}{' '}
               {heuristic
-                ? 'ohne Einfluss'
-                : `ohne Einfluss auf den ${caseLabel}`}
+                ? 'ohne Einfluss (Schätzung)'
+                : `wirklich egal für den ${caseLabel}`}
               {flexOpen ? ' ▾' : ' ▸'}
             </button>
             {flexOpen && (
@@ -403,13 +430,7 @@ function ConditionsPanel({
 
       {!heuristic && (
         <p className="hint tight conditions-disclaimer">
-          Einzelne Bedingungen — nicht jede Kombination der offenen Spiele führt zum Ziel.
-          Im Simulator prüfbar.
-        </p>
-      )}
-      {heuristic && (
-        <p className="hint tight conditions-disclaimer">
-          Grobe Richtung, nicht exakt — keine „muss“-/Exakt-Aussage für die Saison.
+          Nicht jede Kombination der offenen Spiele führt zum selben Rang — im Simulator prüfbar.
         </p>
       )}
 
@@ -424,7 +445,7 @@ function ConditionsPanel({
           </button>
           {heuristic && (
             <p className="hint tight">
-              Übernimmt nur deine Restspiel-Vorgabe — Fremdspiele bleiben offen.
+              Übernimmt nur deine Restspiel-Richtung — Fremdspiele bleiben offen.
             </p>
           )}
         </div>
@@ -444,6 +465,7 @@ function TargetWishBlock({
   focusTeam,
   onApplyConditions,
   onExplain,
+  showSimPercents = true,
 }: {
   scopeLabel: string
   outlook: TargetOutlook | null | undefined
@@ -455,6 +477,7 @@ function TargetWishBlock({
   focusTeam: StandingRow
   onApplyConditions?: (conditions: CaseConditions) => void
   onExplain?: (topic: ExplainTopic) => void
+  showSimPercents?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const ranks = useMemo(
@@ -512,7 +535,7 @@ function TargetWishBlock({
         </p>
       )}
 
-      {outlook?.reachable && outlook.season && (
+      {outlook?.reachable && outlook.season && showSimPercents && (
         <div className="target-season-stats">
           <p className="hint tight">
             Sim: genau Platz {outlook.target}{' '}
@@ -532,6 +555,11 @@ function TargetWishBlock({
             </p>
           )}
         </div>
+      )}
+      {outlook?.reachable && outlook.season && !showSimPercents && (
+        <p className="hint tight" role="status">
+          Sim-Prozente: noch keine Aussage (zu wenige Spiele).
+        </p>
       )}
 
       {outlook?.reachable && outlook.conditions && (
@@ -753,6 +781,7 @@ export function TeamInsight({
   nextMatchday,
   matchdayTargetOutlook = null,
   seasonTargetOutlook = null,
+  forecastReliable = true,
   matchdayTargetRank,
   matchdayTargetComparator,
   seasonTargetRank,
@@ -972,9 +1001,16 @@ export function TeamInsight({
             focusTeam={team}
             onApplyConditions={onApplyConditions}
             onExplain={onExplain}
+            showSimPercents={forecastReliable}
           />
         }
-        note="Schätzung über alle Restspiele. Bedingungen heuristisch — tippe Best-/Schlechtfall."
+        note={
+          seasonOutlook?.bestConditions?.mode === 'exact'
+            ? 'Exakte Spanne über alle Restspiele — tippe Best-/Schlechtfall.'
+            : seasonOutlook?.bestConditions?.mode === 'heuristic'
+              ? 'Innere Näherung („mindestens“) — Bedingungen heuristisch; tippe Best-/Schlechtfall.'
+              : undefined
+        }
         empty="Keine Saison-Spanne berechenbar."
       />
     </div>

@@ -6,15 +6,21 @@ import {
   TEAM_ALPHA,
 } from './__fixtures__/miniLeague'
 import {
+  EXACT_LIMIT,
+  computeExactPositionRanges,
   computeNextMatchdayOutlook,
+  computePositionRanges,
   computeSeasonOutlook,
   computeTargetMatchdayOutlook,
+  deriveExactCaseConditions,
   scenarioFromOutcome,
   scenarioFromScore,
   scenariosFromConditions,
+  selectRelevantMatches,
+  selectRelevantTeamIds,
 } from './scenarios'
-import { buildStandings } from './table'
-import type { Match, MatchOutcome, TeamInfo } from '../types'
+import { buildStandings, rankStandings } from './table'
+import type { Match, MatchOutcome, StandingRow, TeamInfo } from '../types'
 
 describe('scenarioFromScore / Punktevergabe', () => {
   it('clampt Tore auf 0..99', () => {
@@ -182,7 +188,7 @@ describe('CaseConditions (nächster Spieltag)', () => {
   }
 
   /**
-   * Vier getrennte Checks — keine universelle Kombinierbarkeit der offenen Spiele.
+   * K4 — vier getrennte Checks, keine universelle Kombinierbarkeit der offenen Spiele.
    * (Korrelierte Fremdspiele: jedes einzeln ok, aber nicht jede Kombination.)
    */
   function assertConditionsConsistent(opts: {
@@ -235,26 +241,24 @@ describe('CaseConditions (nächster Spieltag)', () => {
 
     // 3. forbidden-Korrektheit (partiallyConstrained)
     for (const partial of cond.partiallyConstrained) {
-      const allowed = new Set(partial.allowedOutcomes)
+      expect(partial.allowedOutcomes).toHaveLength(2)
+      expect(partial.allowedOutcomes).not.toContain(partial.forbiddenOutcome)
       const otherSlots = slots.filter((s) => s.matchId !== partial.matchId)
-      for (const forbidden of OUTCOMES) {
-        if (allowed.has(forbidden)) continue
-        const pinned = scenarioFromOutcome(partial.matchId, forbidden)
-        let hit = false
-        for (const open of enumerateOpenAssignments(otherSlots)) {
-          if (
-            rankAfterScenarios(opts.matches, opts.teamId, [
-              ...fixed,
-              pinned,
-              ...open,
-            ]) === opts.claimedRank
-          ) {
-            hit = true
-            break
-          }
+      const pinned = scenarioFromOutcome(partial.matchId, partial.forbiddenOutcome)
+      let hit = false
+      for (const open of enumerateOpenAssignments(otherSlots)) {
+        if (
+          rankAfterScenarios(opts.matches, opts.teamId, [
+            ...fixed,
+            pinned,
+            ...open,
+          ]) === opts.claimedRank
+        ) {
+          hit = true
+          break
         }
-        expect(hit).toBe(false)
       }
+      expect(hit).toBe(false)
     }
 
     // 4. Marginal: jeder erlaubte Einzelausgang ist mit IRGENDEINER Restbelegung ok
@@ -280,7 +284,7 @@ describe('CaseConditions (nächster Spieltag)', () => {
     }
   }
 
-  /** Alte universelle Invariante — nur zum Kontrast im Korrelations-Test. */
+  /** Alte ∀-Invariante (vor K4) — nur Kontrast im Korrelations-Test. */
   function universalOpenCombosAllHitClaimedRank(opts: {
     matches: Match[]
     teamId: number
@@ -301,6 +305,56 @@ describe('CaseConditions (nächster Spieltag)', () => {
     }
     return true
   }
+
+  it('K3: |S|==2 setzt forbiddenOutcome (fehlendes 1/X/2)', () => {
+    const fixtures = [MATCH_MD2_ALPHA_GAMMA, MATCH_MD2_BETA_DELTA]
+    // own=home (0); Fremdspiel nur home/draw → Masken 0 und 3
+    const cond = deriveExactCaseConditions(
+      fixtures,
+      TEAM_ALPHA.teamId,
+      [0, 3],
+      'best',
+    )
+    expect(cond.required).toEqual([])
+    expect(cond.flexible).toEqual([])
+    expect(cond.partiallyConstrained).toEqual([
+      expect.objectContaining({
+        matchId: MATCH_MD2_BETA_DELTA.matchID,
+        allowedOutcomes: ['home', 'draw'],
+        forbiddenOutcome: 'away',
+      }),
+    ])
+  })
+
+  it('K3: |S|==1 required, |S|==3 flexible', () => {
+    const fixtures = [MATCH_MD2_ALPHA_GAMMA, MATCH_MD2_BETA_DELTA]
+    const requiredOnly = deriveExactCaseConditions(
+      fixtures,
+      TEAM_ALPHA.teamId,
+      [0], // own home, foreign home
+      'best',
+    )
+    expect(requiredOnly.required).toEqual([
+      expect.objectContaining({
+        matchId: MATCH_MD2_BETA_DELTA.matchID,
+        outcome: 'home',
+      }),
+    ])
+    expect(requiredOnly.partiallyConstrained).toEqual([])
+    expect(requiredOnly.flexible).toEqual([])
+
+    const allFlexible = deriveExactCaseConditions(
+      fixtures,
+      TEAM_ALPHA.teamId,
+      [0, 3, 6], // own home; foreign home/draw/away
+      'best',
+    )
+    expect(allFlexible.required).toEqual([])
+    expect(allFlexible.partiallyConstrained).toEqual([])
+    expect(allFlexible.flexible).toEqual([
+      expect.objectContaining({ matchId: MATCH_MD2_BETA_DELTA.matchID }),
+    ])
+  })
 
   it('Bestfall Alpha: nur eigene Vorgabe nötig, Fremdspiel flexibel', () => {
     const base = buildStandings(MINI_LEAGUE_MATCHES, { maxMatchday: 1 })
@@ -468,7 +522,7 @@ describe('CaseConditions (nächster Spieltag)', () => {
     })
   })
 
-  it('korrelierte Fremdspiele: marginal ok, aber nicht jede Kombi (alte Invariante würde rot)', () => {
+  it('korrelierte Fremdspiele: K4 grün, alte ∀-Invariante rot', () => {
     /**
      * Focus spielfrei auf 10 Pkt.; RivalA/RivalB auf 9.
      * Genau einer der Rivalen siegt → Focus Platz 2.
@@ -477,7 +531,7 @@ describe('CaseConditions (nächster Spieltag)', () => {
      * (flexibel), aber RivalA-Sieg ∧ RivalB-Sieg ist nicht optimal für Platz 2.
      *
      * Die alte universelle Invariante (∀ Kombis der offenen Spiele: rank===claimed)
-     * wäre hier rot; die neuen Checks 1–4 bleiben grün.
+     * wäre hier rot; K4 (Checks 1–4) bleibt grün.
      */
     const FOCUS: TeamInfo = {
       teamId: 21,
@@ -637,16 +691,365 @@ describe('computeSeasonOutlook', () => {
     })
   })
 
-  it('liefert heuristische Bedingungen mit ownRest', () => {
+  it('liefert exakte Bedingungen bei wenigen Restspielen', () => {
     const base = buildStandings(MINI_LEAGUE_MATCHES, { maxMatchday: 1 })
     const remaining = [MATCH_MD2_ALPHA_GAMMA, MATCH_MD2_BETA_DELTA]
     const outlook = computeSeasonOutlook(base, remaining, TEAM_ALPHA.teamId)!
 
-    expect(outlook.bestConditions?.mode).toBe('heuristic')
-    expect(outlook.bestConditions!.ownRest.length).toBe(1)
-    expect(outlook.bestConditions!.ownRest[0]?.focusResult).toBe('win')
-    expect(outlook.bestConditions!.required).toEqual([])
-    expect(outlook.worstConditions!.ownRest[0]?.focusResult).toBe('loss')
+    expect(outlook.bestConditions?.mode).toBe('exact')
+    expect(outlook.bestConditions!.ownMatch?.focusResult).toBe('win')
+    expect(outlook.worstConditions?.mode).toBe('exact')
+    expect(outlook.worstConditions!.ownMatch?.focusResult).toBe('loss')
+  })
+})
+
+describe('computeExactPositionRanges / Saisonende', () => {
+  const GOAL_OUTCOMES: Array<[number, number]> = [
+    [1, 0],
+    [1, 1],
+    [0, 1],
+  ]
+
+  function team(id: number, name: string): TeamInfo {
+    return {
+      teamId: id,
+      teamName: name,
+      shortName: name.slice(0, 3),
+      teamIconUrl: '',
+    }
+  }
+
+  function standingRow(
+    partial: Pick<
+      StandingRow,
+      'teamId' | 'teamName' | 'points' | 'goalDiff' | 'goalsFor' | 'rank'
+    > &
+      Partial<StandingRow>,
+  ): StandingRow {
+    const goalsAgainst =
+      partial.goalsAgainst ??
+      Math.max(0, (partial.goalsFor ?? 0) - (partial.goalDiff ?? 0))
+    return {
+      shortName: partial.teamName.slice(0, 3),
+      teamIconUrl: '',
+      played: 33,
+      won: 0,
+      draw: 0,
+      lost: 0,
+      goalsAgainst,
+      ...partial,
+    }
+  }
+
+  function openMatch(
+    matchID: number,
+    home: TeamInfo,
+    away: TeamInfo,
+    day = 34,
+  ): Match {
+    return {
+      matchID,
+      matchDateTime: '2025-05-17T15:30:00',
+      matchDateTimeUTC: '2025-05-17T13:30:00Z',
+      leagueName: 'Test-Liga',
+      leagueSeason: 2025,
+      leagueShortcut: 'test',
+      lastUpdateDateTime: '2025-05-17T12:00:00',
+      group: {
+        groupName: `${day}. Spieltag`,
+        groupOrderID: day,
+        groupID: 1000 + day,
+      },
+      team1: home,
+      team2: away,
+      matchIsFinished: false,
+      matchResults: [],
+    }
+  }
+
+  /** Unabhängige 3^n-Enumeration (Test-Orakel, nicht die Produktionsfunktion). */
+  function bruteForceExactRanges(base: StandingRow[], remaining: Match[]) {
+    const best = new Map<number, number>()
+    const worst = new Map<number, number>()
+    for (const row of base) {
+      best.set(row.teamId, base.length)
+      worst.set(row.teamId, 1)
+    }
+    const total = 3 ** remaining.length
+    for (let mask = 0; mask < total; mask++) {
+      const map = new Map(base.map((s) => [s.teamId, { ...s }]))
+      const scores: Array<{
+        matchId: number
+        homeId: number
+        awayId: number
+        homeGoals: number
+        awayGoals: number
+      }> = []
+      let x = mask
+      for (const match of remaining) {
+        const [hg, ag] = GOAL_OUTCOMES[x % 3]!
+        x = Math.floor(x / 3)
+        const home = map.get(match.team1.teamId)!
+        const away = map.get(match.team2.teamId)!
+        home.played += 1
+        away.played += 1
+        home.goalsFor += hg
+        home.goalsAgainst += ag
+        away.goalsFor += ag
+        away.goalsAgainst += hg
+        home.goalDiff = home.goalsFor - home.goalsAgainst
+        away.goalDiff = away.goalsFor - away.goalsAgainst
+        if (hg > ag) {
+          home.won += 1
+          home.points += 3
+          away.lost += 1
+        } else if (hg < ag) {
+          away.won += 1
+          away.points += 3
+          home.lost += 1
+        } else {
+          home.draw += 1
+          away.draw += 1
+          home.points += 1
+          away.points += 1
+        }
+        scores.push({
+          matchId: match.matchID,
+          homeId: match.team1.teamId,
+          awayId: match.team2.teamId,
+          homeGoals: hg,
+          awayGoals: ag,
+        })
+      }
+      const table = rankStandings(
+        [...map.values()].map(({ rank: _r, ...rest }) => rest),
+        { matchScores: scores },
+      )
+      for (const row of table) {
+        if (row.rank < best.get(row.teamId)!) best.set(row.teamId, row.rank)
+        if (row.rank > worst.get(row.teamId)!) worst.set(row.teamId, row.rank)
+      }
+    }
+    return base.map((row) => ({
+      teamId: row.teamId,
+      bestRank: best.get(row.teamId)!,
+      worstRank: worst.get(row.teamId)!,
+    }))
+  }
+
+  /**
+   * Letzter Spieltag: Köln & Bremen punktgleich 32, Köln bessere Tordiff → 14./15.
+   * Direktduell offen → Bremen kann 14 erreichen, Köln kann auf 15 fallen.
+   */
+  function cologneBremenFixture() {
+    const standings: StandingRow[] = []
+    for (let i = 1; i <= 18; i++) {
+      if (i <= 13) {
+        standings.push(
+          standingRow({
+            teamId: i,
+            teamName: `Team ${i}`,
+            points: 60 - i,
+            goalDiff: 20 - i,
+            goalsFor: 40 - i,
+            rank: i,
+          }),
+        )
+      } else if (i === 14) {
+        standings.push(
+          standingRow({
+            teamId: 14,
+            teamName: 'Köln',
+            shortName: 'KOE',
+            points: 32,
+            goalDiff: 2,
+            goalsFor: 40,
+            goalsAgainst: 38,
+            rank: 14,
+          }),
+        )
+      } else if (i === 15) {
+        standings.push(
+          standingRow({
+            teamId: 15,
+            teamName: 'Bremen',
+            shortName: 'BRE',
+            points: 32,
+            goalDiff: 1,
+            goalsFor: 38,
+            goalsAgainst: 37,
+            rank: 15,
+          }),
+        )
+      } else {
+        standings.push(
+          standingRow({
+            teamId: i,
+            teamName: `Team ${i}`,
+            points: 20 - (i - 15),
+            goalDiff: -10 - (i - 15),
+            goalsFor: 20,
+            rank: i,
+          }),
+        )
+      }
+    }
+    const koe = team(14, 'Köln')
+    const bre = team(15, 'Bremen')
+    return {
+      standings,
+      remaining: [openMatch(3401, koe, bre)],
+      koeId: 14,
+      breId: 15,
+    }
+  }
+
+  it('Köln/Bremen letzter Spieltag: Ranges enthalten 15 bzw. 14, niemand fälschlich fix', () => {
+    const { standings, remaining, koeId, breId } = cologneBremenFixture()
+    const ranges = computePositionRanges(standings, remaining)
+    const koe = ranges.find((r) => r.teamId === koeId)!
+    const bre = ranges.find((r) => r.teamId === breId)!
+
+    expect(koe.worstRank).toBeGreaterThanOrEqual(15)
+    expect(bre.bestRank).toBeLessThanOrEqual(14)
+    expect(koe.bestRank).not.toBe(koe.worstRank)
+    expect(bre.bestRank).not.toBe(bre.worstRank)
+  })
+
+  it('stimmt mit Brute-Force min/max je Team überein', () => {
+    const { standings, remaining } = cologneBremenFixture()
+    const exact = computeExactPositionRanges(standings, remaining)!
+    const oracle = bruteForceExactRanges(standings, remaining)
+    expect(exact).toEqual(oracle)
+
+    for (const row of standings) {
+      const outlook = computeSeasonOutlook(standings, remaining, row.teamId)!
+      expect(outlook.range).toEqual(exact.find((r) => r.teamId === row.teamId))
+    }
+  })
+
+  it('Gegenprobe: kann B den Rang r von A erreichen, kann A auf r+1 fallen', () => {
+    const { standings, remaining } = cologneBremenFixture()
+    const ranges = computePositionRanges(standings, remaining)
+    for (const a of ranges) {
+      for (const b of ranges) {
+        if (a.teamId === b.teamId) continue
+        const r = a.bestRank
+        if (b.bestRank <= r && r <= b.worstRank) {
+          expect(a.worstRank).toBeGreaterThanOrEqual(r + 1)
+        }
+      }
+    }
+  })
+
+  it('Pruning: >EXACT_LIMIT Restspiele, aber wenige relevante → Exact-Pfad', () => {
+    /**
+     * Viele Restspiele zwischen Teams ohne Punkte-Überlappung (singuläre Komponenten).
+     * Nur Köln/Bremen überlappen → genau ein relevantes Spiel.
+     */
+    const standings: StandingRow[] = []
+    for (let i = 1; i <= 18; i++) {
+      if (i <= 12) {
+        standings.push(
+          standingRow({
+            teamId: i,
+            teamName: `Top ${i}`,
+            points: 100 + (12 - i) * 8,
+            goalDiff: 30 - i,
+            goalsFor: 50 - i,
+            rank: i,
+          }),
+        )
+      } else if (i === 13) {
+        standings.push(
+          standingRow({
+            teamId: 13,
+            teamName: 'Mid',
+            points: 55,
+            goalDiff: 5,
+            goalsFor: 35,
+            rank: 13,
+          }),
+        )
+      } else if (i === 14) {
+        standings.push(
+          standingRow({
+            teamId: 14,
+            teamName: 'Köln',
+            shortName: 'KOE',
+            points: 32,
+            goalDiff: 2,
+            goalsFor: 40,
+            goalsAgainst: 38,
+            rank: 14,
+          }),
+        )
+      } else if (i === 15) {
+        standings.push(
+          standingRow({
+            teamId: 15,
+            teamName: 'Bremen',
+            shortName: 'BRE',
+            points: 32,
+            goalDiff: 1,
+            goalsFor: 38,
+            goalsAgainst: 37,
+            rank: 15,
+          }),
+        )
+      } else {
+        // Weit auseinander, je ≤1 Restspiel → keine Low-Low-Überlappung
+        const pts = i === 16 ? 0 : i === 17 ? 10 : 20
+        standings.push(
+          standingRow({
+            teamId: i,
+            teamName: `Low ${i}`,
+            points: pts,
+            goalDiff: -20,
+            goalsFor: 10,
+            rank: i,
+          }),
+        )
+      }
+    }
+
+    // 13 Spiele zwischen nicht-überlappenden Paaren (werden weggeprunt)
+    const remaining: Match[] = []
+    for (let i = 1; i <= 6; i++) {
+      remaining.push(
+        openMatch(4000 + i, team(i, `Top ${i}`), team(i + 6, `Top ${i + 6}`)),
+      )
+    }
+    remaining.push(openMatch(4007, team(1, 'Top 1'), team(13, 'Mid')))
+    remaining.push(openMatch(4008, team(2, 'Top 2'), team(16, 'Low 16')))
+    remaining.push(openMatch(4009, team(3, 'Top 3'), team(17, 'Low 17')))
+    remaining.push(openMatch(4010, team(4, 'Top 4'), team(18, 'Low 18')))
+    remaining.push(openMatch(4011, team(5, 'Top 5'), team(8, 'Top 8')))
+    remaining.push(openMatch(4012, team(6, 'Top 6'), team(9, 'Top 9')))
+    remaining.push(openMatch(4013, team(7, 'Top 7'), team(10, 'Top 10')))
+    remaining.push(openMatch(3401, team(14, 'Köln'), team(15, 'Bremen')))
+
+    expect(remaining.length).toBeGreaterThan(EXACT_LIMIT)
+
+    const relevantTeams = selectRelevantTeamIds(standings, remaining)
+    expect(relevantTeams.has(14)).toBe(true)
+    expect(relevantTeams.has(15)).toBe(true)
+    expect(relevantTeams.has(1)).toBe(false)
+
+    const relevant = selectRelevantMatches(standings, remaining)
+    expect(relevant.map((m) => m.matchID)).toEqual([3401])
+    expect(relevant.length).toBeLessThanOrEqual(EXACT_LIMIT)
+
+    const exact = computeExactPositionRanges(standings, remaining)
+    expect(exact).not.toBeNull()
+    const koe = exact!.find((r) => r.teamId === 14)!
+    const bre = exact!.find((r) => r.teamId === 15)!
+    expect(koe.worstRank).toBeGreaterThanOrEqual(15)
+    expect(bre.bestRank).toBeLessThanOrEqual(14)
+    expect(koe.bestRank).not.toBe(koe.worstRank)
+
+    const top = exact!.find((r) => r.teamId === 1)!
+    expect(top.bestRank).toBe(top.worstRank)
   })
 })
 

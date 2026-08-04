@@ -39,9 +39,11 @@ export interface PositionRange {
 
 /**
  * Zerlegung eines Best-/Schlechtfall- bzw. Zielplatz-Raums.
- * exact: „required“ gilt in JEDEM optimalen Weg (bei fixer eigener Vorgabe).
- * partiallyConstrained: Ausgang eingeschränkt (nicht alle 3 möglich), aber nicht eindeutig.
- * Keine Aussage über gemeinsame Kombinierbarkeit der flexiblen Spiele.
+ * Klassifikation je Fremdspiel aus den gefilterten optimalen Masken (Menge S der Ausgänge):
+ * - |S|==1 → required
+ * - |S|==2 → partiallyConstrained (fehlendes Element = forbiddenOutcome)
+ * - |S|==3 → flexible („wirklich egal“)
+ * Keine Aussage über gemeinsame Kombinierbarkeit der offenen Spiele.
  */
 export interface CaseConditions {
   mode: 'exact' | 'heuristic'
@@ -78,8 +80,8 @@ export interface CaseConditions {
     outcome: MatchOutcome
   }>
   /**
-   * Fremdspiele mit eingeschränktem, aber nicht eindeutigem Ausgang (exact).
-   * z.B. „nicht Auswärtssieg“ → allowedOutcomes length 2.
+   * Fremdspiele mit genau zwei erlaubten Ausgängen (exact).
+   * forbiddenOutcome = das eine fehlende 1/X/2-Ergebnis.
    */
   partiallyConstrained: Array<{
     matchId: number
@@ -88,6 +90,7 @@ export interface CaseConditions {
     homeIconUrl: string
     awayIconUrl: string
     allowedOutcomes: MatchOutcome[]
+    forbiddenOutcome: MatchOutcome
   }>
   /** Fremdspiele ohne festen Ausgang (exact) bzw. ohne Einfluss (Heuristik) */
   flexible: Array<{

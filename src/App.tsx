@@ -24,12 +24,14 @@ import {
   computeTargetMatchdayOutlook,
   computeTargetSeasonOutlook,
   enumerateMatchdayOutcomes,
+  canEnumerateExact,
   scenariosFromConditions,
   seasonExtremeOutcomes,
 } from './lib/scenarios'
 import { collectTargetPointsSamples } from './lib/simulation'
 import { deriveThresholdLines } from './lib/thresholds'
 import { computeScheduleHardness } from './lib/schedule'
+import { hasEnoughData, NOT_ENOUGH_DATA_LABEL } from './lib/reliability'
 import {
   encodeShareState,
   loadShareStateFromSearch,
@@ -212,6 +214,10 @@ export default function App() {
   const hardnessByTeam = useMemo(
     () => new Map(scheduleHardness.map((h) => [h.teamId, h])),
     [scheduleHardness],
+  )
+  const forecastReliable = useMemo(
+    () => hasEnoughData(baseStandings),
+    [baseStandings],
   )
 
   const {
@@ -599,16 +605,26 @@ export default function App() {
                   ? 'Simuliere Restprogramm…'
                   : forecastError
                     ? `Prognose nicht verfügbar: ${forecastError}`
-                    : (
-                      <>
-                        Modellschätzung (Poisson-Simulation) – keine Vorhersage.{' '}
-                        <ExplainLink topic="forecast" onExplain={openExplain} />
-                      </>
-                    )}
+                    : !forecastReliable
+                      ? (
+                        <>
+                          {NOT_ENOUGH_DATA_LABEL}. Simulation läuft, Stärken noch
+                          unverlässlich.{' '}
+                          <ExplainLink topic="forecast" onExplain={openExplain} />
+                        </>
+                      )
+                      : (
+                        <>
+                          Modellschätzung (Poisson-Simulation) – keine Vorhersage.{' '}
+                          <ExplainLink topic="forecast" onExplain={openExplain} />
+                        </>
+                      )}
               </p>
             ) : (
               <p className="forecast-disclaimer">
-                Rechnerische Best-/Schlechtfall-Spanne – keine Wahrscheinlichkeiten.{' '}
+                {canEnumerateExact(baseStandings, openMatches)
+                  ? 'Exakte Best-/Schlechtfall-Spanne über relevante Restspiele – keine Wahrscheinlichkeiten. '
+                  : 'Innere Näherung der Spanne („mindestens“) – real ggf. breiter; keine Wahrscheinlichkeiten. '}
                 <ExplainLink topic="span" onExplain={openExplain} />
               </p>
             )}
@@ -624,6 +640,7 @@ export default function App() {
               ranges={ranges}
               forecasts={forecastResult?.teams ?? null}
               forecastLoading={forecastLoading}
+              forecastReliable={forecastReliable}
               viewMode={tableView}
               selectedTeamId={selectedTeamId}
               onSelectTeam={setSelectedTeamId}
@@ -631,6 +648,11 @@ export default function App() {
               league={leagueId}
               hardnessByTeam={hardnessByTeam}
               showHardness={showHardness}
+              rangesApproximate={
+                tableView === 'range' &&
+                openMatches.length > 0 &&
+                !canEnumerateExact(baseStandings, openMatches)
+              }
               onExplain={openExplain}
             />
           </div>
@@ -695,6 +717,7 @@ export default function App() {
                 nextMatchday={nextMatchdayOutlook}
                 matchdayTargetOutlook={matchdayTargetOutlook}
                 seasonTargetOutlook={seasonTargetOutlook}
+                forecastReliable={forecastReliable}
                 matchdayTargetRank={clampedMatchdayTarget}
                 matchdayTargetComparator={matchdayTargetComparator}
                 seasonTargetRank={clampedSeasonTarget}

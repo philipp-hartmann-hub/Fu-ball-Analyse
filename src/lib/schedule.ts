@@ -1,4 +1,5 @@
 import type { Match, StandingRow } from '../types'
+import { hasEnoughData } from './reliability'
 
 /**
  * Restprogramm-Härte
@@ -15,8 +16,8 @@ import type { Match, StandingRow } from '../types'
  * Höher = schwereres Restprogramm. Ohne Restspiele → 0.
  * Rohwerte praktisch gleich ((max−min) < EQUALITY_EPS) → alle aktiven Teams 50.
  *
- * Aussagekraft: Median der bisher gespielten Spiele muss ≥ MIN_GAMES_FOR_HARDNESS
- * sein (`reliable`). Sonst Index/Rang ohne Einstufung in der UI.
+ * Aussagekraft: `hasEnoughData` (Median gespielter Spiele ≥ MIN_GAMES).
+ * Sonst Index/Rang ohne Einstufung in der UI.
  */
 
 /** Faktor auf Gegner-PPG bei Heimspiel (leichter). */
@@ -34,11 +35,8 @@ export const DEFAULT_PPG = 1.0
  */
 export const EQUALITY_EPS = 1e-9
 
-/**
- * Median gespielter Spiele in der Liga muss mindestens so hoch sein,
- * bevor die Härte als aussagekräftig gilt (PPG sonst zu verrauscht).
- */
-export const MIN_GAMES_FOR_HARDNESS = 5
+/** @deprecated Nutze MIN_GAMES / hasEnoughData aus `./reliability`. */
+export { MIN_GAMES as MIN_GAMES_FOR_HARDNESS } from './reliability'
 
 export interface ScheduleHardness {
   teamId: number
@@ -50,7 +48,7 @@ export interface ScheduleHardness {
   raw: number
   remainingGames: number
   /**
-   * false, wenn noch zu wenige Spiele gespielt sind (Median &lt; MIN_GAMES_FOR_HARDNESS)
+   * false, wenn noch zu wenige Spiele gespielt sind (`!hasEnoughData`)
    * — Index/Rang dann nicht als Ranking interpretieren.
    */
   reliable: boolean
@@ -167,17 +165,11 @@ export function remainingStrength(
 }
 
 /** Median der `played`-Werte; leere Liga → 0. */
-export function medianGamesPlayed(standings: StandingRow[]): number {
-  if (standings.length === 0) return 0
-  const sorted = standings.map((s) => s.played).sort((a, b) => a - b)
-  const mid = Math.floor(sorted.length / 2)
-  if (sorted.length % 2 === 1) return sorted[mid]!
-  return (sorted[mid - 1]! + sorted[mid]!) / 2
-}
+export { medianGamesPlayed } from './reliability'
 
 /**
  * Volle Kennzahlen inkl. Liga-Rang (1 = schwerstes Restprogramm).
- * `reliable` nur wenn Median gespielter Spiele ≥ MIN_GAMES_FOR_HARDNESS.
+ * `reliable` nur wenn `hasEnoughData(standings)`.
  */
 export function computeScheduleHardness(
   matches: Match[],
@@ -185,7 +177,7 @@ export function computeScheduleHardness(
 ): ScheduleHardness[] {
   const buckets = remainingStrengthRaw(matches, standings)
   const index = scaleHardnessIndex(buckets)
-  const reliable = medianGamesPlayed(standings) >= MIN_GAMES_FOR_HARDNESS
+  const reliable = hasEnoughData(standings)
 
   const ordered = [...standings]
     .map((row) => {

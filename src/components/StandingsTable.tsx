@@ -8,6 +8,7 @@ import {
   hardnessTone,
   type ScheduleHardness,
 } from '../lib/schedule'
+import { NOT_ENOUGH_DATA_LABEL } from '../lib/reliability'
 import { zoneForRank } from '../lib/table'
 import type { ExplainTopic } from '../lib/modelExplanations'
 import { ExplainLink } from './ExplainLink'
@@ -20,6 +21,8 @@ interface Props {
   ranges: PositionRange[]
   forecasts?: TeamForecast[] | null
   forecastLoading?: boolean
+  /** false = Stärken unverlässlich → keine Zonen-Prozente */
+  forecastReliable?: boolean
   viewMode: TableViewMode
   selectedTeamId: number | null
   onSelectTeam: (teamId: number) => void
@@ -28,6 +31,8 @@ interface Props {
   /** Restprogramm-Härte je Verein; Spalte nur wenn showHardness */
   hardnessByTeam?: Map<number, ScheduleHardness> | null
   showHardness?: boolean
+  /** Heuristik-Spanne: UI als innere Näherung („mindestens“) kennzeichnen */
+  rangesApproximate?: boolean
   onExplain?: (topic: ExplainTopic) => void
 }
 
@@ -37,6 +42,7 @@ export function StandingsTable({
   ranges,
   forecasts,
   forecastLoading,
+  forecastReliable = true,
   viewMode,
   selectedTeamId,
   onSelectTeam,
@@ -44,6 +50,7 @@ export function StandingsTable({
   league,
   hardnessByTeam,
   showHardness = false,
+  rangesApproximate = false,
   onExplain,
 }: Props) {
   const rangeMap = new Map(ranges.map((r) => [r.teamId, r]))
@@ -167,6 +174,13 @@ export function StandingsTable({
                   {viewMode === 'forecast' ? (
                     forecastLoading && !forecast ? (
                       <span className="pill muted">…</span>
+                    ) : !forecastReliable ? (
+                      <span
+                        className="pill muted forecast-pending"
+                        title={NOT_ENOUGH_DATA_LABEL}
+                      >
+                        {NOT_ENOUGH_DATA_LABEL}
+                      </span>
                     ) : forecast ? (
                       <ForecastCell forecast={forecast} league={league} />
                     ) : (
@@ -174,9 +188,27 @@ export function StandingsTable({
                     )
                   ) : range ? (
                     range.bestRank === range.worstRank ? (
-                      <span className="pill locked">{range.bestRank}.</span>
+                      <span
+                        className="pill locked"
+                        title={
+                          rangesApproximate
+                            ? 'Innere Näherung – real ggf. breiter'
+                            : undefined
+                        }
+                      >
+                        {rangesApproximate ? 'mind. ' : ''}
+                        {range.bestRank}.
+                      </span>
                     ) : (
-                      <span className="pill">
+                      <span
+                        className="pill"
+                        title={
+                          rangesApproximate
+                            ? 'Innere Näherung – real ggf. breiter'
+                            : undefined
+                        }
+                      >
+                        {rangesApproximate ? 'mind. ' : ''}
                         {range.bestRank}.–{range.worstRank}.
                       </span>
                     )
@@ -204,7 +236,7 @@ function HardnessCell({
     return (
       <span
         className="hardness-pill tone-pending"
-        title="Noch keine Aussage – zu wenige Spiele für eine stabile Gegnerstärke"
+        title={NOT_ENOUGH_DATA_LABEL}
       >
         –
       </span>

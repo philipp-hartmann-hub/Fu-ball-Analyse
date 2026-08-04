@@ -21,7 +21,7 @@ Echtzeit-Analyse für die **1., 2. und 3. Liga**: Tabelle, Restprogramm und mög
 
 - Live-Tabelle mit Zonen (BL1: CL/EL/Abstieg · BL2/3. Liga: Aufstieg/Abstieg); **Cache**: zuletzt geladene Daten sofort aus localStorage, Refresh im Hintergrund
 - **Ergebnisse**: Spieltag wählbar (durchklicken); Wappen; Live-Updates; 2 Tage nach letztem Spiel → nächster Spieltag als Default
-- Spalte **Möglich**: Best-/Schlechtfall bis Saisonende (**Spanne**) oder Monte-Carlo-**Prognose** (umschaltbar)
+- Spalte **Möglich**: Best-/Schlechtfall bis Saisonende (**Spanne**; ≤12 *relevante* Restspiele exakt nach Punkte-Pruning, sonst innere Näherung „mindestens“) oder Monte-Carlo-**Prognose** (umschaltbar; unter `MIN_GAMES` Spielen ohne Prozentanzeige)
 - Optionale Spalte **Härte**: Restprogramm-Härte 0–100 (Toggle „Restprogramm“; auf Mobile ausgeblendet)
 - Seitenleiste: **Verein** (Überblick + Spieltag-Analyse + Saison + **Wunschplatz**) · **Ergebnisse** · **Szenario** · **Vergleich**
 - **Szenario-Simulator**: Partien mit Wappen; Grob (Sieg/Unentschieden) oder Fein-Tore; teilbar via `?s=`
@@ -48,7 +48,7 @@ src/
   leagues.ts
   api/openliga.ts / matchSchema.ts / dataSource.ts
   hooks/useLeagueData.ts
-  lib/table.ts / scenarios.ts / schedule.ts / simulation.ts / thresholds.ts / live.ts
+  lib/table.ts / scenarios.ts / schedule.ts / reliability.ts / simulation.ts / thresholds.ts / live.ts
   components/…             # UI
   App.tsx
 ```
@@ -56,6 +56,54 @@ src/
 ---
 
 ## Änderungsprotokoll
+
+### 2026-08-04 — Prompt 70
+
+**User:** Widersprüchliche Möglich-Ranges — Exact mit Relevanz-Pruning (nicht nur raw Restspiel-Anzahl).
+
+**Aktion:**
+- `selectRelevantTeamIds` / `selectRelevantMatches` / `teamPointBounds` / `EXACT_LIMIT=12`
+- `computeExactPositionRanges`: enumeriert nur relevante Spiele (`applyScore` + `rankStandings`), ein Durchlauf
+- `computePositionRanges` / Saison-Outlook / Extreme nutzen denselben Pfad; UI „mind.“ bei Heuristik
+- Tests: Köln/Bremen, Brute-Force, Gegenprobe r→r+1, Pruning-Fixture (>12 Restspiele, Exact trotzdem)
+
+**Status:** erledigt
+
+### 2026-08-04 — Prompt 69
+
+**User:** Prognose bei Saisonstart kein Prozent-Rauschen — gemeinsamer Reliability-Helfer.
+
+**Aktion:**
+- Neu: `src/lib/reliability.ts` (`MIN_GAMES`, `hasEnoughData`, `NOT_ENOUGH_DATA_LABEL`)
+- Härte (`computeScheduleHardness`) und Prognose-UI speisen daraus
+- Bei `hasEnoughData===false`: keine Zonen-Prozente/Headline, Text „noch keine Aussage (zu wenige Spiele)“; Simulation läuft weiter
+- Test: 0 Spiele → keine Prozentanzeige
+
+**Status:** erledigt
+
+### 2026-08-04 — Prompt 68
+
+**User:** `deriveExactCaseConditions` korrigieren (K3-Klassifikation + UI + Heuristik-Hinweis; Test-Invariante K4).
+
+**Aktion:**
+- Fremdspiel-Klassifikation: `|S|==1` required, `|S|==2` partiallyConstrained inkl. `forbiddenOutcome`, `|S|==3` flexible
+- UI: drei Blöcke (Muss / Darf nicht / Wirklich egal) + Hinweis zu offenen Kombinationen
+- Saison-Heuristik: Banner „grobe Richtung, nicht exakt“ (kein Muss-/Exakt-Wording)
+- Tests: K3-Masken-Fixtures; K4-Invariante nutzt `forbiddenOutcome`
+
+**Status:** erledigt
+
+### 2026-08-04 — Prompt 67
+
+**User:** Falsche Möglich-Spalte am Saisonende (widersprüchliche Ranges) — exakte Enumeration statt Heuristik.
+
+**Aktion:**
+- `computeExactPositionRanges` / `EXACT_SEASON_LIMIT=12`: ein 3ⁿ-Durchlauf für alle Teams
+- `computePositionRanges` + `computeSeasonOutlook` + `seasonExtremeOutcomes` nutzen den exakten Pfad im Limit
+- UI: Disclaimer + „mind.“ bei Heuristik; Erklär-Text aktualisiert
+- Tests: Köln/Bremen-Fixture, Brute-Force-Konsistenz, Gegenprobe r→r+1
+
+**Status:** erledigt
 
 ### 2026-08-03 — Prompt 66
 

@@ -945,6 +945,15 @@ button.linkish.explain-inline {
   font-variant-numeric: tabular-nums;
 }
 
+.forecast-pending {
+  display: inline-block;
+  max-width: 9.5rem;
+  white-space: normal;
+  line-height: 1.25;
+  font-size: 0.7rem;
+  text-align: left;
+}
+
 .forecast-bar {
   height: 4px;
   border-radius: 999px;
@@ -1763,9 +1772,26 @@ button.range-btn.is-static {
   border-color: color-mix(in srgb, #d4a574 25%, var(--line));
 }
 
+.conditions-block.block-partial {
+  background: color-mix(in srgb, #c45c5c 8%, transparent);
+  border-color: color-mix(in srgb, #c45c5c 22%, var(--line));
+}
+
 .conditions-block.block-flex {
   background: rgba(255, 255, 255, 0.03);
   border-color: var(--line);
+}
+
+.conditions-heuristic-banner {
+  margin: 0 0 0.65rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.5rem;
+  font-size: 0.86rem;
+  line-height: 1.4;
+  font-weight: 600;
+  color: color-mix(in srgb, #c9a227 85%, var(--text));
+  background: color-mix(in srgb, #c9a227 14%, transparent);
+  border: 1px solid color-mix(in srgb, #c9a227 35%, var(--line));
 }
 
 .conditions-list {

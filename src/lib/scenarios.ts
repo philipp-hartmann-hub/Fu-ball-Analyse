@@ -15,7 +15,9 @@ import {
   buildStandings,
   rankStandings,
   remainingMatches,
+  applyScore,
   type MatchScore,
+  type StandingDraft,
 } from './table'
 import type { PointRankOutcome } from './thresholds'
 
@@ -147,11 +149,14 @@ function focusResultLabelShort(fr: 'win' | 'draw' | 'loss'): string {
 /**
  * Zerlegt Masken in notwendige / teilweise eingeschränkte / flexible Fremdergebnisse.
  *
+ * Pro Fremdspiel Menge S der Ausgänge in den gefilterten optimalen Masken:
+ * - |S|==1 → required
+ * - |S|==2 → partiallyConstrained (fehlendes Element = forbiddenOutcome)
+ * - |S|==3 → flexible („wirklich egal“)
+ *
  * mode:
  * - best/worst: bei mehreren eigenen Outcomes Win bzw. Loss bevorzugen
  * - target: geringsten eigenen Aufwand (Remis vor Sieg vor Niederlage)
- *
- * Korrektheit: „required“ heißt „gilt in JEDEM Weg“ (bei fixer eigener Vorgabe).
  */
 export function deriveExactCaseConditions(
   fixtures: Match[],
@@ -228,41 +233,38 @@ export function deriveExactCaseConditions(
     }
   }
 
+  const ALL_OUTCOMES: MatchOutcome[] = ['home', 'draw', 'away']
+
   for (let fi = 0; fi < fixtures.length; fi++) {
     if (fi === ownIdx) continue
     const set = new Set(filtered.map((m) => outcomeAt(m, fi)))
     const match = fixtures[fi]!
     const names = matchLabel(match)
+    const meta = {
+      matchId: match.matchID,
+      homeName: names.homeName,
+      awayName: names.awayName,
+      homeIconUrl: match.team1.teamIconUrl,
+      awayIconUrl: match.team2.teamIconUrl,
+    }
     if (set.size === 1) {
       const oi = [...set][0]!
       base.required.push({
-        matchId: match.matchID,
-        homeName: names.homeName,
-        awayName: names.awayName,
-        homeIconUrl: match.team1.teamIconUrl,
-        awayIconUrl: match.team2.teamIconUrl,
+        ...meta,
         outcome: outcomeFromIndex(oi),
       })
     } else if (set.size === 2) {
       const allowed = [...set]
         .sort((a, b) => a - b)
         .map((oi) => outcomeFromIndex(oi))
+      const forbiddenOutcome = ALL_OUTCOMES.find((o) => !allowed.includes(o))!
       base.partiallyConstrained.push({
-        matchId: match.matchID,
-        homeName: names.homeName,
-        awayName: names.awayName,
-        homeIconUrl: match.team1.teamIconUrl,
-        awayIconUrl: match.team2.teamIconUrl,
+        ...meta,
         allowedOutcomes: allowed,
+        forbiddenOutcome,
       })
     } else {
-      base.flexible.push({
-        matchId: match.matchID,
-        homeName: names.homeName,
-        awayName: names.awayName,
-        homeIconUrl: match.team1.teamIconUrl,
-        awayIconUrl: match.team2.teamIconUrl,
-      })
+      base.flexible.push(meta)
     }
   }
 
@@ -483,6 +485,311 @@ function simulateExtremeFinish(
   }
 }
 
+/**
+ * Max. relevante Restspiele je Punkte-Komponente für exakte 3^n-Enumeration.
+ * Ein Durchlauf pro Komponente — widerspruchsfreie Ranges innerhalb des Bandes.
+ */
+export const EXACT_LIMIT = 12
+/** @deprecated Alias für EXACT_LIMIT */
+export const EXACT_SEASON_LIMIT = EXACT_LIMIT
+
+/** Restspiele je Team (Auftritte in `remaining`). */
+export function countRemainingAppearances(remaining: Match[]): Map<number, number> {
+  const counts = new Map<number, number>()
+  for (const m of remaining) {
+    counts.set(m.team1.teamId, (counts.get(m.team1.teamId) ?? 0) + 1)
+    counts.set(m.team2.teamId, (counts.get(m.team2.teamId) ?? 0) + 1)
+  }
+  return counts
+}
+
+/** Erreichbares Punkteintervall [min, max] je Team (0 bzw. 3 Punkte je Restspiel). */
+export function teamPointBounds(
+  standings: StandingRow[],
+  remaining: Match[],
+): Map<number, { min: number; max: number }> {
+  const games = countRemainingAppearances(remaining)
+  const bounds = new Map<number, { min: number; max: number }>()
+  for (const row of standings) {
+    const g = games.get(row.teamId) ?? 0
+    bounds.set(row.teamId, { min: row.points, max: row.points + 3 * g })
+  }
+  return bounds
+}
+
+function pointIntervalsOverlap(
+  a: { min: number; max: number },
+  b: { min: number; max: number },
+): boolean {
+  return a.max >= b.min && b.max >= a.min
+}
+
+/**
+ * Zusammenhängende Komponenten: Teams, die sich über überlappende Punkte-Intervalle
+ * (transitiv) noch erreichen können.
+ */
+export function relevantPointComponents(
+  standings: StandingRow[],
+  remaining: Match[],
+): number[][] {
+  const bounds = teamPointBounds(standings, remaining)
+  const ids = standings.map((s) => s.teamId)
+  const parent = new Map<number, number>()
+  for (const id of ids) parent.set(id, id)
+
+  function find(x: number): number {
+    let p = parent.get(x)!
+    if (p !== x) {
+      p = find(p)
+      parent.set(x, p)
+    }
+    return p
+  }
+  function union(a: number, b: number) {
+    const ra = find(a)
+    const rb = find(b)
+    if (ra !== rb) parent.set(ra, rb)
+  }
+
+  for (let i = 0; i < ids.length; i++) {
+    for (let j = i + 1; j < ids.length; j++) {
+      const a = ids[i]!
+      const b = ids[j]!
+      if (pointIntervalsOverlap(bounds.get(a)!, bounds.get(b)!)) union(a, b)
+    }
+  }
+
+  const groups = new Map<number, number[]>()
+  for (const id of ids) {
+    const root = find(id)
+    const list = groups.get(root) ?? []
+    list.push(id)
+    groups.set(root, list)
+  }
+  return [...groups.values()]
+}
+
+/**
+ * Teams, die einander punktemäßig noch erreichen können (überlappende Intervalle).
+ */
+export function selectRelevantTeamIds(
+  standings: StandingRow[],
+  remaining: Match[],
+): Set<number> {
+  const relevant = new Set<number>()
+  for (const comp of relevantPointComponents(standings, remaining)) {
+    if (comp.length < 2) continue
+    for (const id of comp) relevant.add(id)
+  }
+  return relevant
+}
+
+/** Spiele, die mindestens ein Team aus `teamIds` betreffen. */
+export function matchesTouchingTeams(
+  remaining: Match[],
+  teamIds: ReadonlySet<number>,
+): Match[] {
+  if (teamIds.size === 0) return []
+  return remaining.filter(
+    (m) => teamIds.has(m.team1.teamId) || teamIds.has(m.team2.teamId),
+  )
+}
+
+/**
+ * Restspiele des relevanten Bandes (Union über Komponenten mit ≥2 Teams).
+ */
+export function selectRelevantMatches(
+  standings: StandingRow[],
+  remaining: Match[],
+): Match[] {
+  const relevant = selectRelevantTeamIds(standings, remaining)
+  return matchesTouchingTeams(remaining, relevant)
+}
+
+/**
+ * Exact möglich, wenn jede Punkte-Komponente höchstens EXACT_LIMIT Restspiele hat.
+ * (Große Bänder blockieren nicht kleinere — pro Komponente enumeriert.)
+ */
+export function canEnumerateExact(
+  standings: StandingRow[],
+  remaining: Match[],
+): boolean {
+  if (!remaining.length) return false
+  for (const comp of relevantPointComponents(standings, remaining)) {
+    const matches = matchesTouchingTeams(remaining, new Set(comp))
+    if (matches.length > EXACT_LIMIT) return false
+  }
+  return true
+}
+
+/** @deprecated Nutze canEnumerateExact(standings, remaining). */
+export function canEnumerateSeasonExact(remainingCount: number): boolean {
+  return remainingCount > 0 && remainingCount <= EXACT_LIMIT
+}
+
+function cloneDraftsMap(standings: StandingRow[]): Map<number, StandingDraft> {
+  return new Map(toDrafts(standings).map((d) => [d.teamId, { ...d }]))
+}
+
+function fixedPositionRanges(standings: StandingRow[]): PositionRange[] {
+  return standings.map((row) => ({
+    teamId: row.teamId,
+    bestRank: row.rank,
+    worstRank: row.rank,
+  }))
+}
+
+/** Enumeriert eine Match-Liste; aktualisiert best/worst nur für `updateTeamIds`. */
+function accumulateRangesFromMasks(
+  baseStandings: StandingRow[],
+  matches: Match[],
+  priorScores: MatchScore[],
+  bestByTeam: Map<number, number>,
+  worstByTeam: Map<number, number>,
+  updateTeamIds: ReadonlySet<number>,
+) {
+  const total = 3 ** matches.length
+  for (let mask = 0; mask < total; mask++) {
+    const map = cloneDraftsMap(baseStandings)
+    const scores: MatchScore[] = [...priorScores]
+    let x = mask
+    for (const match of matches) {
+      const outcome = OUTCOMES[x % 3]!
+      x = Math.floor(x / 3)
+      applyScore(
+        map,
+        match.team1.teamId,
+        match.team2.teamId,
+        outcome[0],
+        outcome[1],
+      )
+      scores.push({
+        matchId: match.matchID,
+        homeId: match.team1.teamId,
+        awayId: match.team2.teamId,
+        homeGoals: outcome[0],
+        awayGoals: outcome[1],
+      })
+    }
+    const table = rankStandings([...map.values()], { matchScores: scores })
+    for (const row of table) {
+      if (!updateTeamIds.has(row.teamId)) continue
+      const prevBest = bestByTeam.get(row.teamId)!
+      const prevWorst = worstByTeam.get(row.teamId)!
+      if (row.rank < prevBest) bestByTeam.set(row.teamId, row.rank)
+      if (row.rank > prevWorst) worstByTeam.set(row.teamId, row.rank)
+    }
+  }
+}
+
+/**
+ * Exakte Best-/Schlechtfall-Ranges: relevante Komponenten je einmal enumerieren
+ * (applyScore + rankStandings), min/max-Rang je Team — widerspruchsfrei.
+ */
+export function computeExactPositionRanges(
+  baseStandings: StandingRow[],
+  remaining: Match[],
+  priorScores: MatchScore[] = [],
+): PositionRange[] | null {
+  if (!remaining.length) return fixedPositionRanges(baseStandings)
+  if (!canEnumerateExact(baseStandings, remaining)) return null
+
+  const nTeams = baseStandings.length
+  const bestByTeam = new Map<number, number>()
+  const worstByTeam = new Map<number, number>()
+  for (const row of baseStandings) {
+    bestByTeam.set(row.teamId, nTeams)
+    worstByTeam.set(row.teamId, 1)
+  }
+
+  const components = relevantPointComponents(baseStandings, remaining)
+  let enumeratedAny = false
+  for (const comp of components) {
+    const matches = matchesTouchingTeams(remaining, new Set(comp))
+    if (matches.length === 0) {
+      for (const id of comp) {
+        const row = baseStandings.find((s) => s.teamId === id)!
+        bestByTeam.set(id, row.rank)
+        worstByTeam.set(id, row.rank)
+      }
+      continue
+    }
+    enumeratedAny = true
+    accumulateRangesFromMasks(
+      baseStandings,
+      matches,
+      priorScores,
+      bestByTeam,
+      worstByTeam,
+      new Set(comp),
+    )
+  }
+
+  if (!enumeratedAny) return fixedPositionRanges(baseStandings)
+
+  return baseStandings.map((row) => ({
+    teamId: row.teamId,
+    bestRank: bestByTeam.get(row.teamId)!,
+    worstRank: worstByTeam.get(row.teamId)!,
+  }))
+}
+
+/** Rang je Maske für ein Fokus-Team (für Exact-Conditions; Komponente des Teams). */
+function enumerateSeasonRanksByMaskForTeam(
+  baseStandings: StandingRow[],
+  relevantMatches: Match[],
+  teamId: number,
+  priorScores: MatchScore[] = [],
+): { ranksByMask: number[]; pointsByMask: number[] } | null {
+  if (!relevantMatches.length || relevantMatches.length > EXACT_LIMIT) return null
+
+  const total = 3 ** relevantMatches.length
+  const ranksByMask = new Array<number>(total)
+  const pointsByMask = new Array<number>(total)
+
+  for (let mask = 0; mask < total; mask++) {
+    const map = cloneDraftsMap(baseStandings)
+    const scores: MatchScore[] = [...priorScores]
+    let x = mask
+    for (const match of relevantMatches) {
+      const outcome = OUTCOMES[x % 3]!
+      x = Math.floor(x / 3)
+      applyScore(
+        map,
+        match.team1.teamId,
+        match.team2.teamId,
+        outcome[0],
+        outcome[1],
+      )
+      scores.push({
+        matchId: match.matchID,
+        homeId: match.team1.teamId,
+        awayId: match.team2.teamId,
+        homeGoals: outcome[0],
+        awayGoals: outcome[1],
+      })
+    }
+    const row = map.get(teamId)!
+    const table = rankStandings([...map.values()], { matchScores: scores })
+    ranksByMask[mask] = table.find((r) => r.teamId === teamId)!.rank
+    pointsByMask[mask] = row.points
+  }
+
+  return { ranksByMask, pointsByMask }
+}
+
+function relevantMatchesForTeam(
+  baseStandings: StandingRow[],
+  remaining: Match[],
+  teamId: number,
+): Match[] {
+  const comp =
+    relevantPointComponents(baseStandings, remaining).find((c) =>
+      c.includes(teamId),
+    ) ?? [teamId]
+  return matchesTouchingTeams(remaining, new Set(comp))
+}
+
 export function computeSeasonOutlook(
   baseStandings: StandingRow[],
   remaining: Match[],
@@ -496,6 +803,58 @@ export function computeSeasonOutlook(
       range: { teamId, bestRank: row.rank, worstRank: row.rank },
       bestConditions: null,
       worstConditions: null,
+    }
+  }
+
+  const relevantMatches = relevantMatchesForTeam(
+    baseStandings,
+    remaining,
+    teamId,
+  )
+  if (relevantMatches.length <= EXACT_LIMIT) {
+    if (relevantMatches.length === 0) {
+      const row = baseStandings.find((s) => s.teamId === teamId)
+      if (!row) return null
+      return {
+        range: { teamId, bestRank: row.rank, worstRank: row.rank },
+        bestConditions: null,
+        worstConditions: null,
+      }
+    }
+    const enumerated = enumerateSeasonRanksByMaskForTeam(
+      baseStandings,
+      relevantMatches,
+      teamId,
+      priorScores,
+    )
+    if (!enumerated) return null
+    const { ranksByMask } = enumerated
+    let bestRank = baseStandings.length
+    let worstRank = 1
+    for (const rank of ranksByMask) {
+      if (rank < bestRank) bestRank = rank
+      if (rank > worstRank) worstRank = rank
+    }
+    const bestMasks: number[] = []
+    const worstMasks: number[] = []
+    for (let mask = 0; mask < ranksByMask.length; mask++) {
+      if (ranksByMask[mask] === bestRank) bestMasks.push(mask)
+      if (ranksByMask[mask] === worstRank) worstMasks.push(mask)
+    }
+    return {
+      range: { teamId, bestRank, worstRank },
+      bestConditions: deriveExactCaseConditions(
+        relevantMatches,
+        teamId,
+        bestMasks,
+        'best',
+      ),
+      worstConditions: deriveExactCaseConditions(
+        relevantMatches,
+        teamId,
+        worstMasks,
+        'worst',
+      ),
     }
   }
 
@@ -540,6 +899,13 @@ export function computePositionRanges(
   remaining: Match[],
   priorScores: MatchScore[] = [],
 ): PositionRange[] {
+  const exact = computeExactPositionRanges(
+    baseStandings,
+    remaining,
+    priorScores,
+  )
+  if (exact) return exact
+
   return baseStandings.map((team) => {
     const outlook = computeSeasonOutlook(
       baseStandings,
@@ -1003,7 +1369,7 @@ export function enumerateMatchdayOutcomes(
   return out
 }
 
-/** Heuristische Best-/Schlechtfall-Outcomes für die Saison (Näherung). */
+/** Best-/Schlechtfall-Outcomes für die Saison (exakt im Limit, sonst Heuristik). */
 export function seasonExtremeOutcomes(
   baseStandings: StandingRow[],
   remaining: Match[],
@@ -1015,6 +1381,48 @@ export function seasonExtremeOutcomes(
     if (!row) return null
     return [{ points: row.points, rank: row.rank }]
   }
+
+  const relevantMatches = relevantMatchesForTeam(
+    baseStandings,
+    remaining,
+    teamId,
+  )
+  if (relevantMatches.length <= EXACT_LIMIT) {
+    if (relevantMatches.length === 0) {
+      const row = baseStandings.find((s) => s.teamId === teamId)
+      if (!row) return null
+      return [{ points: row.points, rank: row.rank }]
+    }
+    const enumerated = enumerateSeasonRanksByMaskForTeam(
+      baseStandings,
+      relevantMatches,
+      teamId,
+      priorScores,
+    )
+    if (!enumerated) return null
+    const { ranksByMask, pointsByMask } = enumerated
+    let bestRank = baseStandings.length
+    let worstRank = 1
+    let bestPoints = -Infinity
+    let worstPoints = Infinity
+    for (let i = 0; i < ranksByMask.length; i++) {
+      const rank = ranksByMask[i]!
+      const pts = pointsByMask[i]!
+      if (rank < bestRank || (rank === bestRank && pts > bestPoints)) {
+        bestRank = rank
+        bestPoints = pts
+      }
+      if (rank > worstRank || (rank === worstRank && pts < worstPoints)) {
+        worstRank = rank
+        worstPoints = pts
+      }
+    }
+    return [
+      { points: bestPoints, rank: bestRank },
+      { points: worstPoints, rank: worstRank },
+    ]
+  }
+
   return [
     simulateExtremeFinish(baseStandings, remaining, teamId, 'best', priorScores),
     simulateExtremeFinish(baseStandings, remaining, teamId, 'worst', priorScores),

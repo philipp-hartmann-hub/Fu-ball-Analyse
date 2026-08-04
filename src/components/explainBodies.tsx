@@ -2,11 +2,8 @@ import {
   DEFAULT_SIMULATIONS,
   HOME_ADVANTAGE,
 } from '../lib/simulation'
-import {
-  AWAY_WEIGHT,
-  HOME_WEIGHT,
-  MIN_GAMES_FOR_HARDNESS,
-} from '../lib/schedule'
+import { AWAY_WEIGHT, HOME_WEIGHT } from '../lib/schedule'
+import { MIN_GAMES } from '../lib/reliability'
 
 export function ForecastExplainBody() {
   const runsLabel = DEFAULT_SIMULATIONS.toLocaleString('de-DE')
@@ -44,10 +41,14 @@ export function ForecastExplainBody() {
         und ein Balken. Tooltip: Median-Rang und erwartete Punkte. Die Ansicht „Spanne“ bleibt die
         rein rechnerische Best-/Schlechtfall-Spanne ohne Zufall.
       </p>
+      <h3>Wann die Zahl gilt</h3>
+      <p>
+        Bei Saisonstart (Median &lt; {MIN_GAMES} Spiele) kollabieren Stärken auf Neutralwerte —
+        die UI zeigt dann <strong>keine Zonen-Prozente</strong>, sondern „noch keine Aussage (zu
+        wenige Spiele)“. Die Simulation darf trotzdem laufen.
+      </p>
       <p className="modal-footnote">
-        Vereinfachtes Modell (u. a. keine Formkurven, Verletzungen, Motivation). Bei Saisonstart mit
-        0 Spielen sind die Stärken noch weitgehend neutral – die Werte werden aussagekräftiger,
-        sobald Spiele gespielt sind.
+        Vereinfachtes Modell (u. a. keine Formkurven, Verletzungen, Motivation).
       </p>
     </>
   )
@@ -68,9 +69,16 @@ export function SpanExplainBody() {
       </p>
       <h3>Gesamte Saison</h3>
       <p>
-        Für alle Restspiele wird eine <strong>Heuristik</strong> genutzt: Im Bestfall gewinnt der
-        Fokusverein möglichst oft, Gegner holen ungünstig; im Schlechtfall umgekehrt. Das ist eine
-        Näherung, keine vollständige Enumeration aller Saisonverläufe.
+        Zuerst Relevanz-Pruning: nur Teams mit überlappenden Punkte-Intervallen und deren
+        Restspiele. Bei höchstens 12 relevanten Spielen:{' '}
+        <strong>exakte Enumeration</strong> aller 1/X/2-Kombinationen in einem gemeinsamen
+        Durchlauf – widerspruchsfreie Spannen für die ganze Tabelle.
+      </p>
+      <p>
+        Darüber hinaus eine <strong>Heuristik</strong> (innere Näherung
+        „mindestens“): Im Bestfall gewinnt der Fokusverein möglichst oft, Gegner
+        holen ungünstig; im Schlechtfall umgekehrt. Die reale Spanne kann breiter
+        sein.
       </p>
       <h3>Unterschied zur Prognose</h3>
       <p>
@@ -142,7 +150,7 @@ export function HardnessExplainBody() {
       </p>
       <h3>Wann die Zahl gilt</h3>
       <p>
-        Solange der Median der gespielten Spiele unter {MIN_GAMES_FOR_HARDNESS} liegt, ist PPG zu
+        Solange der Median der gespielten Spiele unter {MIN_GAMES} liegt, ist PPG zu
         verrauscht. Dann zeigt die UI <strong>„noch keine Aussage“</strong> – kein leicht/schwer und
         kein Liga-Rang.
       </p>
@@ -157,31 +165,38 @@ export function ConditionsExplainBody() {
   return (
     <>
       <p className="modal-lead">
-        Die Bedingungs-Analyse zerlegt den Best- bzw. Schlechtfall-Raum in{' '}
-        <strong>was fest sein muss</strong> und <strong>was egal ist</strong> – kein einzelner
-        Beispielweg und keine nackte Konstellations-Zählung.
+        Die Bedingungs-Analyse zerlegt den Best- bzw. Schlechtfall-Raum in drei Stufen –
+        kein einzelner Beispielweg und keine nackte Konstellations-Zählung.
       </p>
       <h3>Nächster Spieltag (exakt)</h3>
       <p>
-        Aus allen Ergebnis-Kombinationen, die den Best- bzw. Schlechtfall-Platz erreichen, wird
-        pro Spiel geprüft: Kommt in <em>jedem</em> dieser Wege derselbe Ausgang vor, ist er{' '}
-        <strong>notwendig</strong>. Variieren die Ausgänge, ist das Spiel <strong>egal</strong>.
-        Dein eigenes Spiel steht separat als Vorgabe (im Bestfall bevorzugt Sieg, im Schlechtfall
-        Niederlage).
+        Aus allen Ergebnis-Kombinationen, die den Zielrang erreichen, wird pro Fremdspiel die
+        Menge der vorkommenden Ausgänge gebildet:
       </p>
+      <ul>
+        <li>
+          <strong>Muss</strong> — nur ein Ausgang in allen optimalen Wegen
+        </li>
+        <li>
+          <strong>Darf nicht</strong> — genau ein Ausgang fehlt („X darf nicht …“)
+        </li>
+        <li>
+          <strong>Wirklich egal</strong> — alle drei Ausgänge kommen vor
+        </li>
+      </ul>
       <p>
-        „Muss passieren“ heißt nur: gilt in jedem optimalen Weg bei dieser Vorgabe. Es sagt nichts
-        darüber, ob alle egalen Spiele beliebig kombinierbar sind.
+        Dein eigenes Spiel steht separat als Vorgabe. Nicht jede Kombination der offenen Spiele
+        führt zum selben Rang — im Simulator prüfbar.
       </p>
-      <h3>Gesamte Saison (heuristisch)</h3>
+      <h3>Gesamte Saison</h3>
       <p>
-        Zu viele Restspiele für eine volle Enumeration. Stattdessen: eigenes Restprogramm als
-        Vorgabe (alles siegen bzw. verlieren), Konkurrenten in Tabellen-Reichweite vs. Spiele ohne
-        Einfluss – klar als Schätzung gekennzeichnet.
+        Bei wenigen Restspielen dieselbe exakte Zerlegung. Darüber hinaus nur eine{' '}
+        <strong>grobe Richtung, nicht exakt</strong> (eigene Restspiele + Konkurrenten) — ohne
+        „muss“-/Exakt-Aussage, bis Frontier/#3.
       </p>
       <p className="modal-footnote">
-        „Als Szenario übernehmen“ setzt nur Vorgabe und notwendige Fremdergebnisse im Simulator;
-        egale Spiele bleiben offen.
+        „Als Szenario übernehmen“ setzt Vorgabe und notwendige Fremdergebnisse; offene Spiele
+        bleiben ungesetzt.
       </p>
     </>
   )
