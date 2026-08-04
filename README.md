@@ -57,6 +57,18 @@ src/
 
 ## Änderungsprotokoll
 
+### 2026-08-04 — Prompt 73
+
+**User:** Unter Vereine alle Prognose-Szenarien mit Wahrscheinlichkeiten (nicht nur Headline in der Tabelle).
+
+**Aktion:**
+- `forecastZoneBreakdown` + `forecastZoneLabel` / `zoneLegendFor`
+- Vereinsanalyse: Block „Saison-Prognose“ mit allen Zonen-% (sortiert), Median/erwartete Punkte
+- Tabelle unverändert (nur wahrscheinlichste Zone)
+- Erklärungstext Prognose angepasst
+
+**Status:** erledigt
+
 ### 2026-08-04 — Prompt 72
 
 **User:** Keine mathematische Variante — nur Heuristik; entsprechenden Stand wiederherstellen.

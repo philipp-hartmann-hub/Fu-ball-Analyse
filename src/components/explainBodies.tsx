@@ -35,11 +35,17 @@ export function ForecastExplainBody() {
         ein Verein Meister, CL, EL, ECL, Relegation oder Abstieg erreicht (bzw. die Aufstiegszonen
         in der 2. Liga).
       </p>
-      <h3>4. Was du in der Tabelle siehst</h3>
+      <h3>4. Was du siehst</h3>
       <p>
-        Pro Verein die <strong>Zone mit der höchsten Wahrscheinlichkeit</strong>, der Prozentwert
-        und ein Balken. Tooltip: Median-Rang und erwartete Punkte. Die Ansicht „Spanne“ bleibt die
-        rein rechnerische Best-/Schlechtfall-Spanne ohne Zufall.
+        In der <strong>Tabelle</strong>: pro Verein die Zone mit der höchsten
+        Wahrscheinlichkeit, Prozentwert und Balken. Tooltip: Median-Rang und erwartete Punkte.
+      </p>
+      <p>
+        Unter <strong>Vereine</strong>: dieselbe Simulation, aber alle Zonen-Szenarien mit
+        Wahrscheinlichkeit (sortiert, Nullen ausgeblendet) plus Median-Rang und erwartete Punkte.
+      </p>
+      <p>
+        Die Ansicht „Spanne“ bleibt die rein rechnerische Best-/Schlechtfall-Spanne ohne Zufall.
       </p>
       <h3>Wann die Zahl gilt</h3>
       <p>

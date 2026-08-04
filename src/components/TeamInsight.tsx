@@ -11,12 +11,21 @@ import type {
   TargetOutlook,
   TargetOwnOption,
 } from '../types'
-import { relegationCutoffRank, zoneLabelFor } from '../lib/table'
+import {
+  forecastZoneLabel,
+  relegationCutoffRank,
+  zoneLabelFor,
+} from '../lib/table'
 import type { ThresholdLine } from '../lib/thresholds'
 import {
   hardnessTone,
   type ScheduleHardness,
 } from '../lib/schedule'
+import {
+  forecastZoneBreakdown,
+  type TeamForecast,
+} from '../lib/simulation'
+import { NOT_ENOUGH_DATA_LABEL } from '../lib/reliability'
 import type { ExplainTopic } from '../lib/modelExplanations'
 import { ExplainLink } from './ExplainLink'
 
@@ -28,6 +37,8 @@ interface Props {
   seasonTargetOutlook?: TargetOutlook | null
   /** false = Monte-Carlo-Prozente in der UI unterdrücken */
   forecastReliable?: boolean
+  forecast?: TeamForecast | null
+  forecastLoading?: boolean
   matchdayTargetRank: number
   matchdayTargetComparator: TargetComparator
   seasonTargetRank: number
@@ -87,6 +98,84 @@ function ThresholdList({
         </p>
       )}
     </details>
+  )
+}
+
+/** Alle Zonen-Szenarien mit % (Tabelle zeigt nur die wahrscheinlichste). */
+function ForecastZoneBreakdown({
+  forecast,
+  loading,
+  reliable,
+  league,
+  onExplain,
+}: {
+  forecast: TeamForecast | null | undefined
+  loading?: boolean
+  reliable: boolean
+  league: LeagueZoneId
+  onExplain?: (topic: ExplainTopic) => void
+}) {
+  const rows = useMemo(() => {
+    if (!forecast || !reliable) return []
+    return forecastZoneBreakdown(forecast, league).filter((r) => r.probability > 0)
+  }, [forecast, reliable, league])
+
+  return (
+    <div className="forecast-breakdown">
+      <div className="forecast-breakdown-head">
+        <span className="label">
+          Saison-Prognose
+          {onExplain && (
+            <>
+              {' '}
+              <ExplainLink
+                topic="forecast"
+                onExplain={onExplain}
+                className="explain-inline"
+              >
+                Erklärung
+              </ExplainLink>
+            </>
+          )}
+        </span>
+      </div>
+      {loading && !forecast ? (
+        <p className="hint tight">Prognose wird berechnet…</p>
+      ) : !reliable ? (
+        <p className="hint tight forecast-pending-note">{NOT_ENOUGH_DATA_LABEL}</p>
+      ) : !forecast || !rows.length ? (
+        <p className="hint tight">Keine Prognose verfügbar.</p>
+      ) : (
+        <>
+          <p className="forecast-breakdown-meta">
+            Median Platz {forecast.medianRank} · ~{forecast.expectedPoints.toFixed(1)}{' '}
+            Pkt.
+          </p>
+          <ul className="forecast-breakdown-list">
+            {rows.map(({ zone, probability }, i) => {
+              const pct = Math.round(probability * 100)
+              return (
+                <li
+                  key={zone}
+                  className={`forecast-breakdown-row${i === 0 ? ' is-primary' : ''}`}
+                >
+                  <span className="forecast-breakdown-label">
+                    {forecastZoneLabel(zone, league)}
+                  </span>
+                  <span className="forecast-breakdown-pct">{pct}%</span>
+                  <div className="forecast-bar" aria-hidden>
+                    <span
+                      className={`forecast-fill zone-${zone}`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+        </>
+      )}
+    </div>
   )
 }
 
@@ -782,6 +871,8 @@ export function TeamInsight({
   matchdayTargetOutlook = null,
   seasonTargetOutlook = null,
   forecastReliable = true,
+  forecast = null,
+  forecastLoading = false,
   matchdayTargetRank,
   matchdayTargetComparator,
   seasonTargetRank,
@@ -927,6 +1018,14 @@ export function TeamInsight({
               schwerstes Restprogramm der Liga.
             </p>
           )}
+
+        <ForecastZoneBreakdown
+          forecast={forecast}
+          loading={forecastLoading}
+          reliable={forecastReliable}
+          league={league}
+          onExplain={onExplain}
+        />
       </div>
 
       <VariantPanel

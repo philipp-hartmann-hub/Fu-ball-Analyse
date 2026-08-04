@@ -382,3 +382,15 @@ export const ZONE_LEGEND_BL3: { zone: string; label: string }[] = [
   { zone: 'cl', label: 'Relegation Aufstieg' },
   { zone: 'direct-relegation', label: 'Abstieg' },
 ]
+
+export function zoneLegendFor(league: LeagueZoneId): { zone: string; label: string }[] {
+  if (league === 'bl3') return ZONE_LEGEND_BL3
+  if (league === 'bl2') return ZONE_LEGEND_BL2
+  return ZONE_LEGEND_BL1
+}
+
+/** Voller Zonenname (Prognose / Legende), inkl. Mittelfeld. */
+export function forecastZoneLabel(zone: string, league: LeagueZoneId): string {
+  if (zone === 'mid') return 'Mittelfeld'
+  return zoneLegendFor(league).find((z) => z.zone === zone)?.label ?? zone
+}

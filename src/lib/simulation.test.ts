@@ -11,6 +11,7 @@ import {
   createRng,
   deriveTeamStrengths,
   expectedGoals,
+  forecastZoneBreakdown,
   primaryForecastZone,
   runSeasonSimulation,
   samplePoisson,
@@ -126,6 +127,9 @@ describe('runSeasonSimulation', () => {
       expect(f.expectedPoints).toBe(row.points)
       const primary = primaryForecastZone(f, 'bl1')
       expect(primary.probability).toBe(1)
+      const breakdown = forecastZoneBreakdown(f, 'bl1')
+      expect(breakdown[0]).toEqual(primary)
+      expect(breakdown.reduce((s, e) => s + e.probability, 0)).toBeCloseTo(1, 5)
     }
   })
 

@@ -333,12 +333,17 @@ export function collectTargetPointsSamples(
   return out
 }
 
+/** Alle Forecast-Zonen inkl. Mittelfeld (Reihenfolge für Summen/Breakdown). */
+export function forecastZoneKeys(league: LeagueZoneId): string[] {
+  return [...relevantZones(league), 'mid']
+}
+
 /** Zone mit höchster Wahrscheinlichkeit (für Tabellen-Headline). */
 export function primaryForecastZone(
   forecast: TeamForecast,
   league: LeagueZoneId,
 ): { zone: string; probability: number } {
-  const keys = [...relevantZones(league), 'mid']
+  const keys = forecastZoneKeys(league)
   let best = keys[0]!
   let bestP = forecast.zoneProbabilities[best] ?? 0
   for (const z of keys) {
@@ -349,4 +354,20 @@ export function primaryForecastZone(
     }
   }
   return { zone: best, probability: bestP }
+}
+
+/**
+ * Alle Zonen-Wahrscheinlichkeiten, absteigend nach p.
+ * Für die Vereinsanalyse (Tabelle zeigt nur die Headline-Zone).
+ */
+export function forecastZoneBreakdown(
+  forecast: TeamForecast,
+  league: LeagueZoneId,
+): { zone: string; probability: number }[] {
+  return forecastZoneKeys(league)
+    .map((zone) => ({
+      zone,
+      probability: forecast.zoneProbabilities[zone] ?? 0,
+    }))
+    .sort((a, b) => b.probability - a.probability || a.zone.localeCompare(b.zone))
 }

@@ -718,6 +718,13 @@ export default function App() {
                 matchdayTargetOutlook={matchdayTargetOutlook}
                 seasonTargetOutlook={seasonTargetOutlook}
                 forecastReliable={forecastReliable}
+                forecast={
+                  selectedTeamId != null
+                    ? (forecastResult?.teams.find((t) => t.teamId === selectedTeamId) ??
+                      null)
+                    : null
+                }
+                forecastLoading={forecastLoading}
                 matchdayTargetRank={clampedMatchdayTarget}
                 matchdayTargetComparator={matchdayTargetComparator}
                 seasonTargetRank={clampedSeasonTarget}
