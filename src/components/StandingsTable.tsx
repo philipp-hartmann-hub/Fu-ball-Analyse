@@ -31,6 +31,8 @@ interface Props {
   /** Restprogramm-Härte je Verein; Spalte nur wenn showHardness */
   hardnessByTeam?: Map<number, ScheduleHardness> | null
   showHardness?: boolean
+  /** Heuristik-Spanne: UI als innere Näherung („mindestens“) kennzeichnen */
+  rangesApproximate?: boolean
   onExplain?: (topic: ExplainTopic) => void
 }
 
@@ -48,6 +50,7 @@ export function StandingsTable({
   league,
   hardnessByTeam,
   showHardness = false,
+  rangesApproximate = false,
   onExplain,
 }: Props) {
   const rangeMap = new Map(ranges.map((r) => [r.teamId, r]))
@@ -184,7 +187,31 @@ export function StandingsTable({
                       '–'
                     )
                   ) : range ? (
-                    <RangeCell range={range} />
+                    range.bestRank === range.worstRank ? (
+                      <span
+                        className="pill locked"
+                        title={
+                          rangesApproximate
+                            ? 'Innere Näherung – real ggf. breiter'
+                            : undefined
+                        }
+                      >
+                        {rangesApproximate ? 'mind. ' : ''}
+                        {range.bestRank}.
+                      </span>
+                    ) : (
+                      <span
+                        className="pill"
+                        title={
+                          rangesApproximate
+                            ? 'Innere Näherung – real ggf. breiter'
+                            : undefined
+                        }
+                      >
+                        {rangesApproximate ? 'mind. ' : ''}
+                        {range.bestRank}.–{range.worstRank}.
+                      </span>
+                    )
                   ) : (
                     '–'
                   )}
@@ -195,26 +222,6 @@ export function StandingsTable({
         </tbody>
       </table>
     </div>
-  )
-}
-
-function RangeCell({ range }: { range: PositionRange }) {
-  const exact = range.source === 'exact'
-  const locked = range.bestRank === range.worstRank
-  const label = locked
-    ? `${range.bestRank}.`
-    : `${range.bestRank}.–${range.worstRank}.`
-  const title = exact
-    ? `Exakt · Garantie ${range.hardBest}.–${range.hardWorst}.`
-    : `Mathematisch garantiert (sound)`
-  return (
-    <span
-      className={`pill${locked ? ' locked' : ''}${exact ? ' exact' : ' hard'}`}
-      title={title}
-    >
-      {label}
-      {exact && <span className="range-tag">exakt</span>}
-    </span>
   )
 }
 

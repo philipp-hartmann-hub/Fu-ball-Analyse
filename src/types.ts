@@ -33,24 +33,8 @@ export interface ScenarioResult {
 
 export interface PositionRange {
   teamId: number
-  /** Anzeige-Spanne: exakt wenn verfügbar, sonst harte (garantierte) Spanne */
   bestRank: number
   worstRank: number
-  /** Mathematisch garantiert (sound); true Rank ∈ [hardBest, hardWorst] */
-  hardBest: number
-  hardWorst: number
-  /** Herkunft von bestRank/worstRank */
-  source: 'exact' | 'hard'
-}
-
-/**
- * Mathematisch garantierter Rangbereich (sound, nicht zwingend scharf).
- * Unabhängig von Enumeration/Heuristik — ganze Saison.
- */
-export interface HardRange {
-  teamId: number
-  hardBest: number
-  hardWorst: number
 }
 
 /**
@@ -175,11 +159,9 @@ export interface NextMatchdayOutlook {
   worstConditions: CaseConditions | null
 }
 
-/** Saison-Spanne (exakt im Limit, sonst Heuristik für Bedingungen; hard immer) */
+/** Saison-Spanne (heuristisch) */
 export interface SeasonOutlook {
   range: PositionRange
-  /** Garantierte Spanne; oft weiter als range bei Heuristik/exakt */
-  hardRange: HardRange
   bestConditions: CaseConditions | null
   worstConditions: CaseConditions | null
 }

@@ -69,14 +69,16 @@ export function SpanExplainBody() {
       </p>
       <h3>Gesamte Saison</h3>
       <p>
-        <strong>Harte Spanne (garantiert):</strong> Nur aus Punkte-Maxima/Minima — der wahre
-        Endrang liegt immer darin. Gilt die ganze Saison, nie widersprüchlich, aber oft weiter
-        als nötig.
+        Zuerst Relevanz-Pruning: nur Teams mit überlappenden Punkte-Intervallen und deren
+        Restspiele. Bei höchstens 12 relevanten Spielen:{' '}
+        <strong>exakte Enumeration</strong> aller 1/X/2-Kombinationen in einem gemeinsamen
+        Durchlauf – widerspruchsfreie Spannen für die ganze Tabelle.
       </p>
       <p>
-        Bei wenigen relevanten Restspielen zusätzlich <strong>exakte Enumeration</strong> (liegt
-        immer in der harten Spanne). Ohne Exact: Tabelle zeigt die Garantie; Bedingungs-Karten
-        können heuristisch bleiben (Näherung).
+        Darüber hinaus eine <strong>Heuristik</strong> (innere Näherung
+        „mindestens“): Im Bestfall gewinnt der Fokusverein möglichst oft, Gegner
+        holen ungünstig; im Schlechtfall umgekehrt. Die reale Spanne kann breiter
+        sein.
       </p>
       <h3>Unterschied zur Prognose</h3>
       <p>

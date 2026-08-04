@@ -21,7 +21,7 @@ Echtzeit-Analyse für die **1., 2. und 3. Liga**: Tabelle, Restprogramm und mög
 
 - Live-Tabelle mit Zonen (BL1: CL/EL/Abstieg · BL2/3. Liga: Aufstieg/Abstieg); **Cache**: zuletzt geladene Daten sofort aus localStorage, Refresh im Hintergrund
 - **Ergebnisse**: Spieltag wählbar (durchklicken); Wappen; Live-Updates; 2 Tage nach letztem Spiel → nächster Spieltag als Default
-- Spalte **Möglich**: mathematisch **garantierte** Spanne (hart); bei ≤12 relevanten Restspielen **exakt** (enger, innerhalb der Garantie); Monte-Carlo-**Prognose** umschaltbar
+- Spalte **Möglich**: Best-/Schlechtfall bis Saisonende (**Spanne**; ≤12 *relevante* Restspiele exakt nach Punkte-Pruning, sonst innere Näherung „mindestens“) oder Monte-Carlo-**Prognose** (umschaltbar; unter `MIN_GAMES` Spielen ohne Prozentanzeige)
 - Optionale Spalte **Härte**: Restprogramm-Härte 0–100 (Toggle „Restprogramm“; auf Mobile ausgeblendet)
 - Seitenleiste: **Verein** (Überblick + Spieltag-Analyse + Saison + **Wunschplatz**) · **Ergebnisse** · **Szenario** · **Vergleich**
 - **Szenario-Simulator**: Partien mit Wappen; Grob (Sieg/Unentschieden) oder Fein-Tore; teilbar via `?s=`
@@ -56,18 +56,6 @@ src/
 ---
 
 ## Änderungsprotokoll
-
-### 2026-08-04 — Prompt 71
-
-**User:** Harte Spanne (mathematisch garantierter Rangbereich) für die ganze Saison.
-
-**Aktion:**
-- `computeHardBounds` / `computeHardRanges`: sound [hardBest, hardWorst] aus Punkte-Maxima
-- `PositionRange` um `hardBest`/`hardWorst`/`source`; Möglich-Spalte speist aus hart, Exact wenn verfügbar
-- Vereinsanalyse: „Mathematisch möglich (garantiert)“ + exakt/Heuristik-Labels
-- Tests: Soundness, Köln/Bremen 14.–15., frühe Saison weit, Gegenprobe
-
-**Status:** erledigt
 
 ### 2026-08-04 — Prompt 70
 
