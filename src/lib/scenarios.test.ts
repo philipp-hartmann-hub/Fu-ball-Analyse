@@ -217,6 +217,11 @@ describe('computeNextMatchdayOutlook', () => {
     const bayernVsHdh: Match = {
       matchID: 3201,
       matchDateTime: '2026-05-01T15:30:00',
+      matchDateTimeUTC: '2026-05-01T13:30:00Z',
+      leagueName: 'Bundesliga',
+      leagueSeason: 2025,
+      leagueShortcut: 'bl1',
+      lastUpdateDateTime: '2026-05-01T17:00:00',
       matchIsFinished: false,
       matchResults: [],
       group: {
@@ -230,6 +235,11 @@ describe('computeNextMatchdayOutlook', () => {
     const freiburgVsWob: Match = {
       matchID: 3202,
       matchDateTime: '2026-05-01T15:30:00',
+      matchDateTimeUTC: '2026-05-01T13:30:00Z',
+      leagueName: 'Bundesliga',
+      leagueSeason: 2025,
+      leagueShortcut: 'bl1',
+      lastUpdateDateTime: '2026-05-01T17:00:00',
       matchIsFinished: false,
       matchResults: [],
       group: {
