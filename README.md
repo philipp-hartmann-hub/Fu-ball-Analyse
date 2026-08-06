@@ -57,6 +57,21 @@ src/
 
 ## Änderungsprotokoll
 
+### 2026-08-06 — Prompt 77
+
+**User:** Perf (Poll-Signatur, Worker, Ranges), Rivalen-TD-Heuristik, Reliability, Fehler-UX, TD-Hinweise.
+
+**Aktion:**
+- `matchesContentSignature` / Poll early-exit; `matchesDataVersion` für Standings-Memos
+- Spieltag-Outlooks im Worker (`useMatchdayOutlooks`) + Delta-Masken-Ranking
+- `computePositionRanges`: Exact pro Komponente, Heuristik nur bei großen Bändern
+- `simulateExtremeFinish`: Rivalen mit Margin + Catch-up statt ±10 Punkte
+- Freundliche Lade-/Fehler-/Cache-Zustände + „Erneut versuchen“
+- Bedingungen: „ausreichende Tordifferenz“ / Banner wenn minGoalDiff > 1
+- Reliability bereits zentral; gemeinsamer Härte/Prognose-Schwellwert-Test
+
+**Status:** erledigt
+
 ### 2026-08-04 — Prompt 76
 
 **User:** Saison ohne Pathways/Wunschplatz; Spieltag-Bedingungen stärken; notwendige Tordifferenzen. (Plan: Heidenheim Fokus-TD)

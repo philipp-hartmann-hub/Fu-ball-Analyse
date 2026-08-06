@@ -461,6 +461,26 @@ function simulateExtremeFinish(
 ): PointRankOutcome {
   const map = new Map(baseStandings.map((s) => [s.teamId, cloneRow(s)]))
   const scores: MatchScore[] = [...priorScores]
+  const focus = map.get(focusId)!
+  const appearances = countRemainingAppearances(remaining)
+
+  /** Rivale kann den Fokus rechnerisch noch einholen (max. Punkte ≥ Fokus-Punkte). */
+  const canCatchFocus = (teamId: number): boolean => {
+    if (teamId === focusId) return false
+    const row = map.get(teamId)
+    if (!row) return false
+    const left = appearances.get(teamId) ?? 0
+    return row.points + 3 * left >= focus.points
+  }
+
+  /** Fokus kann dieses Team rechnerisch noch einholen. */
+  const focusCanCatch = (teamId: number): boolean => {
+    if (teamId === focusId) return false
+    const row = map.get(teamId)
+    if (!row) return false
+    const focusLeft = appearances.get(focusId) ?? 0
+    return focus.points + 3 * focusLeft >= row.points
+  }
 
   for (const match of remaining) {
     const homeId = match.team1.teamId
@@ -479,30 +499,59 @@ function simulateExtremeFinish(
         awayGoals = focusAway ? 0 : FOCUS_EXTREME_MARGIN
       }
     } else if (mode === 'best') {
-      homeGoals = 1
-      awayGoals = 1
-    } else {
-      const home = map.get(homeId)!
-      const away = map.get(awayId)!
-      const focus = map.get(focusId)!
-      const homeThreat = home.points >= focus.points - 10
-      const awayThreat = away.points >= focus.points - 10
+      // Bestfall: bedrohliche Rivalen sollen verlieren (große Marge), sonst minimal
+      const homeThreat = canCatchFocus(homeId) || focusCanCatch(homeId)
+      const awayThreat = canCatchFocus(awayId) || focusCanCatch(awayId)
       if (homeThreat && !awayThreat) {
+        // Heim-Rivale soll verlieren → Auswärts siegt groß
+        homeGoals = 0
+        awayGoals = FOCUS_EXTREME_MARGIN
+      } else if (awayThreat && !homeThreat) {
+        homeGoals = FOCUS_EXTREME_MARGIN
+        awayGoals = 0
+      } else if (homeThreat && awayThreat) {
         homeGoals = 1
+        awayGoals = 1
+      } else {
+        homeGoals = 1
+        awayGoals = 1
+      }
+    } else {
+      // Schlechtfall: Rivalen, die den Fokus einholen können, gewinnen groß
+      const homeThreat = canCatchFocus(homeId)
+      const awayThreat = canCatchFocus(awayId)
+      if (homeThreat && !awayThreat) {
+        homeGoals = FOCUS_EXTREME_MARGIN
         awayGoals = 0
       } else if (awayThreat && !homeThreat) {
         homeGoals = 0
-        awayGoals = 1
-      } else if (home.points >= away.points) {
-        homeGoals = 1
-        awayGoals = 0
+        awayGoals = FOCUS_EXTREME_MARGIN
+      } else if (homeThreat && awayThreat) {
+        const home = map.get(homeId)!
+        const away = map.get(awayId)!
+        if (home.points >= away.points) {
+          homeGoals = FOCUS_EXTREME_MARGIN
+          awayGoals = 0
+        } else {
+          homeGoals = 0
+          awayGoals = FOCUS_EXTREME_MARGIN
+        }
       } else {
-        homeGoals = 0
-        awayGoals = 1
+        const home = map.get(homeId)!
+        const away = map.get(awayId)!
+        if (home.points >= away.points) {
+          homeGoals = 1
+          awayGoals = 0
+        } else {
+          homeGoals = 0
+          awayGoals = 1
+        }
       }
     }
 
     applyOutcome(map, homeId, awayId, homeGoals, awayGoals)
+    // appearances für Folge-Spiele: bereits gespielte zählen wir nicht zurück —
+    // canCatch nutzt Rest aus `remaining`-Zählung (statisch ok als Näherung)
     scores.push({
       matchId: match.matchID,
       homeId,
@@ -517,6 +566,23 @@ function simulateExtremeFinish(
     points: row.points,
     rank: rankOf([...map.values()], focusId, scores),
   }
+}
+
+/** Export für Tests / Heuristik-Dokumentation. */
+export function simulateExtremeFinishForTest(
+  baseStandings: StandingRow[],
+  remaining: Match[],
+  focusId: number,
+  mode: 'best' | 'worst',
+  priorScores: MatchScore[] = [],
+): PointRankOutcome {
+  return simulateExtremeFinish(
+    baseStandings,
+    remaining,
+    focusId,
+    mode,
+    priorScores,
+  )
 }
 
 /**
@@ -903,28 +969,88 @@ export function computePositionRanges(
   remaining: Match[],
   priorScores: MatchScore[] = [],
 ): PositionRange[] {
-  const exact = computeExactPositionRanges(
-    baseStandings,
-    remaining,
-    priorScores,
-  )
-  if (exact) return exact
+  if (!remaining.length) return fixedPositionRanges(baseStandings)
 
-  return baseStandings.map((team) => {
-    const outlook = computeSeasonOutlook(
+  const nTeams = baseStandings.length
+  const bestByTeam = new Map<number, number>()
+  const worstByTeam = new Map<number, number>()
+  for (const row of baseStandings) {
+    bestByTeam.set(row.teamId, nTeams)
+    worstByTeam.set(row.teamId, 1)
+  }
+
+  const components = relevantPointComponents(baseStandings, remaining)
+  const covered = new Set<number>()
+
+  for (const comp of components) {
+    for (const id of comp) covered.add(id)
+    const matches = matchesTouchingTeams(remaining, new Set(comp))
+    if (matches.length === 0) {
+      for (const id of comp) {
+        const row = baseStandings.find((s) => s.teamId === id)!
+        bestByTeam.set(id, row.rank)
+        worstByTeam.set(id, row.rank)
+      }
+      continue
+    }
+    if (matches.length <= EXACT_LIMIT) {
+      // Ein gemeinsamer Exact-Durchlauf für alle Teams der Komponente
+      accumulateRangesFromMasks(
+        baseStandings,
+        matches,
+        priorScores,
+        bestByTeam,
+        worstByTeam,
+        new Set(comp),
+      )
+    } else {
+      // Heuristik nur für Teams dieser (zu großen) Komponente
+      for (const id of comp) {
+        const best = simulateExtremeFinish(
+          baseStandings,
+          remaining,
+          id,
+          'best',
+          priorScores,
+        )
+        const worst = simulateExtremeFinish(
+          baseStandings,
+          remaining,
+          id,
+          'worst',
+          priorScores,
+        )
+        bestByTeam.set(id, Math.min(best.rank, worst.rank))
+        worstByTeam.set(id, Math.max(best.rank, worst.rank))
+      }
+    }
+  }
+
+  for (const row of baseStandings) {
+    if (covered.has(row.teamId)) continue
+    const best = simulateExtremeFinish(
       baseStandings,
       remaining,
-      team.teamId,
+      row.teamId,
+      'best',
       priorScores,
     )
-    return (
-      outlook?.range ?? {
-        teamId: team.teamId,
-        bestRank: team.rank,
-        worstRank: team.rank,
-      }
+    const worst = simulateExtremeFinish(
+      baseStandings,
+      remaining,
+      row.teamId,
+      'worst',
+      priorScores,
     )
-  })
+    bestByTeam.set(row.teamId, Math.min(best.rank, worst.rank))
+    worstByTeam.set(row.teamId, Math.max(best.rank, worst.rank))
+  }
+
+  return baseStandings.map((row) => ({
+    teamId: row.teamId,
+    bestRank: bestByTeam.get(row.teamId)!,
+    worstRank: worstByTeam.get(row.teamId)!,
+  }))
 }
 
 export function nextOpenMatchday(remaining: Match[]): number | null {
@@ -985,7 +1111,32 @@ function rankForMatchdayMask(
   focusWinMargin: number,
   focusLossMargin: number,
 ): number {
-  const map = new Map(baseStandings.map((s) => [s.teamId, cloneRow(s)]))
+  // Arbeitskopie der numerischen Felder (einmal pro Maske, kein deep Clone der Meta)
+  const n = baseStandings.length
+  const ids = new Array<number>(n)
+  const points = new Int32Array(n)
+  const gd = new Int32Array(n)
+  const gf = new Int32Array(n)
+  const ga = new Int32Array(n)
+  const played = new Int32Array(n)
+  const won = new Int32Array(n)
+  const draw = new Int32Array(n)
+  const lost = new Int32Array(n)
+  const indexById = new Map<number, number>()
+  for (let i = 0; i < n; i++) {
+    const s = baseStandings[i]!
+    ids[i] = s.teamId
+    indexById.set(s.teamId, i)
+    points[i] = s.points
+    gd[i] = s.goalDiff
+    gf[i] = s.goalsFor
+    ga[i] = s.goalsAgainst
+    played[i] = s.played
+    won[i] = s.won
+    draw[i] = s.draw
+    lost[i] = s.lost
+  }
+
   const scores: MatchScore[] = [...priorScores]
   let x = mask
   for (const match of fixtures) {
@@ -998,7 +1149,30 @@ function rankForMatchdayMask(
       focusWinMargin,
       focusLossMargin,
     )
-    applyOutcome(map, match.team1.teamId, match.team2.teamId, hg, ag)
+    const hi = indexById.get(match.team1.teamId)!
+    const ai = indexById.get(match.team2.teamId)!
+    played[hi]++
+    played[ai]++
+    gf[hi] += hg
+    ga[hi] += ag
+    gf[ai] += ag
+    ga[ai] += hg
+    gd[hi] = gf[hi] - ga[hi]
+    gd[ai] = gf[ai] - ga[ai]
+    if (hg > ag) {
+      won[hi]++
+      lost[ai]++
+      points[hi] += 3
+    } else if (hg < ag) {
+      won[ai]++
+      lost[hi]++
+      points[ai] += 3
+    } else {
+      draw[hi]++
+      draw[ai]++
+      points[hi]++
+      points[ai]++
+    }
     scores.push({
       matchId: match.matchID,
       homeId: match.team1.teamId,
@@ -1007,7 +1181,20 @@ function rankForMatchdayMask(
       awayGoals: ag,
     })
   }
-  return rankOf([...map.values()], teamId, scores)
+
+  const drafts: StandingRow[] = baseStandings.map((s, i) => ({
+    ...s,
+    points: points[i]!,
+    goalDiff: gd[i]!,
+    goalsFor: gf[i]!,
+    goalsAgainst: ga[i]!,
+    played: played[i]!,
+    won: won[i]!,
+    draw: draw[i]!,
+    lost: lost[i]!,
+    rank: 0,
+  }))
+  return rankOf(drafts, teamId, scores)
 }
 
 /**

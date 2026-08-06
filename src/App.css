@@ -1198,6 +1198,33 @@ button.linkish.explain-inline {
   color: #ffb4ab;
 }
 
+.banner-error-body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.45rem;
+}
+
+.banner-error-body p {
+  margin: 0;
+}
+
+.banner-error-hint {
+  font-size: 0.85rem;
+  opacity: 0.85;
+}
+
+.banner.empty-season {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.55rem;
+}
+
+.banner.empty-season p {
+  margin: 0;
+}
+
 .layout {
   display: grid;
   gap: 1.25rem;

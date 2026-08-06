@@ -87,10 +87,11 @@ export function SpanExplainBody() {
       </p>
       <p>
         Darüber hinaus eine <strong>Heuristik</strong> (innere Näherung
-        „mindestens“): Im Bestfall gewinnt der Fokusverein möglichst oft, Gegner
-        holen ungünstig; im Schlechtfall umgekehrt. Die reale Spanne kann breiter
-        sein. Für die Saison gibt es bewusst <strong>keine</strong> Pathway- oder
-        Wunschplatz-Bedingungen.
+        „mindestens“): Fokus und relevante Rivalen (die den Fokus rechnerisch noch
+        einholen bzw. von ihm eingeholt werden können) bekommen große Tor-Margen; sonst
+        Minimal-Tore. Die reale Spanne kann breiter sein. Für belastbare Zonen-Anteile
+        aller Vereine die <strong>Prognose</strong> (Monte-Carlo) nutzen. Für die Saison
+        gibt es bewusst <strong>keine</strong> Pathway- oder Wunschplatz-Bedingungen.
       </p>
       <h3>Unterschied zur Prognose</h3>
       <p>

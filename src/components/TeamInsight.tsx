@@ -39,6 +39,7 @@ interface Props {
   forecastReliable?: boolean
   forecast?: TeamForecast | null
   forecastLoading?: boolean
+  matchdayOutlookLoading?: boolean
   matchdayTargetRank: number
   matchdayTargetComparator: TargetComparator
   onMatchdayTargetRankChange: (rank: number) => void
@@ -291,11 +292,11 @@ function ownMatchDetail(item: {
   if (item.focusResult === 'win') {
     return gd <= 1
       ? `${base} · 1:0 reicht`
-      : `${base} · mind. TD +${gd} (z. B. ${gd}:0)`
+      : `${base} · mit ausreichender Tordifferenz (mind. TD +${gd}, z. B. ${gd}:0)`
   }
   return gd <= 1
     ? `${base} · 0:1`
-    : `${base} · mind. TD −${gd} (z. B. 0:${gd})`
+    : `${base} · mit ausreichender Tordifferenz (mind. TD −${gd}, z. B. 0:${gd})`
 }
 
 function ConditionsPanel({
@@ -362,6 +363,15 @@ function ConditionsPanel({
           für die Saison.
         </p>
       )}
+
+      {!heuristic &&
+        conditions.ownMatch?.minGoalDiff != null &&
+        conditions.ownMatch.minGoalDiff > 1 && (
+          <p className="conditions-heuristic-banner" role="note">
+            Reihenfolge entscheidet sich über die Tordifferenz — {caseLabel} braucht mehr als
+            ein knappes 1:0.
+          </p>
+        )}
 
       <div className="conditions-block block-own">
         <h4>Deine Vorgabe</h4>
@@ -885,6 +895,7 @@ export function TeamInsight({
   forecastReliable = true,
   forecast = null,
   forecastLoading = false,
+  matchdayOutlookLoading = false,
   matchdayTargetRank,
   matchdayTargetComparator,
   onMatchdayTargetRankChange,
@@ -1062,9 +1073,11 @@ export function TeamInsight({
           />
         }
         note={
-          nextMatchday && !nextMatchday.plays
-            ? 'Kein eigenes Spiel an diesem Spieltag — trotzdem relevant über Fremdergebnisse.'
-            : undefined
+          matchdayOutlookLoading
+            ? 'Spieltag-Analyse wird berechnet…'
+            : nextMatchday && !nextMatchday.plays
+              ? 'Kein eigenes Spiel an diesem Spieltag — trotzdem relevant über Fremdergebnisse.'
+              : undefined
         }
         empty="Kein offener Folgespieltag in dieser Sicht."
         emptyAction={

@@ -18,8 +18,9 @@ import {
   scenariosFromConditions,
   selectRelevantMatches,
   selectRelevantTeamIds,
+  simulateExtremeFinishForTest,
 } from './scenarios'
-import { buildStandings, rankStandings } from './table'
+import { applyScore, buildStandings, rankStandings } from './table'
 import type { Match, MatchOutcome, StandingRow, TeamInfo } from '../types'
 
 describe('scenarioFromScore / Punktevergabe', () => {
@@ -1284,5 +1285,133 @@ describe('computeTargetMatchdayOutlook', () => {
     expect(outlook.conditions!.ownMatch?.focusResult).toBe('draw')
     expect(outlook.ownOptions?.some((o) => o.focusResult === 'win')).toBe(true)
     expect(outlook.ownOptions?.some((o) => o.focusResult === 'draw')).toBeFalsy()
+  })
+})
+
+describe('simulateExtremeFinish Rivalen-TD', () => {
+  it('Schlechtfall: Rivale überholt Fokus nur mit großer eigener Tordifferenz', () => {
+    const FOCUS: TeamInfo = {
+      teamId: 1,
+      teamName: 'Focus',
+      shortName: 'Focus',
+      teamIconUrl: '',
+    }
+    const RIVAL: TeamInfo = {
+      teamId: 2,
+      teamName: 'Rival',
+      shortName: 'Rival',
+      teamIconUrl: '',
+    }
+    const WEAK: TeamInfo = {
+      teamId: 3,
+      teamName: 'Weak',
+      shortName: 'Weak',
+      teamIconUrl: '',
+    }
+
+    // Focus 36 / GD 0; Rival 33 / GD −2. Rival +3 Punkte → Gleichstand.
+    // 1:0 → Rival GD −1, Focus bleibt vorn. Margin-Sieg → Rival GD besser → überholt.
+    const standings: StandingRow[] = [
+      {
+        teamId: FOCUS.teamId,
+        teamName: FOCUS.teamName,
+        shortName: FOCUS.shortName,
+        teamIconUrl: '',
+        played: 30,
+        won: 11,
+        draw: 3,
+        lost: 16,
+        goalsFor: 40,
+        goalsAgainst: 40,
+        goalDiff: 0,
+        points: 36,
+        rank: 1,
+      },
+      {
+        teamId: RIVAL.teamId,
+        teamName: RIVAL.teamName,
+        shortName: RIVAL.shortName,
+        teamIconUrl: '',
+        played: 30,
+        won: 10,
+        draw: 3,
+        lost: 17,
+        goalsFor: 30,
+        goalsAgainst: 32,
+        goalDiff: -2,
+        points: 33,
+        rank: 2,
+      },
+      {
+        teamId: WEAK.teamId,
+        teamName: WEAK.teamName,
+        shortName: WEAK.shortName,
+        teamIconUrl: '',
+        played: 30,
+        won: 2,
+        draw: 2,
+        lost: 26,
+        goalsFor: 10,
+        goalsAgainst: 80,
+        goalDiff: -70,
+        points: 8,
+        rank: 3,
+      },
+    ]
+
+    const rivalVsWeak: Match = {
+      matchID: 9201,
+      matchDateTime: '2026-05-01T15:30:00',
+      matchDateTimeUTC: '2026-05-01T13:30:00Z',
+      leagueName: 'Test',
+      leagueSeason: 2025,
+      leagueShortcut: 't',
+      lastUpdateDateTime: '2026-05-01T17:00:00',
+      matchIsFinished: false,
+      matchResults: [],
+      group: { groupName: '31. Spieltag', groupOrderID: 31, groupID: 31 },
+      team1: RIVAL,
+      team2: WEAK,
+    }
+
+    const worst = simulateExtremeFinishForTest(
+      standings,
+      [rivalVsWeak],
+      FOCUS.teamId,
+      'worst',
+    )
+    expect(worst.rank).toBe(2)
+
+    // Alte ±1-Heuristik: Rival 1:0 → punktgleich, Focus behält bessere TD
+    const drafts = standings.map((r) => ({
+      teamId: r.teamId,
+      teamName: r.teamName,
+      shortName: r.shortName,
+      teamIconUrl: '',
+      played: r.played,
+      won: r.won,
+      draw: r.draw,
+      lost: r.lost,
+      goalsFor: r.goalsFor,
+      goalsAgainst: r.goalsAgainst,
+      goalDiff: r.goalDiff,
+      points: r.points,
+    }))
+    const map = new Map(drafts.map((d) => [d.teamId, { ...d }]))
+    applyScore(map, RIVAL.teamId, WEAK.teamId, 1, 0)
+    const table = rankStandings([...map.values()], {
+      matchScores: [
+        {
+          matchId: 9201,
+          homeId: RIVAL.teamId,
+          awayId: WEAK.teamId,
+          homeGoals: 1,
+          awayGoals: 0,
+        },
+      ],
+    })
+    const oldRank = table.find((t) => t.teamId === FOCUS.teamId)!.rank
+    expect(oldRank).toBe(1)
+    expect(worst.rank).toBeGreaterThan(oldRank)
   })
 })

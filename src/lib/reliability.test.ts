@@ -36,4 +36,30 @@ describe('reliability', () => {
     }))
     expect(hasEnoughData(standings)).toBe(false)
   })
+
+  it('Härte und Prognose nutzen denselben Schwellwert', async () => {
+    const { computeScheduleHardness } = await import('./schedule')
+    const low = Array.from({ length: 4 }, (_, i) => ({
+      teamId: i + 1,
+      teamName: `T${i}`,
+      shortName: `T${i}`,
+      teamIconUrl: '',
+      played: MIN_GAMES - 1,
+      won: 0,
+      draw: 0,
+      lost: MIN_GAMES - 1,
+      goalsFor: 0,
+      goalsAgainst: MIN_GAMES - 1,
+      goalDiff: -(MIN_GAMES - 1),
+      points: 0,
+      rank: i + 1,
+    }))
+    const high = low.map((s) => ({ ...s, played: MIN_GAMES }))
+    expect(hasEnoughData(low)).toBe(false)
+    expect(hasEnoughData(high)).toBe(true)
+    const hardLow = computeScheduleHardness([], low)
+    const hardHigh = computeScheduleHardness([], high)
+    expect(hardLow.every((h) => !h.reliable)).toBe(true)
+    expect(hardHigh.every((h) => h.reliable)).toBe(true)
+  })
 })
