@@ -78,7 +78,6 @@ export default function App() {
   const [useCutoff, setUseCutoff] = useState(() => initialShare?.useCutoff ?? false)
   const [shareHint, setShareHint] = useState<string | null>(null)
   const [tableView, setTableView] = useState<TableViewMode>('range')
-  const [showHardness, setShowHardness] = useState(false)
   const [explainTopic, setExplainTopic] = useState<ExplainTopic | null>(null)
   const [sideTab, setSideTab] = useState<
     'club' | 'results' | 'scenario' | 'compare'
@@ -573,14 +572,6 @@ export default function App() {
                     Live-Stände einrechnen
                   </label>
                 )}
-                <label className="hardness-toggle">
-                  <input
-                    type="checkbox"
-                    checked={showHardness}
-                    onChange={(e) => setShowHardness(e.target.checked)}
-                  />
-                  Restprogramm
-                </label>
                 <div className="table-view-toggle" role="tablist" aria-label="Tabellenansicht">
                   <button
                     type="button"
@@ -632,12 +623,10 @@ export default function App() {
                 <ExplainLink topic="span" onExplain={openExplain} />
               </p>
             )}
-            {showHardness && (
-              <p className="forecast-disclaimer">
-                Restprogramm relativ zur Liga: sehr leicht bis sehr schwer.{' '}
-                <ExplainLink topic="hardness" onExplain={openExplain} />
-              </p>
-            )}
+            <p className="forecast-disclaimer">
+              Restprogramm relativ zur Liga: sehr leicht bis sehr schwer.{' '}
+              <ExplainLink topic="hardness" onExplain={openExplain} />
+            </p>
             <StandingsTable
               standings={projectedStandings}
               baseline={scenarios.length > 0 ? baseStandings : null}
@@ -651,7 +640,6 @@ export default function App() {
               highlightScenarios={scenarios.length > 0}
               league={leagueId}
               hardnessByTeam={hardnessByTeam}
-              showHardness={showHardness}
               onExplain={openExplain}
             />
           </div>
