@@ -57,6 +57,16 @@ src/
 
 ## Änderungsprotokoll
 
+### 2026-08-07 — Prompt 81
+
+**User:** Ergebnisschätzung (wahrscheinlichstes Ergebnis / erwartete Tore) aus Spieltagsprognose und Vergleich entfernen.
+
+**Aktion:**
+- `MatchPredictionCard`: nur noch 1/X/2-Balken + Disclaimer; Score-/λ-Zeile entfernt
+- Modellwerte `likelyScore`/`expHome`/`expAway` bleiben intern, werden in der UI nicht mehr gezeigt
+
+**Status:** erledigt
+
 ### 2026-08-07 — Prompt 80
 
 **User:** Spieltag-Matchup zeigte Fokusverein fälschlich als Heim; Ergebnisprognose soll Spielordnung Heim:Auswärts folgen. Im Vergleich wirkten Duell und „nächstes Spiel“ wie widersprüchliche Tipps.

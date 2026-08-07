@@ -23,8 +23,7 @@ function outcome1x2(prediction: MatchPrediction): {
 }
 
 /**
- * Aus Vereinssicht: Sieg / Remis / Niederlage — nur für die Balken-Labels
- * in der Vereinsanalyse; Ergebniszeile bleibt Heim:Auswärts.
+ * Aus Vereinssicht: Sieg / Unentschieden / Niederlage — nur für Balken-Labels.
  */
 function outcomeFromFocus(
   prediction: MatchPrediction,
@@ -47,9 +46,8 @@ function outcomeFromFocus(
 interface Props {
   prediction: MatchPrediction | null
   /**
-   * `neutral` = Heimsieg/Remis/Auswärtssieg (Vergleich, Duell).
-   * `home`/`away` = Sieg/Remis/Niederlage aus Vereinssicht (Vereinsanalyse).
-   * Ergebniszeile ist immer Heim:Auswärts.
+   * `neutral` = Sieg Heimteam / Unentschieden / Sieg Auswärtsteam.
+   * `home`/`away` = Sieg/Unentschieden/Niederlage aus Vereinssicht.
    */
   perspective?: FocusPerspective
   /** Kurzkontext, z. B. „Nächstes Spiel · Köln – Heidenheim · ST 33“ */
@@ -72,11 +70,6 @@ export function MatchPredictionCard({
   if (!prediction) return null
 
   const locked = prediction.lockedScenario
-  const scoreLine = `${prediction.likelyScore.home}:${prediction.likelyScore.away}`
-  const namedScore =
-    homeName && awayName
-      ? `${homeName} ${scoreLine} ${awayName}`
-      : scoreLine
   const lockedScore =
     homeName && awayName
       ? `${homeName} ${locked?.homeGoals}:${locked?.awayGoals} ${awayName}`
@@ -163,14 +156,6 @@ export function MatchPredictionCard({
               )
             })}
           </ul>
-          <p className="match-prediction-score">
-            Wahrscheinlichstes Ergebnis: <strong>{namedScore}</strong>
-            <span className="match-prediction-exp">
-              {' '}
-              · erwartet ~{prediction.expHome.toFixed(1)}:
-              {prediction.expAway.toFixed(1)} (Heim:Auswärts)
-            </span>
-          </p>
           <p className="hint tight match-prediction-disclaimer">
             Modellschätzung, keine Vorhersage · kein Tipp / keine Quote
           </p>
