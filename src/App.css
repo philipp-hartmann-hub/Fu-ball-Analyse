@@ -216,6 +216,8 @@
   border: 1px solid var(--line);
   border-radius: 0.75rem;
   background: color-mix(in srgb, var(--bg-panel) 92%, var(--accent) 8%);
+  min-width: 0;
+  overflow: hidden;
 }
 
 .match-prediction.is-compact {
@@ -233,29 +235,39 @@
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 0.35rem;
+  gap: 0.55rem;
+  min-width: 0;
 }
 
 .match-prediction-row {
   display: grid;
-  grid-template-columns: minmax(6.5rem, 1.4fr) 2.6rem minmax(3rem, 1fr);
-  align-items: center;
-  gap: 0.4rem;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto;
+  column-gap: 0.5rem;
+  row-gap: 0.25rem;
+  align-items: baseline;
   font-size: 0.82rem;
+  min-width: 0;
 }
 
 .match-prediction-label {
   color: var(--text);
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .match-prediction-pct {
   font-variant-numeric: tabular-nums;
   text-align: right;
   color: var(--muted);
+  flex: 0 0 auto;
 }
 
 .match-prediction-row .forecast-bar {
-  height: 5px;
+  grid-column: 1 / -1;
+  width: 100%;
+  height: 6px;
+  margin-top: 0;
 }
 
 .forecast-fill.match-fill-win {

@@ -57,6 +57,16 @@ src/
 
 ## Änderungsprotokoll
 
+### 2026-08-07 — Prompt 84
+
+**User:** Vorhersage-Balken im Vergleich zu kurz / laufen in die Spaltenlücke.
+
+**Aktion:**
+- `.match-prediction-row`: 2-Spalten-Grid (Label | %) + Balken volle Breite darunter (`grid-column: 1 / -1`)
+- Balkenhöhe 6px; Karte `overflow: hidden` / `min-width: 0`
+
+**Status:** erledigt
+
 ### 2026-08-07 — Prompt 83
 
 **User:** Kein horizontales Scrollen der Tabelle; bei Platzmangel umbrechen statt Scrollleiste.
