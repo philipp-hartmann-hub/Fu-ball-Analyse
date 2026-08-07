@@ -708,6 +708,7 @@ export default function App() {
               <TeamCompare
                 standings={projectedStandings}
                 remaining={openMatches}
+                scenarios={scenarios}
                 hardnessByTeam={hardnessByTeam}
                 teamAId={compareA}
                 teamBId={compareB}
@@ -739,6 +740,9 @@ export default function App() {
                 onEnableMatchdayCutoff={enableMatchdayCutoff}
                 matchdayThresholds={matchdayThresholds}
                 seasonThresholds={seasonThresholds}
+                standings={projectedStandings}
+                openMatches={openMatches}
+                scenarios={scenarios}
                 pointsToFirst={
                   selectedTeam ? leaderPoints - selectedTeam.points : null
                 }
