@@ -65,17 +65,17 @@ export function StandingsTable({
         <thead>
           <tr>
             <th className="num">#</th>
-            <th className="delta" title="Veränderung zum Ist-Stand">
+            <th className="delta col-delta" title="Veränderung zum Ist-Stand">
               Δ
             </th>
-            <th>Verein</th>
+            <th className="team">Verein</th>
             <th className="num col-form">Sp</th>
             <th className="num col-form">S</th>
             <th className="num col-form">U</th>
             <th className="num col-form">N</th>
-            <th className="num">Tore</th>
-            <th className="num">Diff</th>
-            <th className="num">Pkt</th>
+            <th className="num col-goals">Tore</th>
+            <th className="num col-diff">Diff</th>
+            <th className="num pts">Pkt</th>
             {showHardness && (
               <th
                 className="col-hardness"
@@ -135,7 +135,7 @@ export function StandingsTable({
                 onClick={() => onSelectTeam(row.teamId)}
               >
                 <td className="num rank">{row.rank}</td>
-                <td className="delta">
+                <td className="delta col-delta">
                   {delta > 0 ? (
                     <span className="up">↑{delta}</span>
                   ) : delta < 0 ? (
@@ -159,10 +159,12 @@ export function StandingsTable({
                 <td className="num col-form">{row.won}</td>
                 <td className="num col-form">{row.draw}</td>
                 <td className="num col-form">{row.lost}</td>
-                <td className="num">
+                <td className="num col-goals">
                   {row.goalsFor}:{row.goalsAgainst}
                 </td>
-                <td className="num">{row.goalDiff > 0 ? `+${row.goalDiff}` : row.goalDiff}</td>
+                <td className="num col-diff">
+                  {row.goalDiff > 0 ? `+${row.goalDiff}` : row.goalDiff}
+                </td>
                 <td className="num pts">{row.points}</td>
                 {showHardness && (
                   <td className="col-hardness">

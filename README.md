@@ -57,6 +57,17 @@ src/
 
 ## Änderungsprotokoll
 
+### 2026-08-07 — Prompt 86
+
+**User:** Tabellen-Layout einmal sauber für Desktop und Mobile (kein H-Scroll, kein Zeichen-Umbruch, gestaffelte Spalten).
+
+**Aktion:**
+- `table-layout: auto`; kein `overflow-wrap: anywhere` / `word-break` in der Tabelle
+- Spalten-Staffelung per **Container-Query** (&lt;560 / ≤820 / breit) auf `.table-wrap`
+- Verein: Kurzname nur schmal; Crest/Fallback gleiche Größe; vertikale Mitte beibehalten
+
+**Status:** erledigt
+
 ### 2026-08-07 — Prompt 85
 
 **User:** Kaputte Spaltenproportionen (Regression `table-layout: fixed` ohne Breiten).
