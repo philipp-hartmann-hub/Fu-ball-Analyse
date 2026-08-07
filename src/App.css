@@ -1025,32 +1025,41 @@ button.linkish.explain-inline {
 }
 
 .forecast-cell {
-  width: 8.5rem;
-  min-width: 8.5rem;
-  max-width: 8.5rem;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .forecast-meta {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
-  gap: 0.35rem;
+  align-items: baseline;
+  gap: 0.15rem 0.35rem;
   font-size: 0.72rem;
   margin-bottom: 0.2rem;
+  min-width: 0;
 }
 
 .forecast-label {
   color: var(--text);
   font-weight: 600;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 .forecast-pct {
   color: var(--muted);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  flex: 0 0 auto;
 }
 
 .forecast-pending {
   display: inline-block;
-  max-width: 8.5rem;
+  max-width: 100%;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2023,14 +2032,16 @@ button.range-btn.is-static {
 }
 
 .table-wrap {
-  overflow-x: auto;
+  overflow-x: auto; /* Reserve; Inhalt soll umbrechen statt scrollen */
   border: 1px solid var(--line);
   border-radius: 1rem;
   background: color-mix(in srgb, var(--bg-panel) 88%, black);
+  max-width: 100%;
 }
 
 .standings {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   border-spacing: 0;
   font-size: 0.92rem;
@@ -2038,7 +2049,7 @@ button.range-btn.is-static {
 
 .standings th {
   text-align: left;
-  padding: 0.75rem 0.55rem;
+  padding: 0.65rem 0.35rem;
   color: var(--muted);
   font-weight: 500;
   font-size: 0.78rem;
@@ -2047,19 +2058,21 @@ button.range-btn.is-static {
   border-bottom: 1px solid color-mix(in srgb, var(--text) 22%, transparent);
   white-space: nowrap;
   vertical-align: middle;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .standings th:first-child,
 .standings td:first-child {
-  padding-left: 0.65rem;
+  padding-left: 0.5rem;
   border-left: 3px solid transparent;
 }
 
 .standings td {
-  padding: 0.55rem;
+  padding: 0.45rem 0.35rem;
   border-bottom: 1px solid color-mix(in srgb, var(--text) 16%, transparent);
   vertical-align: middle;
-  height: 2.6rem;
+  min-height: 2.6rem;
 }
 
 .standings tbody tr {
@@ -2183,13 +2196,27 @@ button.range-btn.is-static {
 }
 
 .team {
-  min-width: 10rem;
+  min-width: 6.5rem;
+  width: auto;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .team-inner {
   display: flex;
   align-items: center;
-  gap: 0.55rem;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.team-inner .full,
+.team-inner .short {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-height: 1.25;
 }
 
 .team-inner img {
@@ -2416,19 +2443,24 @@ button.range-btn.is-static {
 
 .range {
   text-align: center;
-  width: 8.5rem;
-  min-width: 8.5rem;
-  max-width: 8.5rem;
+  width: 5.25rem;
+  min-width: 5rem;
+  max-width: 6.5rem;
+  white-space: normal;
 }
 
 .pill {
   display: inline-block;
-  padding: 0.15rem 0.45rem;
+  padding: 0.15rem 0.35rem;
   border-radius: 0.35rem;
   background: rgba(196, 240, 97, 0.12);
   color: var(--accent);
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   font-variant-numeric: tabular-nums;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.2;
 }
 
 .pill.locked {
