@@ -145,13 +145,15 @@ export function StandingsTable({
                   )}
                 </td>
                 <td className="team">
-                  {row.teamIconUrl ? (
-                    <img src={row.teamIconUrl} alt="" width={22} height={22} loading="lazy" />
-                  ) : (
-                    <span className="crest-fallback" aria-hidden />
-                  )}
-                  <span className="full">{row.teamName}</span>
-                  <span className="short">{row.shortName || row.teamName}</span>
+                  <span className="team-inner">
+                    {row.teamIconUrl ? (
+                      <img src={row.teamIconUrl} alt="" width={22} height={22} loading="lazy" />
+                    ) : (
+                      <span className="crest-fallback" aria-hidden />
+                    )}
+                    <span className="full">{row.teamName}</span>
+                    <span className="short">{row.shortName || row.teamName}</span>
+                  </span>
                 </td>
                 <td className="num col-form">{row.played}</td>
                 <td className="num col-form">{row.won}</td>
@@ -180,7 +182,7 @@ export function StandingsTable({
                         className="pill muted forecast-pending"
                         title={NOT_ENOUGH_DATA_LABEL}
                       >
-                        {NOT_ENOUGH_DATA_LABEL}
+                        n/a
                       </span>
                     ) : forecast ? (
                       <ForecastCell forecast={forecast} league={league} />
