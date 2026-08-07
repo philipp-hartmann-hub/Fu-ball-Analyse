@@ -57,6 +57,17 @@ src/
 
 ## Änderungsprotokoll
 
+### 2026-08-07 — Prompt 83
+
+**User:** Kein horizontales Scrollen der Tabelle; bei Platzmangel umbrechen statt Scrollleiste.
+
+**Aktion:**
+- `.team` min-width ~6.5rem + Name-Umbruch; `.forecast-cell`/`.range` schmaler (~5rem), Inhalt schrumpfbar
+- Weniger Zell-Padding; `table-layout: fixed`; feste Zeilenhöhe → `min-height` (höhere Zeilen bei Wrap)
+- `overflow-x: auto` nur als Reserve; col-form nicht ausgeblendet
+
+**Status:** erledigt
+
 ### 2026-08-07 — Prompt 82
 
 **User:** Vertikaler Versatz in der Tabelle (Vereinsname höher als Zahlen), besonders Prognose-Ansicht.
