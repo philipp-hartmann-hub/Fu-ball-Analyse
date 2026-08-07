@@ -57,6 +57,16 @@ src/
 
 ## Änderungsprotokoll
 
+### 2026-08-07 — Prompt 85
+
+**User:** Kaputte Spaltenproportionen (Regression `table-layout: fixed` ohne Breiten).
+
+**Aktion:**
+- `table-layout: fixed` entfernt (wieder auto); Wrap/kleine min-widths aus Prompt 83 bleiben
+- `.team` und `.range`/`.forecast-cell` min-width ~9rem; `.num` mit `width: 1%` + nowrap schmal
+
+**Status:** erledigt
+
 ### 2026-08-07 — Prompt 84
 
 **User:** Vorhersage-Balken im Vergleich zu kurz / laufen in die Spaltenlücke.
