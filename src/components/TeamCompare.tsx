@@ -98,7 +98,7 @@ function TeamColumn({
   hardness,
   leagueSize,
   nextPrediction,
-  nextPerspective,
+  nextTitle,
   nextHomeName,
   nextAwayName,
   onExplain,
@@ -108,7 +108,7 @@ function TeamColumn({
   hardness: ScheduleHardness | undefined
   leagueSize: number
   nextPrediction: ReturnType<typeof predictFixture>
-  nextPerspective: 'home' | 'away'
+  nextTitle: string
   nextHomeName?: string
   nextAwayName?: string
   onExplain?: (topic: ExplainTopic) => void
@@ -168,8 +168,8 @@ function TeamColumn({
       {nextPrediction && (
         <MatchPredictionCard
           prediction={nextPrediction}
-          perspective={nextPerspective}
-          title="Nächstes Spiel"
+          perspective="neutral"
+          title={nextTitle}
           homeName={nextHomeName}
           awayName={nextAwayName}
           onExplain={onExplain}
@@ -347,7 +347,11 @@ export function TeamCompare({
               <MatchPredictionCard
                 prediction={h2hPrediction}
                 perspective="neutral"
-                title={`Direktes Duell · ST ${h2hMatch.group.groupOrderID}`}
+                title={`Direktes Duell · ${
+                  h2hMatch.team1.shortName || h2hMatch.team1.teamName
+                } – ${
+                  h2hMatch.team2.shortName || h2hMatch.team2.teamName
+                } · ST ${h2hMatch.group.groupOrderID}`}
                 homeName={
                   h2hMatch.team1.shortName || h2hMatch.team1.teamName
                 }
@@ -366,7 +370,19 @@ export function TeamCompare({
               hardness={hardnessByTeam.get(teamA.teamId)}
               leagueSize={standings.length}
               nextPrediction={nextPredA}
-              nextPerspective={nextA?.venue === 'A' ? 'away' : 'home'}
+              nextTitle={
+                nextA
+                  ? `Nächstes Spiel · ${
+                      nextA.venue === 'H'
+                        ? teamLabel(teamA)
+                        : nextA.opponentName
+                    } – ${
+                      nextA.venue === 'A'
+                        ? teamLabel(teamA)
+                        : nextA.opponentName
+                    } · ST ${nextA.matchday}`
+                  : 'Nächstes Spiel'
+              }
               nextHomeName={
                 nextA?.venue === 'H'
                   ? teamLabel(teamA)
@@ -385,7 +401,19 @@ export function TeamCompare({
               hardness={hardnessByTeam.get(teamB.teamId)}
               leagueSize={standings.length}
               nextPrediction={nextPredB}
-              nextPerspective={nextB?.venue === 'A' ? 'away' : 'home'}
+              nextTitle={
+                nextB
+                  ? `Nächstes Spiel · ${
+                      nextB.venue === 'H'
+                        ? teamLabel(teamB)
+                        : nextB.opponentName
+                    } – ${
+                      nextB.venue === 'A'
+                        ? teamLabel(teamB)
+                        : nextB.opponentName
+                    } · ST ${nextB.matchday}`
+                  : 'Nächstes Spiel'
+              }
               nextHomeName={
                 nextB?.venue === 'H'
                   ? teamLabel(teamB)

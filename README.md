@@ -57,6 +57,17 @@ src/
 
 ## Änderungsprotokoll
 
+### 2026-08-07 — Prompt 80
+
+**User:** Spieltag-Matchup zeigte Fokusverein fälschlich als Heim; Ergebnisprognose soll Spielordnung Heim:Auswärts folgen. Im Vergleich wirkten Duell und „nächstes Spiel“ wie widersprüchliche Tipps.
+
+**Aktion:**
+- Matchup immer links Heim / rechts Auswärts; Heim-Badge fest links
+- Ergebniszeile immer Heim:Auswärts mit Vereinsnamen (`Köln 2:1 Heidenheim`)
+- Vergleich: Titel nennt konkrete Partie + ST; Balken als „Sieg TeamA / Unentschieden / Sieg TeamB“ (Heim:Auswärts-Ordnung)
+
+**Status:** erledigt
+
 ### 2026-08-07 — Prompt 79
 
 **User:** Einzelspiel-Vorhersage (1/X/2 + wahrscheinlichstes Ergebnis) aus dem Poisson-Modell; Vereinsanalyse + Vergleich.

@@ -9,9 +9,26 @@ function pct(p: number): number {
   return Math.round(p * 100)
 }
 
+/** Balken immer in Spielordnung 1 / X / 2 (Heim / Remis / Auswärts). */
+function outcome1x2(prediction: MatchPrediction): {
+  home: number
+  draw: number
+  away: number
+} {
+  return {
+    home: prediction.pHome,
+    draw: prediction.pDraw,
+    away: prediction.pAway,
+  }
+}
+
+/**
+ * Aus Vereinssicht: Sieg / Remis / Niederlage — nur für die Balken-Labels
+ * in der Vereinsanalyse; Ergebniszeile bleibt Heim:Auswärts.
+ */
 function outcomeFromFocus(
   prediction: MatchPrediction,
-  perspective: FocusPerspective,
+  perspective: 'home' | 'away',
 ): { win: number; draw: number; loss: number } {
   if (perspective === 'away') {
     return {
@@ -20,7 +37,6 @@ function outcomeFromFocus(
       loss: prediction.pHome,
     }
   }
-  // Heim oder neutral: 1 / X / 2
   return {
     win: prediction.pHome,
     draw: prediction.pDraw,
@@ -28,16 +44,15 @@ function outcomeFromFocus(
   }
 }
 
-function labelsFor(perspective: FocusPerspective): [string, string, string] {
-  if (perspective === 'neutral') return ['Heimsieg', 'Remis', 'Auswärtssieg']
-  return ['Sieg', 'Remis', 'Niederlage']
-}
-
 interface Props {
   prediction: MatchPrediction | null
-  /** Aus Sicht des Fokusvereins; neutral = 1/X/2 */
+  /**
+   * `neutral` = Heimsieg/Remis/Auswärtssieg (Vergleich, Duell).
+   * `home`/`away` = Sieg/Remis/Niederlage aus Vereinssicht (Vereinsanalyse).
+   * Ergebniszeile ist immer Heim:Auswärts.
+   */
   perspective?: FocusPerspective
-  /** Kurzkontext, z. B. „Nächstes Spiel“ */
+  /** Kurzkontext, z. B. „Nächstes Spiel · Köln – Heidenheim · ST 33“ */
   title?: string
   homeName?: string
   awayName?: string
@@ -57,18 +72,41 @@ export function MatchPredictionCard({
   if (!prediction) return null
 
   const locked = prediction.lockedScenario
-  const [winLabel, drawLabel, lossLabel] = labelsFor(perspective)
-  const outcomes = outcomeFromFocus(prediction, perspective)
-  const scoreFromFocus =
-    perspective === 'away'
-      ? {
-          focus: prediction.likelyScore.away,
-          opp: prediction.likelyScore.home,
-        }
-      : {
-          focus: prediction.likelyScore.home,
-          opp: prediction.likelyScore.away,
-        }
+  const scoreLine = `${prediction.likelyScore.home}:${prediction.likelyScore.away}`
+  const namedScore =
+    homeName && awayName
+      ? `${homeName} ${scoreLine} ${awayName}`
+      : scoreLine
+  const lockedScore =
+    homeName && awayName
+      ? `${homeName} ${locked?.homeGoals}:${locked?.awayGoals} ${awayName}`
+      : locked
+        ? `${locked.homeGoals}:${locked.awayGoals}`
+        : ''
+
+  const bars =
+    perspective === 'neutral'
+      ? ([
+          [
+            'home',
+            homeName ? `Sieg ${homeName}` : 'Heimsieg',
+            outcome1x2(prediction).home,
+          ],
+          ['draw', 'Unentschieden', outcome1x2(prediction).draw],
+          [
+            'away',
+            awayName ? `Sieg ${awayName}` : 'Auswärtssieg',
+            outcome1x2(prediction).away,
+          ],
+        ] as const)
+      : (() => {
+          const o = outcomeFromFocus(prediction, perspective)
+          return [
+            ['win', 'Sieg', o.win],
+            ['draw', 'Unentschieden', o.draw],
+            ['loss', 'Niederlage', o.loss],
+          ] as const
+        })()
 
   return (
     <div
@@ -96,34 +134,28 @@ export function MatchPredictionCard({
 
       {locked ? (
         <p className="match-prediction-locked" role="status">
-          von dir gesetzt:{' '}
-          <strong>
-            {locked.homeGoals}:{locked.awayGoals}
-          </strong>
-          {homeName && awayName
-            ? ` (${homeName} – ${awayName})`
-            : ''}
+          von dir gesetzt: <strong>{lockedScore}</strong>
         </p>
       ) : !prediction.reliable ? (
         <p className="hint tight forecast-pending-note">{NOT_ENOUGH_DATA_LABEL}</p>
       ) : (
         <>
           <ul className="match-prediction-bars">
-            {(
-              [
-                ['win', winLabel, outcomes.win],
-                ['draw', drawLabel, outcomes.draw],
-                ['loss', lossLabel, outcomes.loss],
-              ] as const
-            ).map(([key, label, p]) => {
+            {bars.map(([key, label, p]) => {
               const value = pct(p)
+              const tone =
+                key === 'home' || key === 'win'
+                  ? 'win'
+                  : key === 'away' || key === 'loss'
+                    ? 'loss'
+                    : 'draw'
               return (
-                <li key={key} className={`match-prediction-row tone-${key}`}>
+                <li key={key} className={`match-prediction-row tone-${tone}`}>
                   <span className="match-prediction-label">{label}</span>
                   <span className="match-prediction-pct">{value}%</span>
                   <div className="forecast-bar" aria-hidden>
                     <span
-                      className={`forecast-fill match-fill-${key}`}
+                      className={`forecast-fill match-fill-${tone}`}
                       style={{ width: `${value}%` }}
                     />
                   </div>
@@ -132,16 +164,11 @@ export function MatchPredictionCard({
             })}
           </ul>
           <p className="match-prediction-score">
-            Wahrscheinlichstes Ergebnis:{' '}
-            <strong>
-              {perspective === 'neutral'
-                ? `${prediction.likelyScore.home}:${prediction.likelyScore.away}`
-                : `${scoreFromFocus.focus}:${scoreFromFocus.opp}`}
-            </strong>
+            Wahrscheinlichstes Ergebnis: <strong>{namedScore}</strong>
             <span className="match-prediction-exp">
               {' '}
               · erwartet ~{prediction.expHome.toFixed(1)}:
-              {prediction.expAway.toFixed(1)}
+              {prediction.expAway.toFixed(1)} (Heim:Auswärts)
             </span>
           </p>
           <p className="hint tight match-prediction-disclaimer">
