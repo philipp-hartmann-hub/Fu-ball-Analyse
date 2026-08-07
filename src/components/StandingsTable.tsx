@@ -29,9 +29,8 @@ interface Props {
   onSelectTeam: (teamId: number) => void
   highlightScenarios: boolean
   league: LeagueZoneId
-  /** Restprogramm-Härte je Verein; Spalte nur wenn showHardness */
+  /** Restprogramm-Härte je Verein */
   hardnessByTeam?: Map<number, ScheduleHardness> | null
-  showHardness?: boolean
   onExplain?: (topic: ExplainTopic) => void
 }
 
@@ -48,7 +47,6 @@ export function StandingsTable({
   highlightScenarios,
   league,
   hardnessByTeam,
-  showHardness = false,
   onExplain,
 }: Props) {
   const rangeMap = new Map(ranges.map((r) => [r.teamId, r]))
@@ -73,26 +71,24 @@ export function StandingsTable({
             <th className="num col-goals">Tore</th>
             <th className="num col-diff">Diff</th>
             <th className="num pts">Pkt</th>
-            {showHardness && (
-              <th
-                className="col-hardness"
-                title="Restprogramm: sehr leicht bis sehr schwer (relativ zur Liga)"
-              >
-                Restprog.
-                {onExplain && (
-                  <span className="th-explain">
-                    {' '}
-                    <ExplainLink
-                      topic="hardness"
-                      onExplain={onExplain}
-                      className="explain-inline"
-                    >
-                      ?
-                    </ExplainLink>
-                  </span>
-                )}
-              </th>
-            )}
+            <th
+              className="col-hardness"
+              title="Restprogramm: sehr leicht bis sehr schwer (relativ zur Liga)"
+            >
+              Restprog.
+              {onExplain && (
+                <span className="th-explain">
+                  {' '}
+                  <ExplainLink
+                    topic="hardness"
+                    onExplain={onExplain}
+                    className="explain-inline"
+                  >
+                    ?
+                  </ExplainLink>
+                </span>
+              )}
+            </th>
             <th className="range">
               {viewMode === 'forecast' ? 'Prognose' : 'Möglich'}
               {onExplain && (
@@ -163,15 +159,13 @@ export function StandingsTable({
                   {row.goalDiff > 0 ? `+${row.goalDiff}` : row.goalDiff}
                 </td>
                 <td className="num pts">{row.points}</td>
-                {showHardness && (
-                  <td className="col-hardness">
-                    {hardness && hardness.remainingGames > 0 ? (
-                      <HardnessCell hardness={hardness} teamCount={teamCount} />
-                    ) : (
-                      <span className="hardness-empty">–</span>
-                    )}
-                  </td>
-                )}
+                <td className="col-hardness">
+                  {hardness && hardness.remainingGames > 0 ? (
+                    <HardnessCell hardness={hardness} teamCount={teamCount} />
+                  ) : (
+                    <span className="hardness-empty">–</span>
+                  )}
+                </td>
                 <td className="range">
                   {viewMode === 'forecast' ? (
                     forecastLoading && !forecast ? (

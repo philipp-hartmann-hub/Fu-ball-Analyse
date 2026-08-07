@@ -22,7 +22,7 @@ Echtzeit-Analyse für die **1., 2. und 3. Liga**: Tabelle, Restprogramm und mög
 - Live-Tabelle mit Zonen (BL1: CL/EL/Abstieg · BL2/3. Liga: Aufstieg/Abstieg); **Cache**: zuletzt geladene Daten sofort aus localStorage, Refresh im Hintergrund
 - **Ergebnisse**: Spieltag wählbar (durchklicken); Wappen; Live-Updates; 2 Tage nach letztem Spiel → nächster Spieltag als Default
 - Spalte **Möglich**: rechnerisch noch mögliche Plätze – **exakt** bei ≤12 relevanten Restspielen je Verein (nach Punkte-Pruning), sonst **harte Außengrenze** aus Punktemaxima (Badge pro Zeile); alternativ Monte-Carlo-**Prognose** (umschaltbar; unter `MIN_GAMES` Spielen ohne Prozentanzeige)
-- Optionale Spalte **Restprog.**: Einschätzung sehr leicht → sehr schwer (Toggle „Restprogramm“; auf schmalen Tabellenbreiten ausgeblendet)
+- Spalte **Restprog.**: Einschätzung sehr leicht → sehr schwer (immer in der Tabelle; auf schmalen Breiten ausgeblendet)
 - Seitenleiste: **Verein** (Überblick + Spieltag mit Wunschplatz/Bedingungen + Saison-Spanne inkl. mathematischer Zusatzspanne + Spielschätzung 1/X/2) · **Ergebnisse** · **Szenario** · **Vergleich** (inkl. Duell-/Next-Spielschätzung)
 - **Szenario-Simulator**: Partien mit Wappen; Grob (Sieg/Unentschieden) oder Fein-Tore; teilbar via `?s=`
 - **Stand nach Spieltag**: Auswahl (Dropdown) für historischen Stand
@@ -56,6 +56,16 @@ src/
 ---
 
 ## Änderungsprotokoll
+
+### 2026-08-07 — Prompt 89
+
+**User:** Restprogramm-Spalte dauerhaft in der Tabelle; Toggle entfernen (tippen zeigte nichts mehr).
+
+**Aktion:**
+- Toggle „Restprogramm“ aus Toolbar entfernt; Spalte `Restprog.` immer sichtbar (weiterhin per Container-Query auf schmalen Breiten ausgeblendet)
+- Disclaimer zur Härte immer über der Tabelle
+
+**Status:** erledigt
 
 ### 2026-08-07 — Prompt 88
 
