@@ -1025,7 +1025,9 @@ button.linkish.explain-inline {
 }
 
 .forecast-cell {
-  min-width: 6.5rem;
+  width: 8.5rem;
+  min-width: 8.5rem;
+  max-width: 8.5rem;
 }
 
 .forecast-meta {
@@ -1048,11 +1050,14 @@ button.linkish.explain-inline {
 
 .forecast-pending {
   display: inline-block;
-  max-width: 9.5rem;
-  white-space: normal;
-  line-height: 1.25;
-  font-size: 0.7rem;
-  text-align: left;
+  max-width: 8.5rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+  font-size: 0.72rem;
+  text-align: center;
+  vertical-align: middle;
 }
 
 .forecast-bar {
@@ -2054,6 +2059,7 @@ button.range-btn.is-static {
   padding: 0.55rem;
   border-bottom: 1px solid color-mix(in srgb, var(--text) 16%, transparent);
   vertical-align: middle;
+  height: 2.6rem;
 }
 
 .standings tbody tr {
@@ -2177,20 +2183,23 @@ button.range-btn.is-static {
 }
 
 .team {
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
   min-width: 10rem;
 }
 
-.team img {
+.team-inner {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.team-inner img {
   width: 22px;
   height: 22px;
   object-fit: contain;
   flex-shrink: 0;
 }
 
-.team .short {
+.team-inner .short {
   display: none;
 }
 
@@ -2297,10 +2306,10 @@ button.range-btn.is-static {
     align-items: flex-start;
   }
 
-  .team .full {
+  .team-inner .full {
     display: none;
   }
-  .team .short {
+  .team-inner .short {
     display: inline;
   }
 
@@ -2323,10 +2332,13 @@ button.range-btn.is-static {
 
   .team {
     min-width: 0;
+  }
+
+  .team-inner {
     gap: 0.4rem;
   }
 
-  .team img {
+  .team-inner img {
     width: 18px;
     height: 18px;
   }
@@ -2404,6 +2416,9 @@ button.range-btn.is-static {
 
 .range {
   text-align: center;
+  width: 8.5rem;
+  min-width: 8.5rem;
+  max-width: 8.5rem;
 }
 
 .pill {

@@ -57,6 +57,17 @@ src/
 
 ## Änderungsprotokoll
 
+### 2026-08-07 — Prompt 82
+
+**User:** Vertikaler Versatz in der Tabelle (Vereinsname höher als Zahlen), besonders Prognose-Ansicht.
+
+**Aktion:**
+- Vereins-Zelle: Flex auf inneren `.team-inner`-Wrapper; `td.team` wieder normale Zelle (`vertical-align: middle`)
+- Prognose-/Möglich-Spalte feste Breite (~8.5rem); `forecast-pending` kompakt als „n/a“ + Tooltip
+- Einheitliche Zeilenhöhe `.standings td { height: 2.6rem }`
+
+**Status:** erledigt
+
 ### 2026-08-07 — Prompt 81
 
 **User:** Ergebnisschätzung (wahrscheinlichstes Ergebnis / erwartete Tore) aus Spieltagsprognose und Vergleich entfernen.
