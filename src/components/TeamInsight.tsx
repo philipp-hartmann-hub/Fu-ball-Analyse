@@ -772,13 +772,14 @@ function VariantPanel({
         : null
 
   const focusName = focusTeam?.shortName || focusTeam?.teamName || 'Du'
+  // Immer echte Spielordnung: links Heim, rechts Auswärts
   const homeIsFocus = matchup?.homeAway === 'H'
-  const leftName = homeIsFocus ? focusName : (matchup?.opponentName ?? '')
-  const rightName = homeIsFocus ? (matchup?.opponentName ?? '') : focusName
-  const leftIcon = homeIsFocus
+  const homeName = homeIsFocus ? focusName : (matchup?.opponentName ?? '')
+  const awayName = homeIsFocus ? (matchup?.opponentName ?? '') : focusName
+  const homeIcon = homeIsFocus
     ? focusTeam?.teamIconUrl
     : matchup?.opponentIconUrl
-  const rightIcon = homeIsFocus
+  const awayIcon = homeIsFocus
     ? matchup?.opponentIconUrl
     : focusTeam?.teamIconUrl
 
@@ -794,21 +795,21 @@ function VariantPanel({
       {matchup && focusTeam && (
         <div className="matchday-matchup" aria-label="Nächste Partie">
           <div className="matchup-side">
-            <Crest url={leftIcon} name={leftName} size={48} />
-            <span className="matchup-name">{leftName}</span>
-            {homeIsFocus && <span className="matchup-badge">Heim</span>}
+            <Crest url={homeIcon} name={homeName} size={48} />
+            <span className="matchup-name">{homeName}</span>
+            <span className="matchup-badge">Heim</span>
           </div>
           <div className="matchup-center">
             <span className="matchup-vs">vs</span>
             <span className="matchup-meta">
-              {matchup.homeAway === 'H' ? 'Heimspiel' : 'Auswärts'} · ST{' '}
+              {matchup.homeAway === 'H' ? 'Heimspiel' : 'Auswärtsspiel'} · ST{' '}
               {matchup.matchday}
             </span>
           </div>
           <div className="matchup-side">
-            <Crest url={rightIcon} name={rightName} size={48} />
-            <span className="matchup-name">{rightName}</span>
-            {!homeIsFocus && <span className="matchup-badge">Heim</span>}
+            <Crest url={awayIcon} name={awayName} size={48} />
+            <span className="matchup-name">{awayName}</span>
+            <span className="matchup-badge matchup-badge-away">Auswärts</span>
           </div>
         </div>
       )}
@@ -1111,8 +1112,12 @@ export function TeamInsight({
           ownMatchPrediction && matchup ? (
             <MatchPredictionCard
               prediction={ownMatchPrediction}
-              perspective={matchup.homeAway === 'H' ? 'home' : 'away'}
-              title="Spielschätzung"
+              perspective="neutral"
+              title={
+                matchup.homeAway === 'H'
+                  ? `Spielschätzung · ${team.shortName || team.teamName} – ${matchup.opponentName}`
+                  : `Spielschätzung · ${matchup.opponentName} – ${team.shortName || team.teamName}`
+              }
               homeName={
                 matchup.homeAway === 'H'
                   ? team.shortName || team.teamName
