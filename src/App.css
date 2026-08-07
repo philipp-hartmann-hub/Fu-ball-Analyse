@@ -840,9 +840,12 @@
   margin-left: -0.15rem;
 }
 
-.live-match-detail {
-  padding: 0 0.55rem 0.55rem;
-  border-top: 1px solid color-mix(in srgb, var(--text) 12%, transparent);
+.live-match-detail .match-prediction {
+  margin: 0.45rem 0 0.35rem;
+}
+
+.live-match-detail .match-prediction.is-compact {
+  padding: 0.55rem 0.6rem;
 }
 
 .live-ht {

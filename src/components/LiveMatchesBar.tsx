@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { Match } from '../types'
+import type { Match, ScenarioResult, StandingRow } from '../types'
 import {
   halfTimeResult,
   listMatchGoals,
@@ -8,6 +8,9 @@ import {
   scoreKey,
   type MatchdayFixtureView,
 } from '../lib/live'
+import { predictFixture } from '../lib/simulation'
+import type { ExplainTopic } from '../lib/modelExplanations'
+import { MatchPredictionCard } from './MatchPredictionCard'
 
 interface Props {
   matches: Match[]
@@ -17,6 +20,10 @@ interface Props {
   liveCount: number
   /** bar = unter der Tabelle (legacy); panel = Seitenleisten-Reiter */
   variant?: 'bar' | 'panel'
+  /** Für Spielschätzung 1/X/2 (wie Vereinsübersicht) */
+  standings?: StandingRow[]
+  scenarios?: ScenarioResult[]
+  onExplain?: (topic: ExplainTopic) => void
 }
 
 function Crest({ url, name }: { url?: string; name: string }) {
@@ -42,6 +49,9 @@ export function LiveMatchesBar({
   refreshing,
   liveCount,
   variant = 'panel',
+  standings = [],
+  scenarios = [],
+  onExplain,
 }: Props) {
   const allDays = useMemo(
     () =>
@@ -159,7 +169,7 @@ export function LiveMatchesBar({
       {upcoming > 0 ? ` · ${upcoming} offen` : ''}
       {live > 0 ? ` · Update ${pollSec}s` : ''}
       {refreshing ? ' · …' : ''}
-      {' · Tippe auf ein Spiel für Torschützen'}
+      {' · Tippe auf ein Spiel für Details'}
     </>
   )
 
@@ -222,6 +232,9 @@ export function LiveMatchesBar({
                 cur === row.match.matchID ? null : row.match.matchID,
               )
             }
+            standings={standings}
+            scenarios={scenarios}
+            onExplain={onExplain}
           />
         ))}
       </ul>
@@ -291,12 +304,18 @@ function FixtureRow({
   showCrests,
   expanded,
   onToggle,
+  standings,
+  scenarios,
+  onExplain,
 }: {
   row: MatchdayFixtureView
   flashed: boolean
   showCrests: boolean
   expanded: boolean
   onToggle: () => void
+  standings: StandingRow[]
+  scenarios: ScenarioResult[]
+  onExplain?: (topic: ExplainTopic) => void
 }) {
   const m = row.match
   const home = m.team1.shortName || m.team1.teamName
@@ -310,8 +329,13 @@ function FixtureRow({
 
   const goals = useMemo(() => listMatchGoals(m), [m])
   const ht = useMemo(() => halfTimeResult(m), [m])
-  const canExpand = row.status !== 'upcoming'
+  const showPrediction = row.status === 'upcoming' || row.status === 'live'
   const detailId = `match-detail-${m.matchID}`
+
+  const prediction = useMemo(() => {
+    if (!expanded || !showPrediction || standings.length === 0) return null
+    return predictFixture(standings, m, { scenarios })
+  }, [expanded, showPrediction, standings, m, scenarios])
 
   return (
     <li
@@ -321,7 +345,7 @@ function FixtureRow({
         `status-${row.status}`,
         flashed ? 'score-flash' : '',
         expanded ? 'is-expanded' : '',
-        canExpand ? 'is-expandable' : '',
+        'is-expandable',
       ]
         .filter(Boolean)
         .join(' ')}
@@ -329,10 +353,9 @@ function FixtureRow({
       <button
         type="button"
         className="live-item-main"
-        onClick={canExpand ? onToggle : undefined}
-        disabled={!canExpand}
-        aria-expanded={canExpand ? expanded : undefined}
-        aria-controls={canExpand ? detailId : undefined}
+        onClick={onToggle}
+        aria-expanded={expanded}
+        aria-controls={detailId}
       >
         <span className="live-teams">
           <span className="live-home">
@@ -366,14 +389,12 @@ function FixtureRow({
             row.resultName || row.kickoffLabel
           )}
         </span>
-        {canExpand && (
-          <span className="live-expand-chevron" aria-hidden>
-            {expanded ? '▾' : '▸'}
-          </span>
-        )}
+        <span className="live-expand-chevron" aria-hidden>
+          {expanded ? '▾' : '▸'}
+        </span>
       </button>
 
-      {canExpand && expanded && (
+      {expanded && (
         <div className="live-match-detail" id={detailId}>
           {row.status === 'live' && (
             <p className="live-interim-note" role="status">
@@ -381,39 +402,60 @@ function FixtureRow({
               automatisch.
             </p>
           )}
-          {ht && (
-            <p className="live-ht">
-              Halbzeit {ht.pointsTeam1}:{ht.pointsTeam2}
-            </p>
+
+          {showPrediction && (
+            <MatchPredictionCard
+              prediction={prediction}
+              perspective="neutral"
+              title="Spielschätzung"
+              homeName={home}
+              awayName={away}
+              onExplain={onExplain}
+              compact
+            />
           )}
-          {goals.length > 0 ? (
-            <ul className="goal-list">
-              {goals.map((g) => (
-                <li
-                  key={g.key}
-                  className={`goal-row side-${g.side}`}
-                >
-                  <span className="goal-minute">
-                    {g.minute != null ? `${g.minute}'` : '–'}
-                    {g.isOvertime ? '+' : ''}
-                  </span>
-                  <span className="goal-body">
-                    <span className="goal-name">{g.name}</span>
-                    {g.isPenalty && <span className="goal-tag">Elfmeter</span>}
-                    {g.isOwnGoal && <span className="goal-tag">Eigentor</span>}
-                    {g.scoreLabel && (
-                      <span className="goal-score">{g.scoreLabel}</span>
-                    )}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="hint tight">
-              {row.status === 'live'
-                ? 'Noch keine Tore erfasst – aktualisiert sich live.'
-                : 'Keine Torschützen in den Daten.'}
-            </p>
+
+          {row.status !== 'upcoming' && (
+            <>
+              {ht && (
+                <p className="live-ht">
+                  Halbzeit {ht.pointsTeam1}:{ht.pointsTeam2}
+                </p>
+              )}
+              {goals.length > 0 ? (
+                <ul className="goal-list">
+                  {goals.map((g) => (
+                    <li
+                      key={g.key}
+                      className={`goal-row side-${g.side}`}
+                    >
+                      <span className="goal-minute">
+                        {g.minute != null ? `${g.minute}'` : '–'}
+                        {g.isOvertime ? '+' : ''}
+                      </span>
+                      <span className="goal-body">
+                        <span className="goal-name">{g.name}</span>
+                        {g.isPenalty && (
+                          <span className="goal-tag">Elfmeter</span>
+                        )}
+                        {g.isOwnGoal && (
+                          <span className="goal-tag">Eigentor</span>
+                        )}
+                        {g.scoreLabel && (
+                          <span className="goal-score">{g.scoreLabel}</span>
+                        )}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="hint tight">
+                  {row.status === 'live'
+                    ? 'Noch keine Tore erfasst – aktualisiert sich live.'
+                    : 'Keine Torschützen in den Daten.'}
+                </p>
+              )}
+            </>
           )}
         </div>
       )}
