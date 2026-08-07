@@ -225,3 +225,70 @@ export function mergeScenarios(
 export function scoreKey(homeGoals: number | null, awayGoals: number | null): string {
   return `${homeGoals ?? '-'}:${awayGoals ?? '-'}`
 }
+
+/** Halbzeitstand (resultTypeID === 1), falls vorhanden. */
+export function halfTimeResult(match: Match): MatchResult | null {
+  return (
+    match.matchResults.find((r) => r.resultTypeID === 1) ??
+    match.matchResults.find((r) => /halbzeit/i.test(r.resultName)) ??
+    null
+  )
+}
+
+export type GoalSide = 'home' | 'away' | 'unknown'
+
+export interface MatchGoalView {
+  key: string
+  minute: number | null
+  name: string
+  side: GoalSide
+  scoreLabel: string | null
+  isPenalty: boolean
+  isOwnGoal: boolean
+  isOvertime: boolean
+}
+
+/**
+ * Tore chronologisch für die Ergebnis-Detailansicht.
+ * Seite: scoringTeamId, sonst aus dem Stand nach dem Tor.
+ */
+export function listMatchGoals(match: Match): MatchGoalView[] {
+  const goals = [...(match.goals ?? [])].sort((a, b) => {
+    const ma = a.matchMinute
+    const mb = b.matchMinute
+    if (ma == null && mb == null) return (a.goalID ?? 0) - (b.goalID ?? 0)
+    if (ma == null) return 1
+    if (mb == null) return -1
+    if (ma !== mb) return ma - mb
+    return (a.goalID ?? 0) - (b.goalID ?? 0)
+  })
+
+  return goals.map((g, i) => {
+    let side: GoalSide = 'unknown'
+    if (g.scoringTeamId === match.team1.teamId) side = 'home'
+    else if (g.scoringTeamId === match.team2.teamId) side = 'away'
+    else if (g.scoreTeam1 != null && g.scoreTeam2 != null) {
+      const prev = goals[i - 1]
+      const prev1 = prev?.scoreTeam1 ?? 0
+      const prev2 = prev?.scoreTeam2 ?? 0
+      if (g.scoreTeam1 > prev1) side = 'home'
+      else if (g.scoreTeam2 > prev2) side = 'away'
+    }
+
+    const scoreLabel =
+      g.scoreTeam1 != null && g.scoreTeam2 != null
+        ? `${g.scoreTeam1}:${g.scoreTeam2}`
+        : null
+
+    return {
+      key: `${g.goalID || i}-${g.matchMinute ?? 'x'}-${g.goalGetterName}`,
+      minute: g.matchMinute ?? null,
+      name: g.goalGetterName.trim() || 'Unbekannt',
+      side,
+      scoreLabel,
+      isPenalty: g.isPenalty,
+      isOwnGoal: g.isOwnGoal,
+      isOvertime: g.isOvertime,
+    }
+  })
+}
