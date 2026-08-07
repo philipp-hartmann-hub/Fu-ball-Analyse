@@ -15,52 +15,48 @@ export function ForecastExplainBody() {
   return (
     <>
       <p className="modal-lead">
-        Die Prognose ist eine <strong>Modellschätzung</strong>, keine Vorhersage und keine
-        Wettberatung. Sie zeigt, wie oft Teams in Simulationen in bestimmten Zonen landen.
+        Die <strong>Prognose</strong> ist eine Schätzung aus vielen Zufallsverläufen – keine
+        Vorhersage und keine Wett-Tipp.
       </p>
-      <h3>1. Team-Stärke</h3>
+      <h3>Wie stark ist ein Team?</h3>
       <p>
-        Aus der aktuellen Tabelle: Tore und Gegentore pro Spiel (Angriff / Abwehr). Teams ohne
-        Spiele starten mit Neutralwerten. Heimteams bekommen einen leichten Bonus von{' '}
-        {homeLabel} erwarteten Toren.
+        Aus der Tabelle: wie viele Tore ein Team im Schnitt schießt und kassiert. Teams ohne
+        Spiele gelten als durchschnittlich. Heimteams bekommen einen kleinen Bonus ({homeLabel}{' '}
+        Tore).
       </p>
-      <h3>2. Restspiele würfeln</h3>
+      <h3>Restspiele durchspielen</h3>
       <p>
-        Jedes offene Spiel wird per <strong>Poisson-Verteilung</strong> simuliert: Erwartete Tore
-        hängen von Angriff des einen und Abwehr des anderen Teams ab. Von dir gesetzte Szenarien
-        bleiben unverändert und werden nicht neu gezogen.
+        Jedes offene Spiel wird zufällig entschieden – stärkerer Angriff gegen schwächere Abwehr
+        erhöht die Chance auf Tore. Von dir gesetzte Szenarien bleiben fest und werden nicht neu
+        gewürfelt.
       </p>
-      <h3>3. Viele Saisonverläufe</h3>
+      <h3>Viele Saisons</h3>
       <p>
-        Das passiert {runsLabel}-mal. Pro Lauf entsteht eine Endtabelle. Daraus zählen wir, wie oft
-        ein Verein Meister, CL, EL, ECL, Relegation oder Abstieg erreicht (bzw. die Aufstiegszonen
-        in der 2. Liga).
+        Das machen wir {runsLabel}-mal. Pro Durchlauf entsteht eine Endtabelle. Danach zählen wir,
+        wie oft ein Team Meister, CL, Europa oder Abstieg (bzw. Aufstieg in der 2./3. Liga)
+        erreicht.
       </p>
-      <h3>4. Was du siehst</h3>
+      <h3>Was du siehst</h3>
       <p>
-        In der <strong>Tabelle</strong>: pro Verein die Zone mit der höchsten
-        Wahrscheinlichkeit, Prozentwert und Balken. Tooltip: Median-Rang und erwartete Punkte.
-      </p>
-      <p>
-        Unter <strong>Vereine</strong>: dieselbe Simulation, aber alle Zonen-Szenarien mit
-        Wahrscheinlichkeit (sortiert, Nullen ausgeblendet) plus Median-Rang und erwartete Punkte.
-        Zusätzlich die <strong>Spielschätzung</strong> für das nächste eigene Spiel (Anteile
-        Sieg/Unentschieden/Niederlage in geschlossener Form aus denselben λ-Werten) – klar als
-        Modellschätzung gekennzeichnet, ohne konkretes Torergebnis. Im{' '}
-        <strong>Vergleich</strong> erscheinen Direkt-Duell und optional das nächste Spiel je
-        Verein.
+        In der <strong>Tabelle</strong>: die Zone mit der höchsten Wahrscheinlichkeit plus
+        Prozentbalken. Im Tooltip: typischer Platz und erwartete Punkte.
       </p>
       <p>
-        Die Ansicht „Spanne“ bleibt die rein rechnerische Best-/Schlechtfall-Spanne ohne Zufall.
+        Unter <strong>Verein</strong>: alle Zonen mit Wahrscheinlichkeit, dazu die Schätzung fürs
+        nächste eigene Spiel (Sieg / Unentschieden / Niederlage). Im{' '}
+        <strong>Vergleich</strong> dasselbe für Duell und nächste Spiele.
       </p>
-      <h3>Wann die Zahl gilt</h3>
       <p>
-        Bei Saisonstart (Median &lt; {MIN_GAMES} Spiele) kollabieren Stärken auf Neutralwerte —
-        die UI zeigt dann <strong>keine Zonen-Prozente</strong>, sondern „noch keine Aussage (zu
-        wenige Spiele)“. Die Simulation darf trotzdem laufen.
+        Die Ansicht <strong>Möglich</strong> ist etwas anderes: dort geht es nur um „was ist
+        überhaupt noch drin?“ – ohne Zufall und ohne Prozent.
+      </p>
+      <h3>Wann die Zahlen fehlen</h3>
+      <p>
+        Ganz am Saisonanfang (weniger als {MIN_GAMES} Spiele im Schnitt) sind die Stärken noch zu
+        unsicher. Dann zeigt die App keine Prozentwerte, sondern „noch keine Aussage“.
       </p>
       <p className="modal-footnote">
-        Vereinfachtes Modell (u. a. keine Formkurven, Verletzungen, Motivation).
+        Vereinfachtes Modell – ohne Formkurve, Verletzungen oder Motivation.
       </p>
     </>
   )
@@ -70,47 +66,40 @@ export function SpanExplainBody() {
   return (
     <>
       <p className="modal-lead">
-        Die Spalte <strong>Möglich</strong> und die Best-/Schlechtfall-Karten zeigen{' '}
-        <strong>rechnerische Extreme</strong> – keine Wahrscheinlichkeiten und keine Vorhersage.
+        <strong>Möglich</strong> zeigt, welche Plätze für einen Verein <em>noch drin</em> sind –
+        der beste und der schlechteste denkbare Platz. Keine Wahrscheinlichkeit, nur die
+        Bandbreite.
       </p>
       <h3>Nächster Spieltag</h3>
       <p>
-        Alle offenen Spiele dieses Spieltags werden in den Varianten 1 / X / 2 durchgespielt
-        (Enumeration). <strong>Fremdspiele</strong> mit Minimal-Toren (1:0 / 1:1 / 0:1); das{' '}
-        <strong>eigene Spiel</strong> mit großzügiger Tordifferenz (bis {FOCUS_EXTREME_MARGIN}
-        :0 bzw. 0:{FOCUS_EXTREME_MARGIN}), damit GD-/Tore-Überholmanöver nicht unterschätzt
-        werden. Daraus ergeben sich bester und schlechtester Platz{' '}
-        <strong>nach diesem Spieltag</strong>, plus Muss-/Darf-nicht-Bedingungen und ggf. eine
-        Mindest-Tordifferenz.
+        Alle offenen Spiele dieses Spieltags werden in den Varianten Sieg / Unentschieden /
+        Niederlage durchgespielt. Bei Fremdspielen reichen knappe Ergebnisse (1:0, 1:1, 0:1). Beim{' '}
+        <strong>eigenen</strong> Spiel rechnen wir mit großer Tordifferenz (bis{' '}
+        {FOCUS_EXTREME_MARGIN}:0), damit ein knapper Sieg den Platz nicht unterschätzt. Daraus
+        kommen bester und schlechtester Platz <strong>nach diesem Spieltag</strong> – und was dafür
+        passieren muss.
       </p>
       <h3>Gesamte Saison</h3>
       <p>
-        Zuerst Relevanz-Pruning: nur Teams mit überlappenden Punkte-Intervallen und deren
-        Restspiele. Bei höchstens 12 relevanten Spielen:{' '}
-        <strong>exakte Enumeration</strong> aller 1/X/2-Kombinationen in einem gemeinsamen
-        Durchlauf – widerspruchsfreie Spannen für die ganze Tabelle.
+        Es zählen nur Spiele, die für den Platz des Vereins noch etwas ändern können: Teams, die
+        ihn punktemäßig noch einholen oder von ihm eingeholt werden können. Spiele ganz oben oder
+        ganz unten, die ihn nicht mehr erreichen, fallen weg. Deshalb ist die Grenze{' '}
+        <strong>pro Verein unterschiedlich</strong> – nicht „ab Spieltag X“.
       </p>
       <p>
-        Darüber hinaus eine <strong>Heuristik</strong> (innere Näherung
-        „mindestens“): Fokus und relevante Rivalen (die den Fokus rechnerisch noch
-        einholen bzw. von ihm eingeholt werden können) bekommen große Tor-Margen; sonst
-        Minimal-Tore. Die reale Spanne kann breiter sein. Für belastbare Zonen-Anteile
-        aller Vereine die <strong>Prognose</strong> (Monte-Carlo) nutzen. Für die Saison
-        gibt es bewusst <strong>keine</strong> Pathway- oder Wunschplatz-Bedingungen.
-      </p>
-      <p>
-        Zusätzlich in der Vereinsanalyse: die{' '}
-        <strong>mathematisch mögliche Spanne</strong> aus Punktemaxima (äußere Garantie).
-        Der echte Endrang liegt immer darin; Exact/Heuristik darunter können enger sein.
-        Die Tabellen-Spalte „Möglich“ bleibt Exact bzw. Heuristik.
+        Sind für einen Verein höchstens 12 solcher Spiele offen, rechnen wir alle Kombinationen
+        durch (Badge <strong>exakt</strong>). Sonst eine sichere Obergrenze aus den maximal noch
+        erreichbaren Punkten (Badge <strong>rechnerisch</strong>): Wer dich sicher überholt bzw.
+        sicher nicht mehr einholt, begrenzt den Platz. Der echte Endplatz liegt immer in diesem
+        Bereich; mit jedem weiteren Ergebnis wird er höchstens enger, nie weiter.
       </p>
       <h3>Unterschied zur Prognose</h3>
       <p>
-        Die Prognose würfelt viele zufällige Verläufe (Poisson). Die Spanne zeigt nur, was{' '}
-        <em>überhaupt möglich</em> wäre – auch sehr unwahrscheinliche Extreme.
+        Die Prognose sagt: „Wie oft landet das Team dort?“ Die Spanne sagt nur: „Ist der Platz
+        überhaupt noch möglich?“ – auch bei sehr unwahrscheinlichen Verläufen.
       </p>
       <p className="modal-footnote">
-        Gesetzte Szenarien und der „Stand nach Spieltag“ fließen in die Rechnung ein.
+        Gesetzte Szenarien und „Stand nach Spieltag“ fließen mit ein.
       </p>
     </>
   )
@@ -120,26 +109,25 @@ export function ThresholdsExplainBody() {
   return (
     <>
       <p className="modal-lead">
-        Punktschwellen leiten sich aus möglichen <strong>Punkt-/Rang-Kombinationen</strong> ab –
-        nicht aus Wahrscheinlichkeiten.
+        Punktschwellen sagen, ab wie vielen Punkten ein Ziel (z. B. Klassenerhalt) in der
+        betrachteten Sicht noch erreichbar ist – oder schon sicher. Keine Wahrscheinlichkeiten.
       </p>
       <h3>Nach dem nächsten Spieltag</h3>
       <p>
-        Aus der exakten Enumeration (0 / 1 / 3 Punkte je eigenem Spiel) entstehen Aussagen wie
-        „Klassenerhalt ab X Pkt.“ – aber nur, wenn die Schwelle in diesem Spieltag überhaupt
-        erreichbar ist (höchstens aktuelle Punkte + 3). Sind Ziel <em>und</em> Abstieg noch beide
-        möglich, erscheinen bewusst <strong>keine</strong> Punkt-Zahlen (nichts ist entschieden).
+        Aus den möglichen Punkten nach dem Spieltag (0, 1 oder 3 aus dem eigenen Spiel) entstehen
+        Sätze wie „Klassenerhalt ab X Punkten“ – aber nur, wenn X in diesem Spieltag überhaupt
+        erreichbar ist. Sind Ziel <em>und</em> Abstieg noch beides möglich, zeigen wir bewusst{' '}
+        <strong>keine</strong> Punktzahl: Es ist noch nichts entschieden.
       </p>
       <h3>Gesamte Saison</h3>
       <p>
-        Die Saison liefert nur Best- und Schlechtfall. Daraus dürfen{' '}
-        <strong>keine „ab X Pkt.“-Zahlen</strong> gebaut werden (die wären Artefakte). Stattdessen
-        nur qualitative Extremfall-Aussagen, markiert als Schätzung – oder gar nichts, wenn Ziel und
-        Abstieg beide noch möglich sind.
+        Über die ganze Saison gibt es nur Best- und Schlechtfall. Daraus bauen wir{' '}
+        <strong>keine</strong> „ab X Punkten“-Zahlen (die wären irreführend). Stattdessen kurze
+        Hinweise zum Extremfall – oder gar nichts, wenn Ziel und Abstieg beide noch offen sind.
       </p>
       <p className="modal-footnote">
-        Labels wie „rechnerisch sicher“ meinen: in allen betrachteten Outcomes des jeweiligen
-        Horizonts. Das ist keine Garantie für die echte Saison.
+        „Rechnerisch sicher“ heißt: in allen betrachteten Ausgängen dieser Sicht. Das ist keine
+        Garantie für die echte Saison.
       </p>
     </>
   )
@@ -157,32 +145,31 @@ export function HardnessExplainBody() {
   return (
     <>
       <p className="modal-lead">
-        Die Restprogramm-Härte schätzt, wie <strong>stark die verbleibenden Gegner</strong> im
-        Schnitt sind – relativ zur Liga, nicht absolut.
+        Die Restprogramm-Härte sagt, wie <strong>stark die verbleibenden Gegner</strong> im Schnitt
+        sind – im Vergleich zur Liga, nicht absolut.
       </p>
       <h3>Rechnung</h3>
       <p>
-        Pro Restspiel: Gegnerstärke = aktuelle <strong>Punkte pro Spiel (PPG)</strong>. Heimspiele
-        gewichten den Gegner mit {home}, Auswärtsspiele mit {away}. Mittelwert über alle Restspiele
-        → Rohwert.
+        Pro Restspiel nehmen wir die aktuelle Stärke des Gegners (Punkte pro Spiel). Heimspiele
+        zählen den Gegner etwas leichter ({home}), Auswärtsspiele etwas schwerer ({away}). Der
+        Mittelwert über alle Restspiele ist der Rohwert.
       </p>
-      <h3>Einschätzung und Rang</h3>
+      <h3>Stufen und Rang</h3>
       <p>
-        Innerhalb der Liga wird der Rohwert linear skaliert (leichtestes Restprogramm → 0,
-        schwerstes → 100). Daraus entstehen fünf Stufen:{' '}
+        Innerhalb der Liga wird daraus eine Skala von 0 (leichtestes Programm) bis 100
+        (schwerstes). Daraus fünf Stufen:{' '}
         <strong>sehr leicht</strong>, <strong>leicht</strong>, <strong>mittel</strong>,{' '}
-        <strong>schwer</strong>, <strong>sehr schwer</strong>. In der Tabelle steht die Stufe;
-        Tooltip zeigt Index und Liga-Rang (1 = schwerstes Programm). Sind alle Rohwerte
-        praktisch gleich (Rundungsrauschen), liegen alle bei 50 – kein Schein-Ranking.
+        <strong>schwer</strong>, <strong>sehr schwer</strong>. In der Tabelle steht die Stufe; im
+        Tooltip Index und Liga-Rang (1 = schwerstes Programm). Sind alle Programme praktisch
+        gleich, liegen alle bei 50 – ohne künstliches Ranking.
       </p>
-      <h3>Wann die Zahl gilt</h3>
+      <h3>Wann die Zahl fehlt</h3>
       <p>
-        Solange der Median der gespielten Spiele unter {MIN_GAMES} liegt, ist PPG zu
-        verrauscht. Dann zeigt die UI <strong>„noch keine Aussage“</strong> – keine Stufe und
-        kein Liga-Rang.
+        Am Saisonanfang (Median unter {MIN_GAMES} Spielen) sind die Gegnerstärken noch zu
+        unsicher. Dann zeigt die App <strong>„noch keine Aussage“</strong>.
       </p>
       <p className="modal-footnote">
-        Die Härte sagt nichts über eigene Form oder Saisonziel aus – nur über das Restprogramm.
+        Die Härte sagt nichts über die eigene Form oder das Saisonziel – nur über die Gegner.
       </p>
     </>
   )
@@ -192,38 +179,37 @@ export function ConditionsExplainBody() {
   return (
     <>
       <p className="modal-lead">
-        Die Bedingungs-Analyse (nur <strong>nächster Spieltag</strong>) zerlegt den Best- bzw.
-        Schlechtfall-Raum in Muss / Darf nicht / egal – plus ggf. Mindest-Tordifferenz.
+        Beim <strong>nächsten Spieltag</strong> kannst du sehen, was für Best- oder Schlechtfall
+        passieren muss: Muss / Darf nicht / egal – und ggf. eine Mindest-Tordifferenz.
       </p>
-      <h3>Nächster Spieltag (exakt)</h3>
+      <h3>Nächster Spieltag</h3>
       <p>
-        Aus den Kombinationen, die den Zielrang erreichen (nach Filter auf deine Vorgabe und die
-        nötige Tordifferenz), wird pro Fremdspiel die Menge der Ausgänge gebildet:
+        Wir schauen alle Spieltag-Kombinationen an, die den gewünschten Platz erreichen. Pro
+        Fremdspiel gilt dann:
       </p>
       <ul>
         <li>
-          <strong>Muss</strong> — nur ein Ausgang in allen optimalen Wegen
+          <strong>Muss</strong> — nur dieses Ergebnis führt zum Ziel
         </li>
         <li>
-          <strong>Darf nicht</strong> — genau ein Ausgang fehlt („X darf nicht …“)
+          <strong>Darf nicht</strong> — genau ein Ergebnis würde den Platz verhindern
         </li>
         <li>
-          <strong>Wirklich egal</strong> — alle drei Ausgänge kommen vor
+          <strong>Wirklich egal</strong> — Sieg, Unentschieden und Niederlage kommen alle vor
         </li>
       </ul>
       <p>
-        Dein eigenes Spiel steht separat; bei Sieg/Niederlage kann eine{' '}
-        <strong>Mindest-Tordifferenz</strong> stehen (z. B. mind. +6), wenn 1:0 für den Platz
-        nicht reicht. Fremdspiele bleiben Minimal-Tore.
+        Dein eigenes Spiel steht separat. Bei Sieg oder Niederlage kann eine{' '}
+        <strong>Mindest-Tordifferenz</strong> nötig sein (z. B. mind. +6), wenn 1:0 für den Platz
+        nicht reicht.
       </p>
       <h3>Gesamte Saison</h3>
       <p>
-        Nur die Platzspanne – keine Pathway- oder Wunschplatz-Bedingungen (zu viele offene
-        Kombinationen, inhaltlich irreführend).
+        Nur die Platzspanne – keine „was muss passieren?“-Liste. Dafür wären zu viele Spiele offen,
+        und die Aussage wäre oft irreführend.
       </p>
       <p className="modal-footnote">
-        „Als Szenario übernehmen“ setzt Vorgabe und notwendige Fremdergebnisse; offene Spiele
-        bleiben ungesetzt.
+        „Als Szenario übernehmen“ setzt die nötigen Ergebnisse; offene Spiele bleiben frei.
       </p>
     </>
   )

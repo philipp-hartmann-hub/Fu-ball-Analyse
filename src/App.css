@@ -210,6 +210,13 @@
   font-size: 0.8rem;
 }
 
+.range-mode-note {
+  margin: 0 0 0.55rem;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
 .match-prediction {
   margin: 0.65rem 0 0.85rem;
   padding: 0.7rem 0.75rem;
@@ -2283,6 +2290,30 @@ button.range-btn.is-static {
   max-width: 100%;
   white-space: normal;
   line-height: 1.25;
+}
+
+.range-mode {
+  display: inline-block;
+  margin-left: 0.28rem;
+  padding: 0.05rem 0.28rem;
+  border-radius: 0.25rem;
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  vertical-align: middle;
+  line-height: 1.2;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+}
+
+.range-mode.mode-exact {
+  color: var(--accent);
+  background: rgba(196, 240, 97, 0.16);
+}
+
+.range-mode.mode-hard {
+  color: var(--muted);
 }
 
 /* Mittel (<780px Container): Sp/S/U/N + Härte aus; Δ/TORE/DIFF bleiben */

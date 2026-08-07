@@ -823,9 +823,9 @@ function VariantPanel({
               Mögliche Platzierung nach diesem Spieltag — tippe für Bedingungen.
             </p>
           )}
-          {hardRange && (
+          {hardRange && range.mode === 'exact' && (
             <p className="range-guarantee" role="status">
-              Mathematisch möglich:{' '}
+              Noch möglich (Obergrenze):{' '}
               <strong>
                 {hardRange.hardBest}.–{hardRange.hardWorst}.
               </strong>
@@ -834,10 +834,20 @@ function VariantPanel({
                 <>
                   {' '}
                   <span className="range-guarantee-meta">
-                    (äußere Garantie; Best-/Schlechtfall darunter kann enger sein)
+                    (weiter als die exakte Spanne darunter)
                   </span>
                 </>
               )}
+            </p>
+          )}
+          {range.mode === 'hard' && (
+            <p className="range-mode-note" role="status">
+              Sichere Obergrenze – kann mit weiteren Ergebnissen nur enger werden.
+            </p>
+          )}
+          {range.mode === 'exact' && (
+            <p className="range-mode-note" role="status">
+              Genau berechnet.
             </p>
           )}
           <div className="range-card" role="group" aria-label="Best- und Schlechtfall">
@@ -1186,7 +1196,9 @@ export function TeamInsight({
           seasonOutlook?.range
             ? seasonOutlook.range.bestRank === seasonOutlook.range.worstRank
               ? 'Platz über die Restspiele in dieser Sicht bereits fest.'
-              : 'Mögliche Endplätze über alle Restspiele (Exact oder Heuristik „mind.“). Keine Pathway-Bedingungen für die Saison.'
+              : seasonOutlook.range.mode === 'exact'
+                ? 'Genau berechnete Endplätze über die noch entscheidenden Restspiele. Keine „was muss passieren?“-Liste für die Saison.'
+                : 'Noch mögliche Endplätze (sichere Obergrenze). Keine „was muss passieren?“-Liste für die Saison.'
             : undefined
         }
         empty="Keine Saison-Spanne berechenbar."

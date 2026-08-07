@@ -21,7 +21,7 @@ Echtzeit-Analyse für die **1., 2. und 3. Liga**: Tabelle, Restprogramm und mög
 
 - Live-Tabelle mit Zonen (BL1: CL/EL/Abstieg · BL2/3. Liga: Aufstieg/Abstieg); **Cache**: zuletzt geladene Daten sofort aus localStorage, Refresh im Hintergrund
 - **Ergebnisse**: Spieltag wählbar (durchklicken); Wappen; Live-Updates; 2 Tage nach letztem Spiel → nächster Spieltag als Default
-- Spalte **Möglich**: Best-/Schlechtfall bis Saisonende (**Spanne**; ≤12 *relevante* Restspiele exakt nach Punkte-Pruning, sonst innere Näherung „mindestens“) oder Monte-Carlo-**Prognose** (umschaltbar; unter `MIN_GAMES` Spielen ohne Prozentanzeige)
+- Spalte **Möglich**: rechnerisch noch mögliche Plätze – **exakt** bei ≤12 relevanten Restspielen je Verein (nach Punkte-Pruning), sonst **harte Außengrenze** aus Punktemaxima (Badge pro Zeile); alternativ Monte-Carlo-**Prognose** (umschaltbar; unter `MIN_GAMES` Spielen ohne Prozentanzeige)
 - Optionale Spalte **Restprog.**: Einschätzung sehr leicht → sehr schwer (Toggle „Restprogramm“; auf schmalen Tabellenbreiten ausgeblendet)
 - Seitenleiste: **Verein** (Überblick + Spieltag mit Wunschplatz/Bedingungen + Saison-Spanne inkl. mathematischer Zusatzspanne + Spielschätzung 1/X/2) · **Ergebnisse** · **Szenario** · **Vergleich** (inkl. Duell-/Next-Spielschätzung)
 - **Szenario-Simulator**: Partien mit Wappen; Grob (Sieg/Unentschieden) oder Fein-Tore; teilbar via `?s=`
@@ -56,6 +56,17 @@ src/
 ---
 
 ## Änderungsprotokoll
+
+### 2026-08-07 — Prompt 88
+
+**User:** Harte (mathematische) Spanne als Standard-Basis der MÖGLICH-Spalte; innere Näherung ersetzen; Exact am Saisonende behalten; pro Verein kennzeichnen. Erklärtexte verständlicher formulieren.
+
+**Aktion:**
+- `computePositionRanges` / `computeSeasonOutlook`: Exact wenn relevante Spiele ≤ `EXACT_LIMIT`, sonst harte Bounds (`mode: 'exact' | 'hard'`); Heuristik `simulateExtremeFinish` nicht mehr für Möglich
+- UI: Badge „exakt“ / „rechnerisch“ pro Zeile; globaler Hinweis; Erklärtexte (`explainBodies`) und Kurz-Hinweise in Alltagssprache
+- Vereinsanalyse Best/Worst denselben Pfad; Tests zu Konsistenz Exact⊆Hart, gemischten Modi, Saisonende
+
+**Status:** erledigt
 
 ### 2026-08-07 — Prompt 87
 

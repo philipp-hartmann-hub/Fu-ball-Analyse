@@ -31,15 +31,23 @@ export interface ScenarioResult {
   awayGoals: number
 }
 
+/** Wie die Platz-Spanne für diesen Verein berechnet wurde. */
+export type RangeMode = 'exact' | 'hard'
+
 export interface PositionRange {
   teamId: number
   bestRank: number
   worstRank: number
+  /**
+   * `exact` = Enumeration der relevanten Restspiele (≤ EXACT_LIMIT).
+   * `hard` = Außengrenze aus Punktemaxima (rechnerisch möglich, sound).
+   */
+  mode: RangeMode
 }
 
 /**
  * Mathematisch garantierter Rangbereich (sound, nicht zwingend scharf).
- * True Rank ∈ [hardBest, hardWorst]; oft weiter als Exact/Heuristik.
+ * True Rank ∈ [hardBest, hardWorst]; oft weiter als Exact.
  */
 export interface HardRange {
   teamId: number
@@ -165,7 +173,7 @@ export interface TargetOutlook {
 export interface NextMatchdayOutlook {
   matchday: number
   range: PositionRange
-  /** Äußere Garantie aus Punktemaxima (Zusatz in der Vereinsanalyse) */
+  /** Äußere Garantie aus Punktemaxima (enthält immer die angezeigte Spanne) */
   hardRange: HardRange
   fixtureCount: number
   opponentName: string | null
@@ -176,10 +184,10 @@ export interface NextMatchdayOutlook {
   worstConditions: CaseConditions | null
 }
 
-/** Saison-Spanne (exakt im Limit, sonst Heuristik) */
+/** Saison-Spanne: exakt bei wenigen relevanten Spielen, sonst harte Außengrenze */
 export interface SeasonOutlook {
   range: PositionRange
-  /** Äußere Garantie aus Punktemaxima (Zusatz in der Vereinsanalyse) */
+  /** Äußere Garantie aus Punktemaxima (enthält immer die angezeigte Spanne) */
   hardRange: HardRange
   bestConditions: CaseConditions | null
   worstConditions: CaseConditions | null

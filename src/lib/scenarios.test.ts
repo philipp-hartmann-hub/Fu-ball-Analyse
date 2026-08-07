@@ -15,6 +15,7 @@ import {
   computeSeasonOutlook,
   computeTargetMatchdayOutlook,
   deriveExactCaseConditions,
+  relevantMatchesForTeam,
   scenarioFromOutcome,
   scenarioFromScore,
   scenariosFromConditions,
@@ -108,6 +109,7 @@ describe('computeNextMatchdayOutlook', () => {
       teamId: TEAM_ALPHA.teamId,
       bestRank: 1,
       worstRank: 3,
+      mode: 'exact',
     })
   })
 
@@ -838,6 +840,7 @@ describe('computeSeasonOutlook', () => {
       teamId: TEAM_ALPHA.teamId,
       bestRank: alphaRank,
       worstRank: alphaRank,
+      mode: 'exact',
     })
     expect(outlook!.hardRange).toEqual({
       teamId: TEAM_ALPHA.teamId,
@@ -1181,6 +1184,7 @@ describe('computeExactPositionRanges / Saisonende', () => {
       teamId: row.teamId,
       bestRank: best.get(row.teamId)!,
       worstRank: worst.get(row.teamId)!,
+      mode: 'exact' as const,
     }))
   }
 
@@ -1397,6 +1401,258 @@ describe('computeExactPositionRanges / Saisonende', () => {
 
     const top = exact!.find((r) => r.teamId === 1)!
     expect(top.bestRank).toBe(top.worstRank)
+  })
+})
+
+describe('Möglich: Exact vs. harte Spanne', () => {
+  function team(id: number, name: string): TeamInfo {
+    return {
+      teamId: id,
+      teamName: name,
+      shortName: name.slice(0, 3),
+      teamIconUrl: '',
+    }
+  }
+
+  function standingRow(
+    partial: Pick<
+      StandingRow,
+      'teamId' | 'teamName' | 'points' | 'goalDiff' | 'goalsFor' | 'rank'
+    > &
+      Partial<StandingRow>,
+  ): StandingRow {
+    const goalsAgainst =
+      partial.goalsAgainst ??
+      Math.max(0, (partial.goalsFor ?? 0) - (partial.goalDiff ?? 0))
+    return {
+      shortName: partial.teamName.slice(0, 3),
+      teamIconUrl: '',
+      played: 20,
+      won: 0,
+      draw: 0,
+      lost: 0,
+      goalsAgainst,
+      ...partial,
+    }
+  }
+
+  function openMatch(
+    matchID: number,
+    home: TeamInfo,
+    away: TeamInfo,
+    day = 21,
+  ): Match {
+    return {
+      matchID,
+      matchDateTime: '2025-01-15T15:30:00',
+      matchDateTimeUTC: '2025-01-15T13:30:00Z',
+      leagueName: 'Test-Liga',
+      leagueSeason: 2025,
+      leagueShortcut: 'test',
+      lastUpdateDateTime: '2025-01-15T12:00:00',
+      group: {
+        groupName: `${day}. Spieltag`,
+        groupOrderID: day,
+        groupID: 1000 + day,
+      },
+      team1: home,
+      team2: away,
+      matchIsFinished: false,
+      matchResults: [],
+    }
+  }
+
+  /** Zwei getrennte Bänder: Top-Duell (Exact) + großes Abstiegsband (Hard). */
+  function mixedModeFixture() {
+    const standings: StandingRow[] = [
+      standingRow({
+        teamId: 1,
+        teamName: 'Alpha',
+        points: 60,
+        goalDiff: 30,
+        goalsFor: 50,
+        rank: 1,
+      }),
+      standingRow({
+        teamId: 2,
+        teamName: 'Beta',
+        points: 57,
+        goalDiff: 20,
+        goalsFor: 45,
+        rank: 2,
+      }),
+    ]
+    for (let i = 3; i <= 12; i++) {
+      standings.push(
+        standingRow({
+          teamId: i,
+          teamName: `Low ${i}`,
+          points: 20 - Math.floor((i - 3) / 2),
+          goalDiff: -5 - (i - 3),
+          goalsFor: 18,
+          rank: i,
+        }),
+      )
+    }
+
+    const remaining: Match[] = [
+      openMatch(1, team(1, 'Alpha'), team(2, 'Beta'), 21),
+    ]
+    const lowIds = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    let mid = 100
+    for (let a = 0; a < lowIds.length; a++) {
+      for (let b = a + 1; b < lowIds.length; b++) {
+        remaining.push(
+          openMatch(
+            mid++,
+            team(lowIds[a]!, `Low ${lowIds[a]}`),
+            team(lowIds[b]!, `Low ${lowIds[b]}`),
+            21 + ((mid - 100) % 5),
+          ),
+        )
+        // Top-Duell + >EXACT_LIMIT Abstiegs-Spiele
+        if (remaining.length > EXACT_LIMIT + 1) break
+      }
+      if (remaining.length > EXACT_LIMIT + 1) break
+    }
+    return { standings, remaining }
+  }
+
+  it('Exact liegt immer innerhalb der harten Spanne (Endspiel-Fixture)', () => {
+    const standings: StandingRow[] = []
+    for (let i = 1; i <= 18; i++) {
+      if (i <= 13) {
+        standings.push(
+          standingRow({
+            teamId: i,
+            teamName: `Team ${i}`,
+            points: 60 - i,
+            goalDiff: 20 - i,
+            goalsFor: 40 - i,
+            played: 33,
+            rank: i,
+          }),
+        )
+      } else if (i === 14) {
+        standings.push(
+          standingRow({
+            teamId: 14,
+            teamName: 'Köln',
+            points: 32,
+            goalDiff: 5,
+            goalsFor: 40,
+            played: 33,
+            rank: 14,
+          }),
+        )
+      } else if (i === 15) {
+        standings.push(
+          standingRow({
+            teamId: 15,
+            teamName: 'Bremen',
+            points: 32,
+            goalDiff: 0,
+            goalsFor: 35,
+            played: 33,
+            rank: 15,
+          }),
+        )
+      } else {
+        standings.push(
+          standingRow({
+            teamId: i,
+            teamName: `Team ${i}`,
+            points: 20 - (i - 15),
+            goalDiff: -10 - (i - 15),
+            goalsFor: 20,
+            played: 33,
+            rank: i,
+          }),
+        )
+      }
+    }
+    const remaining = [openMatch(3401, team(14, 'Köln'), team(15, 'Bremen'), 34)]
+    const ranges = computePositionRanges(standings, remaining)
+    const hard = computeHardRanges(standings, remaining)
+
+    for (const r of ranges) {
+      expect(r.mode).toBe('exact')
+      const h = hard.find((x) => x.teamId === r.teamId)!
+      expect(r.bestRank).toBeGreaterThanOrEqual(h.hardBest)
+      expect(r.worstRank).toBeLessThanOrEqual(h.hardWorst)
+    }
+
+    const koe = ranges.find((r) => r.teamId === 14)!
+    expect(koe.bestRank).not.toBe(koe.worstRank)
+  })
+
+  it('am Saisonende: Exact-Modus, engere oder gleiche Spanne innerhalb hart', () => {
+    const standings: StandingRow[] = Array.from({ length: 4 }, (_, i) =>
+      standingRow({
+        teamId: i + 1,
+        teamName: `T${i + 1}`,
+        points: 10 - i,
+        goalDiff: 5 - i,
+        goalsFor: 10,
+        played: 5,
+        rank: i + 1,
+      }),
+    )
+    const remaining = [
+      openMatch(1, team(1, 'T1'), team(2, 'T2')),
+      openMatch(2, team(3, 'T3'), team(4, 'T4')),
+    ]
+    const ranges = computePositionRanges(standings, remaining)
+    const hard = computeHardRanges(standings, remaining)
+    expect(ranges.every((r) => r.mode === 'exact')).toBe(true)
+    for (const r of ranges) {
+      const h = hard.find((x) => x.teamId === r.teamId)!
+      expect(r.bestRank).toBeGreaterThanOrEqual(h.hardBest)
+      expect(r.worstRank).toBeLessThanOrEqual(h.hardWorst)
+      const outlook = computeSeasonOutlook(standings, remaining, r.teamId)!
+      expect(outlook.range.mode).toBe('exact')
+      expect(outlook.hardRange.hardBest).toBeLessThanOrEqual(
+        outlook.range.bestRank,
+      )
+      expect(outlook.hardRange.hardWorst).toBeGreaterThanOrEqual(
+        outlook.range.worstRank,
+      )
+    }
+  })
+
+  it('zwei Vereine am selben Stand: einer Exact, einer Hard', () => {
+    const { standings, remaining } = mixedModeFixture()
+    const topRelevant = relevantMatchesForTeam(standings, remaining, 1)
+    const lowRelevant = relevantMatchesForTeam(standings, remaining, 3)
+    expect(topRelevant.length).toBeLessThanOrEqual(EXACT_LIMIT)
+    expect(lowRelevant.length).toBeGreaterThan(EXACT_LIMIT)
+
+    const ranges = computePositionRanges(standings, remaining)
+    const alpha = ranges.find((r) => r.teamId === 1)!
+    const low = ranges.find((r) => r.teamId === 3)!
+    expect(alpha.mode).toBe('exact')
+    expect(low.mode).toBe('hard')
+
+    const hardLow = computeHardBounds(standings, remaining, 3)!
+    expect(low.bestRank).toBe(hardLow.hardBest)
+    expect(low.worstRank).toBe(hardLow.hardWorst)
+
+    const outlookLow = computeSeasonOutlook(standings, remaining, 3)!
+    expect(outlookLow.range.mode).toBe('hard')
+    expect(outlookLow.range.bestRank).toBe(hardLow.hardBest)
+  })
+
+  it('Hard-Modus: Spanne = harte Bounds, kein mind.-Heuristik-Pfad', () => {
+    const { standings, remaining } = mixedModeFixture()
+    const ranges = computePositionRanges(standings, remaining)
+    const hard = computeHardRanges(standings, remaining)
+    for (const r of ranges.filter((x) => x.mode === 'hard')) {
+      const h = hard.find((x) => x.teamId === r.teamId)!
+      expect(r.bestRank).toBe(h.hardBest)
+      expect(r.worstRank).toBe(h.hardWorst)
+    }
+    expect(ranges.some((r) => r.mode === 'exact')).toBe(true)
+    expect(ranges.some((r) => r.mode === 'hard')).toBe(true)
   })
 })
 
