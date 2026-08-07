@@ -1,12 +1,14 @@
 import { useMemo } from 'react'
-import type { Match, StandingRow } from '../types'
+import type { Match, ScenarioResult, StandingRow } from '../types'
 import {
   hardnessGrade,
   hardnessGradeLabel,
   type ScheduleHardness,
 } from '../lib/schedule'
+import { predictFixture } from '../lib/simulation'
 import type { ExplainTopic } from '../lib/modelExplanations'
 import { ExplainLink } from './ExplainLink'
+import { MatchPredictionCard } from './MatchPredictionCard'
 
 export interface RemainingFixture {
   matchId: number
@@ -21,6 +23,7 @@ export interface RemainingFixture {
 interface Props {
   standings: StandingRow[]
   remaining: Match[]
+  scenarios?: ScenarioResult[]
   hardnessByTeam: Map<number, ScheduleHardness>
   teamAId: number | null
   teamBId: number | null
@@ -54,6 +57,10 @@ function remainingFixturesFor(
     })
   }
   return list.sort((a, b) => a.matchday - b.matchday || a.matchId - b.matchId)
+}
+
+function findMatchById(remaining: Match[], matchId: number): Match | null {
+  return remaining.find((m) => m.matchID === matchId) ?? null
 }
 
 function HardnessBadge({
@@ -90,12 +97,20 @@ function TeamColumn({
   fixtures,
   hardness,
   leagueSize,
+  nextPrediction,
+  nextPerspective,
+  nextHomeName,
+  nextAwayName,
   onExplain,
 }: {
   row: StandingRow
   fixtures: RemainingFixture[]
   hardness: ScheduleHardness | undefined
   leagueSize: number
+  nextPrediction: ReturnType<typeof predictFixture>
+  nextPerspective: 'home' | 'away'
+  nextHomeName?: string
+  nextAwayName?: string
   onExplain?: (topic: ExplainTopic) => void
 }) {
   return (
@@ -150,6 +165,18 @@ function TeamColumn({
         <HardnessBadge hardness={hardness} leagueSize={leagueSize} />
       </div>
 
+      {nextPrediction && (
+        <MatchPredictionCard
+          prediction={nextPrediction}
+          perspective={nextPerspective}
+          title="Nächstes Spiel"
+          homeName={nextHomeName}
+          awayName={nextAwayName}
+          onExplain={onExplain}
+          compact
+        />
+      )}
+
       <h3 className="compare-list-title">Restprogramm</h3>
       {fixtures.length === 0 ? (
         <p className="hint tight">Keine offenen Spiele.</p>
@@ -175,6 +202,7 @@ function TeamColumn({
 export function TeamCompare({
   standings,
   remaining,
+  scenarios = [],
   hardnessByTeam,
   teamAId,
   teamBId,
@@ -199,6 +227,36 @@ export function TeamCompare({
     [teamAId, teamBId, remaining],
   )
 
+  const h2hMatch = useMemo(() => {
+    if (teamAId == null || teamBId == null) return null
+    return (
+      remaining.find(
+        (m) =>
+          (m.team1.teamId === teamAId && m.team2.teamId === teamBId) ||
+          (m.team1.teamId === teamBId && m.team2.teamId === teamAId),
+      ) ?? null
+    )
+  }, [remaining, teamAId, teamBId])
+
+  const h2hPrediction = useMemo(
+    () => (h2hMatch ? predictFixture(standings, h2hMatch, { scenarios }) : null),
+    [standings, h2hMatch, scenarios],
+  )
+
+  const nextA = fixturesA[0] ?? null
+  const nextB = fixturesB[0] ?? null
+  // Nächstes Spiel nur zusätzlich, wenn es nicht schon das H2H ist
+  const nextPredA = useMemo(() => {
+    if (!nextA || nextA.isHeadToHead) return null
+    const m = findMatchById(remaining, nextA.matchId)
+    return m ? predictFixture(standings, m, { scenarios }) : null
+  }, [nextA, remaining, standings, scenarios])
+  const nextPredB = useMemo(() => {
+    if (!nextB || nextB.isHeadToHead) return null
+    const m = findMatchById(remaining, nextB.matchId)
+    return m ? predictFixture(standings, m, { scenarios }) : null
+  }, [nextB, remaining, standings, scenarios])
+
   const h2hCount = fixturesA.filter((f) => f.isHeadToHead).length
   const pointsGap =
     teamA && teamB ? Math.abs(teamA.points - teamB.points) : null
@@ -214,7 +272,10 @@ export function TeamCompare({
   return (
     <div className="panel compare-panel">
       <h2>Vereinsvergleich</h2>
-      <p className="hint">Zwei Vereine wählen – Tabelle, Restprogramm und Härte nebeneinander.</p>
+      <p className="hint">
+        Zwei Vereine wählen – Tabelle, Restprogramm, Härte und Spielschätzung
+        nebeneinander.
+      </p>
 
       <div className="compare-pickers">
         <label>
@@ -281,12 +342,41 @@ export function TeamCompare({
             </div>
           </div>
 
+          {h2hMatch && h2hPrediction && (
+            <div className="compare-h2h">
+              <MatchPredictionCard
+                prediction={h2hPrediction}
+                perspective="neutral"
+                title={`Direktes Duell · ST ${h2hMatch.group.groupOrderID}`}
+                homeName={
+                  h2hMatch.team1.shortName || h2hMatch.team1.teamName
+                }
+                awayName={
+                  h2hMatch.team2.shortName || h2hMatch.team2.teamName
+                }
+                onExplain={onExplain}
+              />
+            </div>
+          )}
+
           <div className="compare-grid">
             <TeamColumn
               row={teamA}
               fixtures={fixturesA}
               hardness={hardnessByTeam.get(teamA.teamId)}
               leagueSize={standings.length}
+              nextPrediction={nextPredA}
+              nextPerspective={nextA?.venue === 'A' ? 'away' : 'home'}
+              nextHomeName={
+                nextA?.venue === 'H'
+                  ? teamLabel(teamA)
+                  : nextA?.opponentName
+              }
+              nextAwayName={
+                nextA?.venue === 'A'
+                  ? teamLabel(teamA)
+                  : nextA?.opponentName
+              }
               onExplain={onExplain}
             />
             <TeamColumn
@@ -294,6 +384,18 @@ export function TeamCompare({
               fixtures={fixturesB}
               hardness={hardnessByTeam.get(teamB.teamId)}
               leagueSize={standings.length}
+              nextPrediction={nextPredB}
+              nextPerspective={nextB?.venue === 'A' ? 'away' : 'home'}
+              nextHomeName={
+                nextB?.venue === 'H'
+                  ? teamLabel(teamB)
+                  : nextB?.opponentName
+              }
+              nextAwayName={
+                nextB?.venue === 'A'
+                  ? teamLabel(teamB)
+                  : nextB?.opponentName
+              }
               onExplain={onExplain}
             />
           </div>

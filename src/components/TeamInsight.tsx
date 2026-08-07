@@ -3,9 +3,11 @@ import type { LeagueZoneId } from '../lib/table'
 import type {
   CaseConditions,
   HardRange,
+  Match,
   MatchOutcome,
   NextMatchdayOutlook,
   PositionRange,
+  ScenarioResult,
   SeasonOutlook,
   StandingRow,
   TargetComparator,
@@ -25,11 +27,13 @@ import {
 } from '../lib/schedule'
 import {
   forecastZoneBreakdown,
+  predictFixture,
   type TeamForecast,
 } from '../lib/simulation'
 import { NOT_ENOUGH_DATA_LABEL } from '../lib/reliability'
 import type { ExplainTopic } from '../lib/modelExplanations'
 import { ExplainLink } from './ExplainLink'
+import { MatchPredictionCard } from './MatchPredictionCard'
 
 interface Props {
   team: StandingRow | null
@@ -55,6 +59,12 @@ interface Props {
   seasonThresholds?: ThresholdLine[]
   scheduleHardness?: ScheduleHardness | null
   leagueTeamCount?: number
+  /** Aktuelle Tabelle für Poisson-Spielschätzung */
+  standings?: StandingRow[]
+  /** Offene Spiele (nächstes eigenes Spiel finden) */
+  openMatches?: Match[]
+  /** Gesetzte Szenarien — überschreiben die Spielschätzung */
+  scenarios?: ScenarioResult[]
   onExplain?: (topic: ExplainTopic) => void
   onApplyConditions?: (conditions: CaseConditions) => void
 }
@@ -719,6 +729,7 @@ function VariantPanel({
   onApplyConditions,
   focusTeam,
   matchup,
+  matchPredictionSlot,
   targetSlot,
 }: {
   heading: string
@@ -742,6 +753,7 @@ function VariantPanel({
     homeAway: 'H' | 'A'
     matchday: number
   } | null
+  matchPredictionSlot?: ReactNode
   targetSlot?: ReactNode
 }) {
   const [openCase, setOpenCase] = useState<'best' | 'worst' | null>(null)
@@ -800,6 +812,8 @@ function VariantPanel({
           </div>
         </div>
       )}
+
+      {matchPredictionSlot}
 
       {range ? (
         <>
@@ -931,9 +945,28 @@ export function TeamInsight({
   seasonThresholds = [],
   scheduleHardness = null,
   leagueTeamCount = 18,
+  standings = [],
+  openMatches = [],
+  scenarios = [],
   onExplain,
   onApplyConditions,
 }: Props) {
+  const ownNextMatch = useMemo(() => {
+    if (!team || !nextMatchday?.plays) return null
+    return (
+      openMatches.find(
+        (m) =>
+          m.group.groupOrderID === nextMatchday.matchday &&
+          (m.team1.teamId === team.teamId || m.team2.teamId === team.teamId),
+      ) ?? null
+    )
+  }, [openMatches, nextMatchday, team])
+
+  const ownMatchPrediction = useMemo(() => {
+    if (!ownNextMatch || standings.length === 0) return null
+    return predictFixture(standings, ownNextMatch, { scenarios })
+  }, [standings, ownNextMatch, scenarios])
+
   if (!team) {
     return (
       <div className="panel insight">
@@ -1074,6 +1107,26 @@ export function TeamInsight({
         league={league}
         focusTeam={team}
         matchup={matchup}
+        matchPredictionSlot={
+          ownMatchPrediction && matchup ? (
+            <MatchPredictionCard
+              prediction={ownMatchPrediction}
+              perspective={matchup.homeAway === 'H' ? 'home' : 'away'}
+              title="Spielschätzung"
+              homeName={
+                matchup.homeAway === 'H'
+                  ? team.shortName || team.teamName
+                  : matchup.opponentName
+              }
+              awayName={
+                matchup.homeAway === 'A'
+                  ? team.shortName || team.teamName
+                  : matchup.opponentName
+              }
+              onExplain={onExplain}
+            />
+          ) : null
+        }
         thresholds={matchdayThresholds}
         thresholdSummary="Nach dem nächsten Spieltag"
         onExplain={onExplain}

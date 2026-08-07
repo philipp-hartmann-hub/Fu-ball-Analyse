@@ -1,4 +1,5 @@
 import type { Match, ScenarioResult, StandingRow } from '../types'
+import { hasEnoughData } from './reliability'
 import {
   applyScore,
   rankStandings,
@@ -157,6 +158,129 @@ export function expectedGoals(
   )
   const awayLambda = Math.max(MIN_LAMBDA, away.attack * (home.defense / scale))
   return { homeLambda, awayLambda }
+}
+
+export interface MatchPrediction {
+  pHome: number
+  pDraw: number
+  pAway: number
+  likelyScore: { home: number; away: number }
+  /** Erwartete Heim-Tore (λ) */
+  expHome: number
+  /** Erwartete Auswärts-Tore (λ) */
+  expAway: number
+  /** false → UI zeigt keine Prozente (zu wenige Spiele) */
+  reliable: boolean
+  /** Gesetztes Szenario hat Vorrang vor Modellschätzung */
+  lockedScenario: ScenarioResult | null
+}
+
+/** Poisson-PMF P(X=k) für k = 0..maxK; Restmasse auf maxK (wie Cap in samplePoisson). */
+function truncatedPoissonPmfs(lambda: number, maxK: number): number[] {
+  const lam = Math.max(MIN_LAMBDA, Math.min(lambda, maxK + 2))
+  const pmf = new Array<number>(maxK + 1)
+  let term = Math.exp(-lam)
+  let sum = 0
+  for (let k = 0; k <= maxK; k++) {
+    if (k > 0) term *= lam / k
+    pmf[k] = term
+    sum += term
+  }
+  // Cap: verbleibende Masse (k > maxK) dem letzten Bucket zuschlagen
+  if (sum < 1 && sum > 0) {
+    pmf[maxK]! += 1 - sum
+  } else if (sum > 0 && Math.abs(sum - 1) > 1e-12) {
+    for (let k = 0; k <= maxK; k++) pmf[k]! /= sum
+  }
+  return pmf
+}
+
+function poissonMode(lambda: number, maxK: number): number {
+  if (lambda <= 0) return 0
+  // Für Poisson: Modus = floor(λ); bei ganzzahligem λ sind λ und λ−1 gleich häufig —
+  // wir nehmen floor(λ) (konsistent, deterministisch).
+  return Math.min(maxK, Math.max(0, Math.floor(lambda)))
+}
+
+/**
+ * Geschlossene 1X2-Schätzung aus Team-Stärken (gleiche λ-Formel wie die Saison-Sim).
+ * Keine Monte-Carlo-Läufe — Summe über Torkombinationen 0..MAX_GOALS.
+ */
+export function predictMatch(
+  homeStrength: TeamStrength,
+  awayStrength: TeamStrength,
+  avgDefense: number,
+  options?: { reliable?: boolean; lockedScenario?: ScenarioResult | null },
+): MatchPrediction {
+  const { homeLambda, awayLambda } = expectedGoals(
+    homeStrength,
+    awayStrength,
+    avgDefense,
+  )
+  const homeP = truncatedPoissonPmfs(homeLambda, MAX_GOALS)
+  const awayP = truncatedPoissonPmfs(awayLambda, MAX_GOALS)
+
+  let pHome = 0
+  let pDraw = 0
+  let pAway = 0
+  for (let h = 0; h <= MAX_GOALS; h++) {
+    for (let a = 0; a <= MAX_GOALS; a++) {
+      const p = homeP[h]! * awayP[a]!
+      if (h > a) pHome += p
+      else if (h === a) pDraw += p
+      else pAway += p
+    }
+  }
+
+  const homeMode = poissonMode(homeLambda, MAX_GOALS)
+  const awayMode = poissonMode(awayLambda, MAX_GOALS)
+
+  return {
+    pHome,
+    pDraw,
+    pAway,
+    likelyScore: { home: homeMode, away: awayMode },
+    expHome: homeLambda,
+    expAway: awayLambda,
+    reliable: options?.reliable ?? true,
+    lockedScenario: options?.lockedScenario ?? null,
+  }
+}
+
+/**
+ * Einzelspiel-Schätzung für ein konkretes Match aus der aktuellen Tabelle.
+ * Gesetzte Szenarien überschreiben die Anzeige (lockedScenario), Modellwerte bleiben berechenbar.
+ */
+export function predictFixture(
+  baseStandings: StandingRow[],
+  match: Match,
+  options?: { scenarios?: ScenarioResult[] },
+): MatchPrediction | null {
+  const homeRow = baseStandings.find((s) => s.teamId === match.team1.teamId)
+  const awayRow = baseStandings.find((s) => s.teamId === match.team2.teamId)
+  if (!homeRow || !awayRow) return null
+
+  const { strengths, avgDefense } = deriveTeamStrengths(baseStandings)
+  const homeStr =
+    strengths.get(match.team1.teamId) ?? {
+      teamId: match.team1.teamId,
+      attack: DEFAULT_ATTACK,
+      defense: DEFAULT_DEFENSE,
+    }
+  const awayStr =
+    strengths.get(match.team2.teamId) ?? {
+      teamId: match.team2.teamId,
+      attack: DEFAULT_ATTACK,
+      defense: DEFAULT_DEFENSE,
+    }
+
+  const locked =
+    (options?.scenarios ?? []).find((s) => s.matchId === match.matchID) ?? null
+
+  return predictMatch(homeStr, awayStr, avgDefense, {
+    reliable: hasEnoughData(baseStandings),
+    lockedScenario: locked,
+  })
 }
 
 function cloneDraft(row: StandingRow): StandingDraft {
