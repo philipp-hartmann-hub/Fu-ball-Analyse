@@ -2,6 +2,7 @@ import { useMemo, useState, type ReactNode } from 'react'
 import type { LeagueZoneId } from '../lib/table'
 import type {
   CaseConditions,
+  HardRange,
   MatchOutcome,
   NextMatchdayOutlook,
   PositionRange,
@@ -39,6 +40,7 @@ interface Props {
   forecastReliable?: boolean
   forecast?: TeamForecast | null
   forecastLoading?: boolean
+  matchdayOutlookLoading?: boolean
   matchdayTargetRank: number
   matchdayTargetComparator: TargetComparator
   onMatchdayTargetRankChange: (rank: number) => void
@@ -291,11 +293,11 @@ function ownMatchDetail(item: {
   if (item.focusResult === 'win') {
     return gd <= 1
       ? `${base} · 1:0 reicht`
-      : `${base} · mind. TD +${gd} (z. B. ${gd}:0)`
+      : `${base} · mit ausreichender Tordifferenz (mind. TD +${gd}, z. B. ${gd}:0)`
   }
   return gd <= 1
     ? `${base} · 0:1`
-    : `${base} · mind. TD −${gd} (z. B. 0:${gd})`
+    : `${base} · mit ausreichender Tordifferenz (mind. TD −${gd}, z. B. 0:${gd})`
 }
 
 function ConditionsPanel({
@@ -362,6 +364,15 @@ function ConditionsPanel({
           für die Saison.
         </p>
       )}
+
+      {!heuristic &&
+        conditions.ownMatch?.minGoalDiff != null &&
+        conditions.ownMatch.minGoalDiff > 1 && (
+          <p className="conditions-heuristic-banner" role="note">
+            Reihenfolge entscheidet sich über die Tordifferenz — {caseLabel} braucht mehr als
+            ein knappes 1:0.
+          </p>
+        )}
 
       <div className="conditions-block block-own">
         <h4>Deine Vorgabe</h4>
@@ -695,6 +706,7 @@ function TargetWishBlock({
 function VariantPanel({
   heading,
   range,
+  hardRange,
   league,
   note,
   empty,
@@ -711,6 +723,8 @@ function VariantPanel({
 }: {
   heading: string
   range: PositionRange | null
+  /** Äußere mathematische Garantie (Punktemaxima) — Zusatz unter der Spanne */
+  hardRange?: HardRange | null
   league: LeagueZoneId
   note?: string
   empty?: string
@@ -792,6 +806,23 @@ function VariantPanel({
           {matchup && (
             <p className="range-intro">
               Mögliche Platzierung nach diesem Spieltag — tippe für Bedingungen.
+            </p>
+          )}
+          {hardRange && (
+            <p className="range-guarantee" role="status">
+              Mathematisch möglich:{' '}
+              <strong>
+                {hardRange.hardBest}.–{hardRange.hardWorst}.
+              </strong>
+              {(hardRange.hardBest !== range.bestRank ||
+                hardRange.hardWorst !== range.worstRank) && (
+                <>
+                  {' '}
+                  <span className="range-guarantee-meta">
+                    (äußere Garantie; Best-/Schlechtfall darunter kann enger sein)
+                  </span>
+                </>
+              )}
             </p>
           )}
           <div className="range-card" role="group" aria-label="Best- und Schlechtfall">
@@ -885,6 +916,7 @@ export function TeamInsight({
   forecastReliable = true,
   forecast = null,
   forecastLoading = false,
+  matchdayOutlookLoading = false,
   matchdayTargetRank,
   matchdayTargetComparator,
   onMatchdayTargetRankChange,
@@ -1038,6 +1070,7 @@ export function TeamInsight({
             : 'Nächster Spieltag'
         }
         range={nextMatchday?.range ?? null}
+        hardRange={nextMatchday?.hardRange ?? null}
         league={league}
         focusTeam={team}
         matchup={matchup}
@@ -1062,9 +1095,11 @@ export function TeamInsight({
           />
         }
         note={
-          nextMatchday && !nextMatchday.plays
-            ? 'Kein eigenes Spiel an diesem Spieltag — trotzdem relevant über Fremdergebnisse.'
-            : undefined
+          matchdayOutlookLoading
+            ? 'Spieltag-Analyse wird berechnet…'
+            : nextMatchday && !nextMatchday.plays
+              ? 'Kein eigenes Spiel an diesem Spieltag — trotzdem relevant über Fremdergebnisse.'
+              : undefined
         }
         empty="Kein offener Folgespieltag in dieser Sicht."
         emptyAction={
@@ -1083,6 +1118,7 @@ export function TeamInsight({
       <VariantPanel
         heading="Gesamte Saison"
         range={seasonOutlook?.range ?? null}
+        hardRange={seasonOutlook?.hardRange ?? null}
         league={league}
         focusTeam={team}
         thresholds={seasonThresholds}

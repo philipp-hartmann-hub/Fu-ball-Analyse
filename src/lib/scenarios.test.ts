@@ -8,6 +8,8 @@ import {
 import {
   EXACT_LIMIT,
   computeExactPositionRanges,
+  computeHardBounds,
+  computeHardRanges,
   computeNextMatchdayOutlook,
   computePositionRanges,
   computeSeasonOutlook,
@@ -18,8 +20,9 @@ import {
   scenariosFromConditions,
   selectRelevantMatches,
   selectRelevantTeamIds,
+  simulateExtremeFinishForTest,
 } from './scenarios'
-import { buildStandings, rankStandings } from './table'
+import { applyScore, buildStandings, rankStandings } from './table'
 import type { Match, MatchOutcome, StandingRow, TeamInfo } from '../types'
 
 describe('scenarioFromScore / Punktevergabe', () => {
@@ -836,6 +839,11 @@ describe('computeSeasonOutlook', () => {
       bestRank: alphaRank,
       worstRank: alphaRank,
     })
+    expect(outlook!.hardRange).toEqual({
+      teamId: TEAM_ALPHA.teamId,
+      hardBest: alphaRank,
+      hardWorst: alphaRank,
+    })
   })
 
   it('liefert keine Pathway-Bedingungen für die Saison', () => {
@@ -846,6 +854,199 @@ describe('computeSeasonOutlook', () => {
     expect(outlook.bestConditions).toBeNull()
     expect(outlook.worstConditions).toBeNull()
     expect(outlook.range.bestRank).toBeLessThanOrEqual(outlook.range.worstRank)
+    expect(outlook.hardRange.hardBest).toBeLessThanOrEqual(outlook.range.bestRank)
+    expect(outlook.hardRange.hardWorst).toBeGreaterThanOrEqual(
+      outlook.range.worstRank,
+    )
+  })
+})
+
+describe('computeHardBounds / harte Spanne', () => {
+  function team(id: number, name: string): TeamInfo {
+    return {
+      teamId: id,
+      teamName: name,
+      shortName: name.slice(0, 3),
+      teamIconUrl: '',
+    }
+  }
+
+  function standingRow(
+    partial: Pick<
+      StandingRow,
+      'teamId' | 'teamName' | 'points' | 'goalDiff' | 'goalsFor' | 'rank'
+    > &
+      Partial<StandingRow>,
+  ): StandingRow {
+    const goalsAgainst =
+      partial.goalsAgainst ??
+      Math.max(0, (partial.goalsFor ?? 0) - (partial.goalDiff ?? 0))
+    return {
+      shortName: partial.teamName.slice(0, 3),
+      teamIconUrl: '',
+      played: 33,
+      won: 0,
+      draw: 0,
+      lost: 0,
+      goalsAgainst,
+      ...partial,
+    }
+  }
+
+  function openMatch(
+    matchID: number,
+    home: TeamInfo,
+    away: TeamInfo,
+    day = 34,
+  ): Match {
+    return {
+      matchID,
+      matchDateTime: '2025-05-17T15:30:00',
+      matchDateTimeUTC: '2025-05-17T13:30:00Z',
+      leagueName: 'Test-Liga',
+      leagueSeason: 2025,
+      leagueShortcut: 'test',
+      lastUpdateDateTime: '2025-05-17T12:00:00',
+      group: {
+        groupName: `${day}. Spieltag`,
+        groupOrderID: day,
+        groupID: 1000 + day,
+      },
+      team1: home,
+      team2: away,
+      matchIsFinished: false,
+      matchResults: [],
+    }
+  }
+
+  function cologneBremenFixture() {
+    const standings: StandingRow[] = []
+    for (let i = 1; i <= 18; i++) {
+      if (i <= 13) {
+        standings.push(
+          standingRow({
+            teamId: i,
+            teamName: `Team ${i}`,
+            points: 60 - i,
+            goalDiff: 20 - i,
+            goalsFor: 40 - i,
+            rank: i,
+          }),
+        )
+      } else if (i === 14) {
+        standings.push(
+          standingRow({
+            teamId: 14,
+            teamName: 'Köln',
+            shortName: 'KOE',
+            points: 32,
+            goalDiff: 5,
+            goalsFor: 40,
+            rank: 14,
+          }),
+        )
+      } else if (i === 15) {
+        standings.push(
+          standingRow({
+            teamId: 15,
+            teamName: 'Bremen',
+            shortName: 'BRE',
+            points: 32,
+            goalDiff: 0,
+            goalsFor: 35,
+            rank: 15,
+          }),
+        )
+      } else {
+        standings.push(
+          standingRow({
+            teamId: i,
+            teamName: `Team ${i}`,
+            points: 20 - (i - 15),
+            goalDiff: -10 - (i - 15),
+            goalsFor: 20,
+            rank: i,
+          }),
+        )
+      }
+    }
+    return {
+      standings,
+      remaining: [openMatch(3401, team(14, 'Köln'), team(15, 'Bremen'))],
+    }
+  }
+
+  it('Soundness: harte Spanne enthält Brute-Force-Extreme', () => {
+    const { standings, remaining } = cologneBremenFixture()
+    const hard = computeHardRanges(standings, remaining)
+    const exact = computeExactPositionRanges(standings, remaining)!
+    for (const e of exact) {
+      const h = hard.find((x) => x.teamId === e.teamId)!
+      expect(h.hardBest).toBeLessThanOrEqual(e.bestRank)
+      expect(h.hardWorst).toBeGreaterThanOrEqual(e.worstRank)
+    }
+  })
+
+  it('Köln/Bremen: beide 14.–15.', () => {
+    const { standings, remaining } = cologneBremenFixture()
+    const koe = computeHardBounds(standings, remaining, 14)!
+    const bre = computeHardBounds(standings, remaining, 15)!
+    expect(koe).toEqual({ teamId: 14, hardBest: 14, hardWorst: 15 })
+    expect(bre).toEqual({ teamId: 15, hardBest: 14, hardWorst: 15 })
+  })
+
+  it('Frühe Saison: Spanne nahezu 1.–Ligagröße', () => {
+    const standings: StandingRow[] = Array.from({ length: 18 }, (_, i) =>
+      standingRow({
+        teamId: i + 1,
+        teamName: `T${i + 1}`,
+        points: 0,
+        goalDiff: 0,
+        goalsFor: 0,
+        played: 0,
+        rank: i + 1,
+      }),
+    )
+    const remaining: Match[] = []
+    for (let i = 0; i < 9; i++) {
+      remaining.push(
+        openMatch(
+          5000 + i,
+          team(i * 2 + 1, `T${i * 2 + 1}`),
+          team(i * 2 + 2, `T${i * 2 + 2}`),
+          1,
+        ),
+      )
+    }
+    const hard = computeHardRanges(standings, remaining)
+    for (const h of hard) {
+      expect(h.hardBest).toBe(1)
+      expect(h.hardWorst).toBe(18)
+    }
+  })
+
+  it('computeHardBounds stimmt mit computeHardRanges überein', () => {
+    const { standings, remaining } = cologneBremenFixture()
+    const all = computeHardRanges(standings, remaining)
+    for (const row of standings) {
+      expect(computeHardBounds(standings, remaining, row.teamId)).toEqual(
+        all.find((h) => h.teamId === row.teamId),
+      )
+    }
+  })
+
+  it('Spieltag-Outlook enthält hardRange als äußere Garantie', () => {
+    const base = buildStandings(MINI_LEAGUE_MATCHES, { maxMatchday: 1 })
+    const remaining = [MATCH_MD2_ALPHA_GAMMA, MATCH_MD2_BETA_DELTA]
+    const outlook = computeNextMatchdayOutlook(
+      base,
+      remaining,
+      TEAM_ALPHA.teamId,
+    )!
+    expect(outlook.hardRange.hardBest).toBeLessThanOrEqual(outlook.range.bestRank)
+    expect(outlook.hardRange.hardWorst).toBeGreaterThanOrEqual(
+      outlook.range.worstRank,
+    )
   })
 })
 
@@ -1284,5 +1485,133 @@ describe('computeTargetMatchdayOutlook', () => {
     expect(outlook.conditions!.ownMatch?.focusResult).toBe('draw')
     expect(outlook.ownOptions?.some((o) => o.focusResult === 'win')).toBe(true)
     expect(outlook.ownOptions?.some((o) => o.focusResult === 'draw')).toBeFalsy()
+  })
+})
+
+describe('simulateExtremeFinish Rivalen-TD', () => {
+  it('Schlechtfall: Rivale überholt Fokus nur mit großer eigener Tordifferenz', () => {
+    const FOCUS: TeamInfo = {
+      teamId: 1,
+      teamName: 'Focus',
+      shortName: 'Focus',
+      teamIconUrl: '',
+    }
+    const RIVAL: TeamInfo = {
+      teamId: 2,
+      teamName: 'Rival',
+      shortName: 'Rival',
+      teamIconUrl: '',
+    }
+    const WEAK: TeamInfo = {
+      teamId: 3,
+      teamName: 'Weak',
+      shortName: 'Weak',
+      teamIconUrl: '',
+    }
+
+    // Focus 36 / GD 0; Rival 33 / GD −2. Rival +3 Punkte → Gleichstand.
+    // 1:0 → Rival GD −1, Focus bleibt vorn. Margin-Sieg → Rival GD besser → überholt.
+    const standings: StandingRow[] = [
+      {
+        teamId: FOCUS.teamId,
+        teamName: FOCUS.teamName,
+        shortName: FOCUS.shortName,
+        teamIconUrl: '',
+        played: 30,
+        won: 11,
+        draw: 3,
+        lost: 16,
+        goalsFor: 40,
+        goalsAgainst: 40,
+        goalDiff: 0,
+        points: 36,
+        rank: 1,
+      },
+      {
+        teamId: RIVAL.teamId,
+        teamName: RIVAL.teamName,
+        shortName: RIVAL.shortName,
+        teamIconUrl: '',
+        played: 30,
+        won: 10,
+        draw: 3,
+        lost: 17,
+        goalsFor: 30,
+        goalsAgainst: 32,
+        goalDiff: -2,
+        points: 33,
+        rank: 2,
+      },
+      {
+        teamId: WEAK.teamId,
+        teamName: WEAK.teamName,
+        shortName: WEAK.shortName,
+        teamIconUrl: '',
+        played: 30,
+        won: 2,
+        draw: 2,
+        lost: 26,
+        goalsFor: 10,
+        goalsAgainst: 80,
+        goalDiff: -70,
+        points: 8,
+        rank: 3,
+      },
+    ]
+
+    const rivalVsWeak: Match = {
+      matchID: 9201,
+      matchDateTime: '2026-05-01T15:30:00',
+      matchDateTimeUTC: '2026-05-01T13:30:00Z',
+      leagueName: 'Test',
+      leagueSeason: 2025,
+      leagueShortcut: 't',
+      lastUpdateDateTime: '2026-05-01T17:00:00',
+      matchIsFinished: false,
+      matchResults: [],
+      group: { groupName: '31. Spieltag', groupOrderID: 31, groupID: 31 },
+      team1: RIVAL,
+      team2: WEAK,
+    }
+
+    const worst = simulateExtremeFinishForTest(
+      standings,
+      [rivalVsWeak],
+      FOCUS.teamId,
+      'worst',
+    )
+    expect(worst.rank).toBe(2)
+
+    // Alte ±1-Heuristik: Rival 1:0 → punktgleich, Focus behält bessere TD
+    const drafts = standings.map((r) => ({
+      teamId: r.teamId,
+      teamName: r.teamName,
+      shortName: r.shortName,
+      teamIconUrl: '',
+      played: r.played,
+      won: r.won,
+      draw: r.draw,
+      lost: r.lost,
+      goalsFor: r.goalsFor,
+      goalsAgainst: r.goalsAgainst,
+      goalDiff: r.goalDiff,
+      points: r.points,
+    }))
+    const map = new Map(drafts.map((d) => [d.teamId, { ...d }]))
+    applyScore(map, RIVAL.teamId, WEAK.teamId, 1, 0)
+    const table = rankStandings([...map.values()], {
+      matchScores: [
+        {
+          matchId: 9201,
+          homeId: RIVAL.teamId,
+          awayId: WEAK.teamId,
+          homeGoals: 1,
+          awayGoals: 0,
+        },
+      ],
+    })
+    const oldRank = table.find((t) => t.teamId === FOCUS.teamId)!.rank
+    expect(oldRank).toBe(1)
+    expect(worst.rank).toBeGreaterThan(oldRank)
   })
 })

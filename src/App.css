@@ -194,6 +194,18 @@
   color: var(--muted);
 }
 
+.range-guarantee {
+  margin: 0 0 0.55rem;
+  font-size: 0.86rem;
+  line-height: 1.4;
+  color: var(--text);
+}
+
+.range-guarantee-meta {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
 .range-btn.tone-best.is-open,
 .range-btn.tone-best:hover:not(:disabled):not(.is-static) {
   background: color-mix(in srgb, var(--accent) 12%, transparent);
@@ -1196,6 +1208,33 @@ button.linkish.explain-inline {
 .banner.error {
   border-color: var(--danger);
   color: #ffb4ab;
+}
+
+.banner-error-body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.45rem;
+}
+
+.banner-error-body p {
+  margin: 0;
+}
+
+.banner-error-hint {
+  font-size: 0.85rem;
+  opacity: 0.85;
+}
+
+.banner.empty-season {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.55rem;
+}
+
+.banner.empty-season p {
+  margin: 0;
 }
 
 .layout {

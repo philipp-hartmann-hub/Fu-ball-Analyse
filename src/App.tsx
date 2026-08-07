@@ -16,12 +16,11 @@ import {
 } from './lib/live'
 import { getLeague, type LeagueId } from './leagues'
 import { useLeagueData } from './hooks/useLeagueData'
+import { useMatchdayOutlooks } from './hooks/useMatchdayOutlooks'
 import { useSeasonForecast } from './hooks/useSeasonForecast'
 import {
-  computeNextMatchdayOutlook,
   computePositionRanges,
   computeSeasonOutlook,
-  computeTargetMatchdayOutlook,
   enumerateMatchdayOutcomes,
   canEnumerateExact,
   scenariosFromConditions,
@@ -30,6 +29,7 @@ import {
 import { deriveThresholdLines } from './lib/thresholds'
 import { computeScheduleHardness } from './lib/schedule'
 import { hasEnoughData, NOT_ENOUGH_DATA_LABEL } from './lib/reliability'
+import { matchesDataVersion } from './lib/matchSignature'
 import {
   encodeShareState,
   loadShareStateFromSearch,
@@ -99,6 +99,7 @@ export default function App() {
     error,
     updatedAt,
     refreshing,
+    fromCache,
     reload,
     liveMatches,
     pollMs,
@@ -167,27 +168,32 @@ export default function App() {
     [liveScenarios, scenarios],
   )
 
+  const matchesVersion = useMemo(() => matchesDataVersion(matches), [matches])
+
   const baseStandings = useMemo(
     () =>
       buildStandings(matches, {
         maxMatchday: cutoff,
         scenarios: liveScenarios,
       }),
-    [matches, cutoff, liveScenarios],
+    // matchesVersion statt matches-Referenz: Poll ohne Inhaltsänderung triggert nicht neu
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- matches via matchesVersion
+    [matchesVersion, cutoff, liveScenarios],
   )
   const openMatches = useMemo(() => {
     const open = remainingMatches(matches, cutoff)
     if (!includeLiveInTable || liveMatchIds.size === 0) return open
-    // Live-Stände sind schon in der Tabelle → nicht nochmal als Restprogramm zählen
     return open.filter((m) => !liveMatchIds.has(m.matchID))
-  }, [matches, cutoff, includeLiveInTable, liveMatchIds])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [matchesVersion, cutoff, includeLiveInTable, liveMatchIds])
   const playedScores = useMemo(
     () =>
       resolveMatchScores(matches, {
         maxMatchday: cutoff,
         scenarios: liveScenarios,
       }),
-    [matches, cutoff, liveScenarios],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [matchesVersion, cutoff, liveScenarios],
   )
   const projectedStandings = useMemo(
     () =>
@@ -195,7 +201,8 @@ export default function App() {
         maxMatchday: cutoff,
         scenarios: tableScenarios,
       }),
-    [matches, cutoff, tableScenarios],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [matchesVersion, cutoff, tableScenarios],
   )
   const ranges = useMemo(
     () => computePositionRanges(baseStandings, openMatches, playedScores),
@@ -236,26 +243,6 @@ export default function App() {
     baseStandings.find((s) => s.teamId === selectedTeamId) ??
     null
 
-  const nextMatchdayOutlook = useMemo(() => {
-    if (selectedTeamId == null) return null
-    return computeNextMatchdayOutlook(
-      baseStandings,
-      openMatches,
-      selectedTeamId,
-      playedScores,
-    )
-  }, [baseStandings, openMatches, selectedTeamId, playedScores])
-
-  const seasonOutlook = useMemo(() => {
-    if (selectedTeamId == null) return null
-    return computeSeasonOutlook(
-      baseStandings,
-      openMatches,
-      selectedTeamId,
-      playedScores,
-    )
-  }, [baseStandings, openMatches, selectedTeamId, playedScores])
-
   const clampedMatchdayTarget = useMemo(() => {
     const n = Math.max(1, baseStandings.length)
     return Math.max(1, Math.min(n, matchdayTargetRank))
@@ -267,24 +254,29 @@ export default function App() {
     if (matchdayTargetRank > n) setMatchdayTargetRank(n)
   }, [baseStandings.length, matchdayTargetRank])
 
-  const matchdayTargetOutlook = useMemo(() => {
+  const {
+    outlook: nextMatchdayOutlook,
+    targetOutlook: matchdayTargetOutlook,
+    loading: matchdayOutlookLoading,
+  } = useMatchdayOutlooks({
+    enabled: selectedTeamId != null && baseStandings.length > 0,
+    baseStandings,
+    remaining: openMatches,
+    teamId: selectedTeamId,
+    priorScores: playedScores,
+    targetRank: clampedMatchdayTarget,
+    comparator: matchdayTargetComparator,
+  })
+
+  const seasonOutlook = useMemo(() => {
     if (selectedTeamId == null) return null
-    return computeTargetMatchdayOutlook(
+    return computeSeasonOutlook(
       baseStandings,
       openMatches,
       selectedTeamId,
-      clampedMatchdayTarget,
-      matchdayTargetComparator,
       playedScores,
     )
-  }, [
-    baseStandings,
-    openMatches,
-    selectedTeamId,
-    clampedMatchdayTarget,
-    matchdayTargetComparator,
-    playedScores,
-  ])
+  }, [baseStandings, openMatches, selectedTeamId, playedScores])
 
   const matchdayThresholds = useMemo(() => {
     if (!selectedTeam) return []
@@ -533,14 +525,39 @@ export default function App() {
 
       {error && (
         <div className="banner error" role="alert">
-          {error}
+          <div className="banner-error-body">
+            <p>
+              {fromCache || matches.length > 0
+                ? `Aktualisierung fehlgeschlagen: ${error}`
+                : error}
+            </p>
+            {(fromCache || matches.length > 0) && (
+              <p className="banner-error-hint">
+                Es werden zwischengespeicherte Daten angezeigt.
+              </p>
+            )}
+            <button type="button" className="ghost" onClick={() => void reload()}>
+              Erneut versuchen
+            </button>
+          </div>
         </div>
       )}
 
       {loading && matches.length === 0 && !error ? (
         <div className="banner">Lade Ligadaten…</div>
       ) : matches.length === 0 && !loading ? (
-        <div className="banner">Keine Spieldaten für diese Saison.</div>
+        <div className="banner empty-season">
+          <p>
+            {error
+              ? 'Keine Daten verfügbar.'
+              : 'Für diese Saison sind noch keine Spiele angesetzt — der Spielplan erscheint, sobald OpenLigaDB Einträge liefert.'}
+          </p>
+          {error && (
+            <button type="button" className="ghost" onClick={() => void reload()}>
+              Erneut versuchen
+            </button>
+          )}
+        </div>
       ) : (
         <main className="layout">
           <div className="main-col">
@@ -712,6 +729,7 @@ export default function App() {
                     : null
                 }
                 forecastLoading={forecastLoading}
+                matchdayOutlookLoading={matchdayOutlookLoading}
                 matchdayTargetRank={clampedMatchdayTarget}
                 matchdayTargetComparator={matchdayTargetComparator}
                 onMatchdayTargetRankChange={setMatchdayTargetRank}

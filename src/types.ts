@@ -38,6 +38,16 @@ export interface PositionRange {
 }
 
 /**
+ * Mathematisch garantierter Rangbereich (sound, nicht zwingend scharf).
+ * True Rank ∈ [hardBest, hardWorst]; oft weiter als Exact/Heuristik.
+ */
+export interface HardRange {
+  teamId: number
+  hardBest: number
+  hardWorst: number
+}
+
+/**
  * Zerlegung eines Best-/Schlechtfall- bzw. Zielplatz-Raums.
  * Klassifikation je Fremdspiel aus den gefilterten optimalen Masken (Menge S der Ausgänge):
  * - |S|==1 → required
@@ -155,6 +165,8 @@ export interface TargetOutlook {
 export interface NextMatchdayOutlook {
   matchday: number
   range: PositionRange
+  /** Äußere Garantie aus Punktemaxima (Zusatz in der Vereinsanalyse) */
+  hardRange: HardRange
   fixtureCount: number
   opponentName: string | null
   opponentIconUrl: string | null
@@ -164,9 +176,11 @@ export interface NextMatchdayOutlook {
   worstConditions: CaseConditions | null
 }
 
-/** Saison-Spanne (heuristisch) */
+/** Saison-Spanne (exakt im Limit, sonst Heuristik) */
 export interface SeasonOutlook {
   range: PositionRange
+  /** Äußere Garantie aus Punktemaxima (Zusatz in der Vereinsanalyse) */
+  hardRange: HardRange
   bestConditions: CaseConditions | null
   worstConditions: CaseConditions | null
 }
