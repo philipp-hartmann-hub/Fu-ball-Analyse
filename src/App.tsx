@@ -84,7 +84,7 @@ export default function App() {
   >('club')
   const [compareA, setCompareA] = useState<number | null>(null)
   const [compareB, setCompareB] = useState<number | null>(null)
-  const [includeLiveInTable, setIncludeLiveInTable] = useState(false)
+  const [includeLiveInTable, setIncludeLiveInTable] = useState(true)
 
   const openExplain = (topic: ExplainTopic) => setExplainTopic(topic)
   const autoCutoffKey = useRef<string | null>(null)
@@ -563,14 +563,23 @@ export default function App() {
               <ZoneLegend league={leagueId} />
               <div className="table-toolbar-controls">
                 {liveMatches.length > 0 && (
-                  <label className="hardness-toggle" title="Zwischenstände wie Szenarien in die Tabelle übernehmen">
+                  <label
+                    className="hardness-toggle"
+                    title="Zwischenstände laufender Spiele fließen in die Tabelle ein (noch nicht final)"
+                  >
                     <input
                       type="checkbox"
                       checked={includeLiveInTable}
                       onChange={(e) => setIncludeLiveInTable(e.target.checked)}
                     />
-                    Live-Stände einrechnen
+                    Live in Tabelle
                   </label>
+                )}
+                {liveMatches.length > 0 && includeLiveInTable && (
+                  <span className="live-table-hint" role="status">
+                    <span className="live-dot" aria-hidden />
+                    Tabelle mit Zwischenständen
+                  </span>
                 )}
                 <div className="table-view-toggle" role="tablist" aria-label="Tabellenansicht">
                   <button

@@ -73,6 +73,7 @@ function baseMatch(
     leagueSeason: 2025,
     leagueShortcut: 'mini',
     lastUpdateDateTime: '2025-08-01T17:00:00',
+    goals: [],
     ...partial,
   }
 }

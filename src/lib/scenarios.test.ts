@@ -229,6 +229,7 @@ describe('computeNextMatchdayOutlook', () => {
       lastUpdateDateTime: '2026-05-01T17:00:00',
       matchIsFinished: false,
       matchResults: [],
+      goals: [],
       group: {
         groupName: '32. Spieltag',
         groupOrderID: 32,
@@ -247,6 +248,7 @@ describe('computeNextMatchdayOutlook', () => {
       lastUpdateDateTime: '2026-05-01T17:00:00',
       matchIsFinished: false,
       matchResults: [],
+      goals: [],
       group: {
         groupName: '32. Spieltag',
         groupOrderID: 32,
@@ -626,6 +628,7 @@ describe('CaseConditions (nächster Spieltag)', () => {
               },
             ]
           : [],
+        goals: [],
       }
     }
 
@@ -757,6 +760,7 @@ describe('CaseConditions (nächster Spieltag)', () => {
               },
             ]
           : [],
+        goals: [],
       }
     }
 
@@ -919,6 +923,7 @@ describe('computeHardBounds / harte Spanne', () => {
       team2: away,
       matchIsFinished: false,
       matchResults: [],
+      goals: [],
     }
   }
 
@@ -1114,6 +1119,7 @@ describe('computeExactPositionRanges / Saisonende', () => {
       team2: away,
       matchIsFinished: false,
       matchResults: [],
+      goals: [],
     }
   }
 
@@ -1459,6 +1465,7 @@ describe('Möglich: Exact vs. harte Spanne', () => {
       team2: away,
       matchIsFinished: false,
       matchResults: [],
+      goals: [],
     }
   }
 
@@ -1825,6 +1832,7 @@ describe('simulateExtremeFinish Rivalen-TD', () => {
       lastUpdateDateTime: '2026-05-01T17:00:00',
       matchIsFinished: false,
       matchResults: [],
+      goals: [],
       group: { groupName: '31. Spieltag', groupOrderID: 31, groupID: 31 },
       team1: RIVAL,
       team2: WEAK,

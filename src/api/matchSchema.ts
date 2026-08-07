@@ -33,6 +33,26 @@ const matchResultSchema = z
   })
   .passthrough()
 
+/** Torschütze / Torereignis aus OpenLigaDB (`goals` am Match). */
+const matchGoalSchema = z
+  .object({
+    goalID: z.number().nullish().transform((v) => v ?? 0),
+    scoreTeam1: z.number().nullish(),
+    scoreTeam2: z.number().nullish(),
+    matchMinute: z.number().nullish(),
+    goalGetterID: z.number().nullish(),
+    goalGetterName: z
+      .string()
+      .nullish()
+      .transform((v) => v ?? ''),
+    scoringTeamId: z.number().nullish(),
+    isPenalty: z.boolean().nullish().transform((v) => v ?? false),
+    isOwnGoal: z.boolean().nullish().transform((v) => v ?? false),
+    isOvertime: z.boolean().nullish().transform((v) => v ?? false),
+    comment: z.string().nullish(),
+  })
+  .passthrough()
+
 export const matchSchema = z
   .object({
     matchID: z.number(),
@@ -46,6 +66,7 @@ export const matchSchema = z
     team2: teamInfoSchema,
     matchIsFinished: z.boolean(),
     matchResults: z.array(matchResultSchema).nullish().transform((v) => v ?? []),
+    goals: z.array(matchGoalSchema).nullish().transform((v) => v ?? []),
     lastUpdateDateTime: z.string().nullish().transform((v) => v ?? ''),
   })
   .passthrough()
@@ -55,6 +76,7 @@ export const matchesResponseSchema = z.array(matchSchema)
 export type TeamInfo = z.infer<typeof teamInfoSchema>
 export type MatchGroup = z.infer<typeof matchGroupSchema>
 export type MatchResult = z.infer<typeof matchResultSchema>
+export type MatchGoal = z.infer<typeof matchGoalSchema>
 export type Match = z.infer<typeof matchSchema>
 
 /** Lesbare Fehlermeldung inkl. Index/Feldpfad für UI / useLeagueData. */

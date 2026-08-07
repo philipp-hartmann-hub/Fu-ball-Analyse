@@ -6,8 +6,10 @@ import {
 } from './__fixtures__/miniLeague'
 import type { Match } from '../types'
 import {
+  halfTimeResult,
   isLiveMatch,
   listLiveMatches,
+  listMatchGoals,
   listMatchdayFixtures,
   liveMatchesToScenarios,
   liveScoreResult,
@@ -210,5 +212,82 @@ describe('liveMatchesToScenarios / mergeScenarios', () => {
     })
     expect(TEAM_ALPHA.teamId).toBe(1)
     expect(TEAM_GAMMA.teamId).toBe(3)
+  })
+})
+
+describe('listMatchGoals / halfTimeResult', () => {
+  it('sortiert Tore und erkennt Heim/Auswärts', () => {
+    const match: Match = {
+      ...MATCH_MD2_ALPHA_GAMMA,
+      matchIsFinished: true,
+      matchResults: [
+        {
+          resultID: 1,
+          resultName: 'Halbzeitergebnis',
+          pointsTeam1: 1,
+          pointsTeam2: 0,
+          resultOrderID: 1,
+          resultTypeID: 1,
+        },
+        {
+          resultID: 2,
+          resultName: 'Endergebnis',
+          pointsTeam1: 2,
+          pointsTeam2: 1,
+          resultOrderID: 2,
+          resultTypeID: 2,
+        },
+      ],
+      goals: [
+        {
+          goalID: 2,
+          scoreTeam1: 1,
+          scoreTeam2: 1,
+          matchMinute: 55,
+          goalGetterName: 'Away Scorer',
+          scoringTeamId: TEAM_GAMMA.teamId,
+          isPenalty: false,
+          isOwnGoal: false,
+          isOvertime: false,
+        },
+        {
+          goalID: 1,
+          scoreTeam1: 1,
+          scoreTeam2: 0,
+          matchMinute: 12,
+          goalGetterName: 'Home Scorer',
+          scoringTeamId: TEAM_ALPHA.teamId,
+          isPenalty: true,
+          isOwnGoal: false,
+          isOvertime: false,
+        },
+        {
+          goalID: 3,
+          scoreTeam1: 2,
+          scoreTeam2: 1,
+          matchMinute: 80,
+          goalGetterName: 'Home Two',
+          scoringTeamId: TEAM_ALPHA.teamId,
+          isPenalty: false,
+          isOwnGoal: false,
+          isOvertime: false,
+        },
+      ],
+    }
+
+    const ht = halfTimeResult(match)
+    expect(ht?.pointsTeam1).toBe(1)
+    expect(ht?.pointsTeam2).toBe(0)
+
+    const goals = listMatchGoals(match)
+    expect(goals.map((g) => g.name)).toEqual([
+      'Home Scorer',
+      'Away Scorer',
+      'Home Two',
+    ])
+    expect(goals[0].side).toBe('home')
+    expect(goals[0].isPenalty).toBe(true)
+    expect(goals[1].side).toBe('away')
+    expect(goals[0].scoreLabel).toBe('1:0')
   })
 })

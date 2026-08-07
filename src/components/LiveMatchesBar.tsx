@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Match } from '../types'
 import {
+  halfTimeResult,
+  listMatchGoals,
   listMatchdayFixtures,
   resolveResultsMatchday,
   scoreKey,
@@ -48,6 +50,7 @@ export function LiveMatchesBar({
   )
   const defaultDay = useMemo(() => resolveResultsMatchday(matches), [matches])
   const [selectedDay, setSelectedDay] = useState<number | null>(null)
+  const [expandedId, setExpandedId] = useState<number | null>(null)
 
   useEffect(() => {
     setSelectedDay((prev) => {
@@ -58,6 +61,11 @@ export function LiveMatchesBar({
   }, [allDays, defaultDay])
 
   const matchday = selectedDay ?? defaultDay
+
+  useEffect(() => {
+    setExpandedId(null)
+  }, [matchday])
+
   const fixtures = useMemo(
     () => (matchday != null ? listMatchdayFixtures(matches, matchday) : []),
     [matches, matchday],
@@ -151,6 +159,7 @@ export function LiveMatchesBar({
       {upcoming > 0 ? ` · ${upcoming} offen` : ''}
       {live > 0 ? ` · Update ${pollSec}s` : ''}
       {refreshing ? ' · …' : ''}
+      {' · Tippe auf ein Spiel für Torschützen'}
     </>
   )
 
@@ -207,6 +216,12 @@ export function LiveMatchesBar({
             row={row}
             flashed={flashIds.has(row.match.matchID)}
             showCrests={variant === 'panel'}
+            expanded={expandedId === row.match.matchID}
+            onToggle={() =>
+              setExpandedId((cur) =>
+                cur === row.match.matchID ? null : row.match.matchID,
+              )
+            }
           />
         ))}
       </ul>
@@ -274,10 +289,14 @@ function FixtureRow({
   row,
   flashed,
   showCrests,
+  expanded,
+  onToggle,
 }: {
   row: MatchdayFixtureView
   flashed: boolean
   showCrests: boolean
+  expanded: boolean
+  onToggle: () => void
 }) {
   const m = row.match
   const home = m.team1.shortName || m.team1.teamName
@@ -289,6 +308,11 @@ function FixtureRow({
         ? `${row.homeGoals}:${row.awayGoals}`
         : '–:–'
 
+  const goals = useMemo(() => listMatchGoals(m), [m])
+  const ht = useMemo(() => halfTimeResult(m), [m])
+  const canExpand = row.status !== 'upcoming'
+  const detailId = `match-detail-${m.matchID}`
+
   return (
     <li
       className={[
@@ -296,37 +320,103 @@ function FixtureRow({
         showCrests ? 'with-crests' : '',
         `status-${row.status}`,
         flashed ? 'score-flash' : '',
+        expanded ? 'is-expanded' : '',
+        canExpand ? 'is-expandable' : '',
       ]
         .filter(Boolean)
         .join(' ')}
     >
-      <span className="live-teams">
-        <span className="live-home">
-          {showCrests && <Crest url={m.team1.teamIconUrl} name={home} />}
-          {home}
+      <button
+        type="button"
+        className="live-item-main"
+        onClick={canExpand ? onToggle : undefined}
+        disabled={!canExpand}
+        aria-expanded={canExpand ? expanded : undefined}
+        aria-controls={canExpand ? detailId : undefined}
+      >
+        <span className="live-teams">
+          <span className="live-home">
+            {showCrests && <Crest url={m.team1.teamIconUrl} name={home} />}
+            {home}
+          </span>
+          <span
+            className={[
+              'live-score',
+              row.status === 'upcoming' || !row.hasScore ? 'pending' : '',
+            ]
+              .filter(Boolean)
+              .join(' ')}
+          >
+            {score}
+          </span>
+          <span className="live-away">
+            {away}
+            {showCrests && <Crest url={m.team2.teamIconUrl} name={away} />}
+          </span>
         </span>
-        <span
-          className={[
-            'live-score',
-            row.status === 'upcoming' || !row.hasScore ? 'pending' : '',
-          ]
-            .filter(Boolean)
-            .join(' ')}
-        >
-          {score}
+        <span className="live-result-name">
+          {row.status === 'upcoming' ? (
+            row.kickoffLabel
+          ) : row.status === 'live' ? (
+            <span className="live-running-badge">
+              <span className="live-dot" aria-hidden />
+              LIVE · Zwischenstand
+            </span>
+          ) : (
+            row.resultName || row.kickoffLabel
+          )}
         </span>
-        <span className="live-away">
-          {away}
-          {showCrests && <Crest url={m.team2.teamIconUrl} name={away} />}
-        </span>
-      </span>
-      <span className="live-result-name">
-        {row.status === 'upcoming'
-          ? row.kickoffLabel
-          : row.status === 'live'
-            ? 'LIVE'
-            : row.resultName || row.kickoffLabel}
-      </span>
+        {canExpand && (
+          <span className="live-expand-chevron" aria-hidden>
+            {expanded ? '▾' : '▸'}
+          </span>
+        )}
+      </button>
+
+      {canExpand && expanded && (
+        <div className="live-match-detail" id={detailId}>
+          {row.status === 'live' && (
+            <p className="live-interim-note" role="status">
+              Spiel läuft – Zwischenstand, noch nicht final. Tore aktualisieren sich
+              automatisch.
+            </p>
+          )}
+          {ht && (
+            <p className="live-ht">
+              Halbzeit {ht.pointsTeam1}:{ht.pointsTeam2}
+            </p>
+          )}
+          {goals.length > 0 ? (
+            <ul className="goal-list">
+              {goals.map((g) => (
+                <li
+                  key={g.key}
+                  className={`goal-row side-${g.side}`}
+                >
+                  <span className="goal-minute">
+                    {g.minute != null ? `${g.minute}'` : '–'}
+                    {g.isOvertime ? '+' : ''}
+                  </span>
+                  <span className="goal-body">
+                    <span className="goal-name">{g.name}</span>
+                    {g.isPenalty && <span className="goal-tag">Elfmeter</span>}
+                    {g.isOwnGoal && <span className="goal-tag">Eigentor</span>}
+                    {g.scoreLabel && (
+                      <span className="goal-score">{g.scoreLabel}</span>
+                    )}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="hint tight">
+              {row.status === 'live'
+                ? 'Noch keine Tore erfasst – aktualisiert sich live.'
+                : 'Keine Torschützen in den Daten.'}
+            </p>
+          )}
+        </div>
+      )}
     </li>
   )
 }

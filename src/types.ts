@@ -3,6 +3,7 @@ export type {
   TeamInfo,
   MatchGroup,
   MatchResult,
+  MatchGoal,
   Match,
 } from './api/matchSchema'
 
