@@ -93,6 +93,12 @@ export function SpanExplainBody() {
         aller Vereine die <strong>Prognose</strong> (Monte-Carlo) nutzen. Für die Saison
         gibt es bewusst <strong>keine</strong> Pathway- oder Wunschplatz-Bedingungen.
       </p>
+      <p>
+        Zusätzlich in der Vereinsanalyse: die{' '}
+        <strong>mathematisch mögliche Spanne</strong> aus Punktemaxima (äußere Garantie).
+        Der echte Endrang liegt immer darin; Exact/Heuristik darunter können enger sein.
+        Die Tabellen-Spalte „Möglich“ bleibt Exact bzw. Heuristik.
+      </p>
       <h3>Unterschied zur Prognose</h3>
       <p>
         Die Prognose würfelt viele zufällige Verläufe (Poisson). Die Spanne zeigt nur, was{' '}

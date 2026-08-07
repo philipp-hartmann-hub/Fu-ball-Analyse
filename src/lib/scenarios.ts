@@ -1,5 +1,6 @@
 import type {
   CaseConditions,
+  HardRange,
   Match,
   MatchOutcome,
   NextMatchdayOutlook,
@@ -885,17 +886,102 @@ function relevantMatchesForTeam(
   return matchesTouchingTeams(remaining, new Set(comp))
 }
 
+/**
+ * Harte Spanne für ein Team — mathematisch garantierter Rangbereich.
+ *
+ * SOUND: der wahre Endrang liegt immer in [hardBest, hardWorst].
+ * Nicht zwingend scharf (kann weiter sein als Exact/Heuristik).
+ * Gleichstände zählen bewusst NICHT als „certainly“ (Tiebreak könnte kippen).
+ */
+export function computeHardBounds(
+  baseStandings: StandingRow[],
+  remaining: Match[],
+  teamId: number,
+): HardRange | null {
+  const focus = baseStandings.find((s) => s.teamId === teamId)
+  if (!focus) return null
+
+  const games = countRemainingAppearances(remaining)
+  const ownRemaining = games.get(teamId) ?? 0
+  const focusMax = focus.points + 3 * ownRemaining
+  const focusCurrent = focus.points
+  const n = baseStandings.length
+
+  let certainlyAbove = 0
+  let certainlyBelow = 0
+  for (const team of baseStandings) {
+    if (team.teamId === teamId) continue
+    const teamRemaining = games.get(team.teamId) ?? 0
+    const maxPts = team.points + 3 * teamRemaining
+    if (team.points > focusMax) certainlyAbove += 1
+    if (maxPts < focusCurrent) certainlyBelow += 1
+  }
+
+  return {
+    teamId,
+    hardBest: 1 + certainlyAbove,
+    hardWorst: n - certainlyBelow,
+  }
+}
+
+/** Harte Spannen für die ganze Tabelle — max-Punkte einmal vorberechnen. */
+export function computeHardRanges(
+  baseStandings: StandingRow[],
+  remaining: Match[],
+): HardRange[] {
+  const games = countRemainingAppearances(remaining)
+  const maxPtsByTeam = new Map<number, number>()
+  for (const row of baseStandings) {
+    const g = games.get(row.teamId) ?? 0
+    maxPtsByTeam.set(row.teamId, row.points + 3 * g)
+  }
+  const n = baseStandings.length
+
+  return baseStandings.map((focus) => {
+    const focusMax = maxPtsByTeam.get(focus.teamId)!
+    const focusCurrent = focus.points
+    let certainlyAbove = 0
+    let certainlyBelow = 0
+    for (const team of baseStandings) {
+      if (team.teamId === focus.teamId) continue
+      if (team.points > focusMax) certainlyAbove += 1
+      if (maxPtsByTeam.get(team.teamId)! < focusCurrent) certainlyBelow += 1
+    }
+    return {
+      teamId: focus.teamId,
+      hardBest: 1 + certainlyAbove,
+      hardWorst: n - certainlyBelow,
+    }
+  })
+}
+
+function resolveHardRange(
+  baseStandings: StandingRow[],
+  remaining: Match[],
+  teamId: number,
+): HardRange | null {
+  const hard = computeHardBounds(baseStandings, remaining, teamId)
+  if (hard) return hard
+  const row = baseStandings.find((s) => s.teamId === teamId)
+  if (!row) return null
+  return { teamId, hardBest: row.rank, hardWorst: row.rank }
+}
+
 export function computeSeasonOutlook(
   baseStandings: StandingRow[],
   remaining: Match[],
   teamId: number,
   priorScores: MatchScore[] = [],
 ): SeasonOutlook | null {
+  const hardRange = resolveHardRange(baseStandings, remaining, teamId)
+  if (!hardRange) return null
+
   if (!remaining.length) {
     const row = baseStandings.find((s) => s.teamId === teamId)
     if (!row) return null
     return {
       range: { teamId, bestRank: row.rank, worstRank: row.rank },
+      hardRange,
       bestConditions: null,
       worstConditions: null,
     }
@@ -912,6 +998,7 @@ export function computeSeasonOutlook(
       if (!row) return null
       return {
         range: { teamId, bestRank: row.rank, worstRank: row.rank },
+        hardRange,
         bestConditions: null,
         worstConditions: null,
       }
@@ -933,6 +1020,7 @@ export function computeSeasonOutlook(
     // Saison: nur Spanne — keine Pathway-/Wunschplatz-Bedingungen
     return {
       range: { teamId, bestRank, worstRank },
+      hardRange,
       bestConditions: null,
       worstConditions: null,
     }
@@ -958,6 +1046,7 @@ export function computeSeasonOutlook(
       bestRank: Math.min(best.rank, worst.rank),
       worstRank: Math.max(best.rank, worst.rank),
     },
+    hardRange,
     bestConditions: null,
     worstConditions: null,
   }
@@ -1385,6 +1474,8 @@ export function computeNextMatchdayOutlook(
     : null
   const opponentIconUrl = opponent?.teamIconUrl ?? null
   const homeAway: 'H' | 'A' | null = own ? (isHome ? 'H' : 'A') : null
+  const hardRange = resolveHardRange(baseStandings, fixtures, teamId)
+  if (!hardRange) return null
 
   if (fixtures.length > 12) {
     const best = simulateExtremeFinish(
@@ -1413,6 +1504,7 @@ export function computeNextMatchdayOutlook(
         bestRank: Math.min(best.rank, worst.rank),
         worstRank: Math.max(best.rank, worst.rank),
       },
+      hardRange,
       bestConditions: null,
       worstConditions: null,
     }
@@ -1442,6 +1534,7 @@ export function computeNextMatchdayOutlook(
     opponentIconUrl,
     homeAway,
     range: { teamId, bestRank, worstRank },
+    hardRange,
     bestConditions: buildMatchdayCaseConditions(
       baseStandings,
       fixtures,

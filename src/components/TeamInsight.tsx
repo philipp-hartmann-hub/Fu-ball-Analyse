@@ -2,6 +2,7 @@ import { useMemo, useState, type ReactNode } from 'react'
 import type { LeagueZoneId } from '../lib/table'
 import type {
   CaseConditions,
+  HardRange,
   MatchOutcome,
   NextMatchdayOutlook,
   PositionRange,
@@ -705,6 +706,7 @@ function TargetWishBlock({
 function VariantPanel({
   heading,
   range,
+  hardRange,
   league,
   note,
   empty,
@@ -721,6 +723,8 @@ function VariantPanel({
 }: {
   heading: string
   range: PositionRange | null
+  /** Äußere mathematische Garantie (Punktemaxima) — Zusatz unter der Spanne */
+  hardRange?: HardRange | null
   league: LeagueZoneId
   note?: string
   empty?: string
@@ -802,6 +806,23 @@ function VariantPanel({
           {matchup && (
             <p className="range-intro">
               Mögliche Platzierung nach diesem Spieltag — tippe für Bedingungen.
+            </p>
+          )}
+          {hardRange && (
+            <p className="range-guarantee" role="status">
+              Mathematisch möglich:{' '}
+              <strong>
+                {hardRange.hardBest}.–{hardRange.hardWorst}.
+              </strong>
+              {(hardRange.hardBest !== range.bestRank ||
+                hardRange.hardWorst !== range.worstRank) && (
+                <>
+                  {' '}
+                  <span className="range-guarantee-meta">
+                    (äußere Garantie; Best-/Schlechtfall darunter kann enger sein)
+                  </span>
+                </>
+              )}
             </p>
           )}
           <div className="range-card" role="group" aria-label="Best- und Schlechtfall">
@@ -1049,6 +1070,7 @@ export function TeamInsight({
             : 'Nächster Spieltag'
         }
         range={nextMatchday?.range ?? null}
+        hardRange={nextMatchday?.hardRange ?? null}
         league={league}
         focusTeam={team}
         matchup={matchup}
@@ -1096,6 +1118,7 @@ export function TeamInsight({
       <VariantPanel
         heading="Gesamte Saison"
         range={seasonOutlook?.range ?? null}
+        hardRange={seasonOutlook?.hardRange ?? null}
         league={league}
         focusTeam={team}
         thresholds={seasonThresholds}

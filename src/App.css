@@ -194,6 +194,18 @@
   color: var(--muted);
 }
 
+.range-guarantee {
+  margin: 0 0 0.55rem;
+  font-size: 0.86rem;
+  line-height: 1.4;
+  color: var(--text);
+}
+
+.range-guarantee-meta {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
 .range-btn.tone-best.is-open,
 .range-btn.tone-best:hover:not(:disabled):not(.is-static) {
   background: color-mix(in srgb, var(--accent) 12%, transparent);

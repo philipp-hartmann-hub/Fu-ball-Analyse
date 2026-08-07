@@ -23,7 +23,7 @@ Echtzeit-Analyse für die **1., 2. und 3. Liga**: Tabelle, Restprogramm und mög
 - **Ergebnisse**: Spieltag wählbar (durchklicken); Wappen; Live-Updates; 2 Tage nach letztem Spiel → nächster Spieltag als Default
 - Spalte **Möglich**: Best-/Schlechtfall bis Saisonende (**Spanne**; ≤12 *relevante* Restspiele exakt nach Punkte-Pruning, sonst innere Näherung „mindestens“) oder Monte-Carlo-**Prognose** (umschaltbar; unter `MIN_GAMES` Spielen ohne Prozentanzeige)
 - Optionale Spalte **Restprog.**: Einschätzung sehr leicht → sehr schwer (Toggle „Restprogramm“; auf Mobile ausgeblendet)
-- Seitenleiste: **Verein** (Überblick + Spieltag mit Wunschplatz/Bedingungen + Saison-Spanne) · **Ergebnisse** · **Szenario** · **Vergleich**
+- Seitenleiste: **Verein** (Überblick + Spieltag mit Wunschplatz/Bedingungen + Saison-Spanne inkl. mathematischer Zusatzspanne) · **Ergebnisse** · **Szenario** · **Vergleich**
 - **Szenario-Simulator**: Partien mit Wappen; Grob (Sieg/Unentschieden) oder Fein-Tore; teilbar via `?s=`
 - **Stand nach Spieltag**: Auswahl (Dropdown) für historischen Stand
 - Toolbar: **Link teilen** (Zwischenablage) und **Zurücksetzen** (Szenarien + `?s=`)
@@ -56,6 +56,18 @@ src/
 ---
 
 ## Änderungsprotokoll
+
+### 2026-08-07 — Prompt 78
+
+**User:** Mathematisch mögliche Spanne wieder in die Vereinsanalyse als Zusatzangabe.
+
+**Aktion:**
+- `computeHardBounds` / `computeHardRanges` wiederhergestellt (Punktemaxima, sound)
+- `hardRange` an `SeasonOutlook` und `NextMatchdayOutlook` — nur Vereinsanalyse
+- UI: Zeile „Mathematisch möglich: X.–Y.“ über Best-/Schlechtfall; Tabellen-Spalte „Möglich“ unverändert (Exact/Heuristik)
+- Tests + Erklärtext
+
+**Status:** erledigt
 
 ### 2026-08-06 — Prompt 77
 
