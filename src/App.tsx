@@ -22,7 +22,6 @@ import {
   computePositionRanges,
   computeSeasonOutlook,
   enumerateMatchdayOutcomes,
-  canEnumerateExact,
   scenariosFromConditions,
   seasonExtremeOutcomes,
 } from './lib/scenarios'
@@ -627,9 +626,9 @@ export default function App() {
               </p>
             ) : (
               <p className="forecast-disclaimer">
-                {canEnumerateExact(baseStandings, openMatches)
-                  ? 'Exakte Best-/Schlechtfall-Spanne über relevante Restspiele – keine Wahrscheinlichkeiten. '
-                  : 'Innere Näherung der Spanne („mindestens“) – real ggf. breiter; keine Wahrscheinlichkeiten. '}
+                Möglich = welche Plätze sind noch drin (bester bis schlechtester)? Exakt, wenn
+                für den Verein nur noch wenige entscheidende Spiele offen sind – sonst eine
+                sichere Obergrenze. Nicht ab einem festen Spieltag.{' '}
                 <ExplainLink topic="span" onExplain={openExplain} />
               </p>
             )}
@@ -653,11 +652,6 @@ export default function App() {
               league={leagueId}
               hardnessByTeam={hardnessByTeam}
               showHardness={showHardness}
-              rangesApproximate={
-                tableView === 'range' &&
-                openMatches.length > 0 &&
-                !canEnumerateExact(baseStandings, openMatches)
-              }
               onExplain={openExplain}
             />
           </div>

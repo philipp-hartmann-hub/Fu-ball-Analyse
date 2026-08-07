@@ -32,8 +32,6 @@ interface Props {
   /** Restprogramm-Härte je Verein; Spalte nur wenn showHardness */
   hardnessByTeam?: Map<number, ScheduleHardness> | null
   showHardness?: boolean
-  /** Heuristik-Spanne: UI als innere Näherung („mindestens“) kennzeichnen */
-  rangesApproximate?: boolean
   onExplain?: (topic: ExplainTopic) => void
 }
 
@@ -51,7 +49,6 @@ export function StandingsTable({
   league,
   hardnessByTeam,
   showHardness = false,
-  rangesApproximate = false,
   onExplain,
 }: Props) {
   const rangeMap = new Map(ranges.map((r) => [r.teamId, r]))
@@ -192,31 +189,21 @@ export function StandingsTable({
                       '–'
                     )
                   ) : range ? (
-                    range.bestRank === range.worstRank ? (
-                      <span
-                        className="pill locked"
-                        title={
-                          rangesApproximate
-                            ? 'Innere Näherung – real ggf. breiter'
-                            : undefined
-                        }
-                      >
-                        {rangesApproximate ? 'mind. ' : ''}
-                        {range.bestRank}.
+                    <span
+                      className={`pill${range.bestRank === range.worstRank ? ' locked' : ''}`}
+                      title={
+                        range.mode === 'exact'
+                          ? 'Genau berechnet – für diesen Verein sind nur noch wenige entscheidende Spiele offen.'
+                          : 'Noch mögliche Plätze (sichere Obergrenze). Mit weiteren Ergebnissen kann der Bereich nur enger werden.'
+                      }
+                    >
+                      {range.bestRank === range.worstRank
+                        ? `${range.bestRank}.`
+                        : `${range.bestRank}.–${range.worstRank}.`}
+                      <span className={`range-mode mode-${range.mode}`}>
+                        {range.mode === 'exact' ? 'exakt' : 'rechnerisch'}
                       </span>
-                    ) : (
-                      <span
-                        className="pill"
-                        title={
-                          rangesApproximate
-                            ? 'Innere Näherung – real ggf. breiter'
-                            : undefined
-                        }
-                      >
-                        {rangesApproximate ? 'mind. ' : ''}
-                        {range.bestRank}.–{range.worstRank}.
-                      </span>
-                    )
+                    </span>
                   ) : (
                     '–'
                   )}

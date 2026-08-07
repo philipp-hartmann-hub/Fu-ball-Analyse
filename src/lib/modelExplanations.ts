@@ -8,8 +8,8 @@ export type ExplainTopic =
 
 export const EXPLAIN_TITLES: Record<ExplainTopic, string> = {
   forecast: 'So funktioniert die Prognose',
-  span: 'So funktioniert die Platz-Spanne',
+  span: 'So funktioniert „Möglich“',
   thresholds: 'So entstehen Punktschwellen',
   hardness: 'So entsteht die Restprogramm-Härte',
-  conditions: 'So entsteht die Bedingungs-Analyse',
+  conditions: 'Was muss passieren?',
 }

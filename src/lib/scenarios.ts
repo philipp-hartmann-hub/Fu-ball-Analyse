@@ -737,7 +737,17 @@ function fixedPositionRanges(standings: StandingRow[]): PositionRange[] {
     teamId: row.teamId,
     bestRank: row.rank,
     worstRank: row.rank,
+    mode: 'exact' as const,
   }))
+}
+
+function hardAsPositionRange(hard: HardRange): PositionRange {
+  return {
+    teamId: hard.teamId,
+    bestRank: hard.hardBest,
+    worstRank: hard.hardWorst,
+    mode: 'hard',
+  }
 }
 
 /** Enumeriert eine Match-Liste; aktualisiert best/worst nur für `updateTeamIds`. */
@@ -832,6 +842,7 @@ export function computeExactPositionRanges(
     teamId: row.teamId,
     bestRank: bestByTeam.get(row.teamId)!,
     worstRank: worstByTeam.get(row.teamId)!,
+    mode: 'exact' as const,
   }))
 }
 
@@ -874,7 +885,12 @@ function enumerateSeasonRanksByMaskForTeam(
   return { ranksByMask, pointsByMask }
 }
 
-function relevantMatchesForTeam(
+/**
+ * Restspiele der Punkte-Komponente eines Teams (relevante Spiele nach Pruning).
+ * Die Exact-Grenze (EXACT_LIMIT) gilt pro Verein über diese Liste — nicht global
+ * über alle Ligarestspiele oder einen festen Spieltag.
+ */
+export function relevantMatchesForTeam(
   baseStandings: StandingRow[],
   remaining: Match[],
   teamId: number,
@@ -980,7 +996,12 @@ export function computeSeasonOutlook(
     const row = baseStandings.find((s) => s.teamId === teamId)
     if (!row) return null
     return {
-      range: { teamId, bestRank: row.rank, worstRank: row.rank },
+      range: {
+        teamId,
+        bestRank: row.rank,
+        worstRank: row.rank,
+        mode: 'exact',
+      },
       hardRange,
       bestConditions: null,
       worstConditions: null,
@@ -997,7 +1018,12 @@ export function computeSeasonOutlook(
       const row = baseStandings.find((s) => s.teamId === teamId)
       if (!row) return null
       return {
-        range: { teamId, bestRank: row.rank, worstRank: row.rank },
+        range: {
+          teamId,
+          bestRank: row.rank,
+          worstRank: row.rank,
+          mode: 'exact',
+        },
         hardRange,
         bestConditions: null,
         worstConditions: null,
@@ -1019,40 +1045,26 @@ export function computeSeasonOutlook(
     }
     // Saison: nur Spanne — keine Pathway-/Wunschplatz-Bedingungen
     return {
-      range: { teamId, bestRank, worstRank },
+      range: { teamId, bestRank, worstRank, mode: 'exact' },
       hardRange,
       bestConditions: null,
       worstConditions: null,
     }
   }
 
-  const best = simulateExtremeFinish(
-    baseStandings,
-    remaining,
-    teamId,
-    'best',
-    priorScores,
-  )
-  const worst = simulateExtremeFinish(
-    baseStandings,
-    remaining,
-    teamId,
-    'worst',
-    priorScores,
-  )
+  // Außerhalb Exact-Limit: harte Außengrenze (kein innere-Näherungs-Heuristik)
   return {
-    range: {
-      teamId,
-      bestRank: Math.min(best.rank, worst.rank),
-      worstRank: Math.max(best.rank, worst.rank),
-    },
+    range: hardAsPositionRange(hardRange),
     hardRange,
     bestConditions: null,
     worstConditions: null,
   }
 }
 
-/** Spannen für alle Teams (Tabellenspalte „Möglich“). */
+/**
+ * Spannen für alle Teams (Tabellenspalte „Möglich“).
+ * Pro Punkte-Komponente: Exact wenn ≤ EXACT_LIMIT relevante Spiele, sonst hart.
+ */
 export function computePositionRanges(
   baseStandings: StandingRow[],
   remaining: Match[],
@@ -1061,29 +1073,38 @@ export function computePositionRanges(
   if (!remaining.length) return fixedPositionRanges(baseStandings)
 
   const nTeams = baseStandings.length
+  const hardByTeam = new Map(
+    computeHardRanges(baseStandings, remaining).map((h) => [h.teamId, h]),
+  )
   const bestByTeam = new Map<number, number>()
   const worstByTeam = new Map<number, number>()
+  const modeByTeam = new Map<number, 'exact' | 'hard'>()
+
   for (const row of baseStandings) {
-    bestByTeam.set(row.teamId, nTeams)
-    worstByTeam.set(row.teamId, 1)
+    const hard = hardByTeam.get(row.teamId)!
+    bestByTeam.set(row.teamId, hard.hardBest)
+    worstByTeam.set(row.teamId, hard.hardWorst)
+    modeByTeam.set(row.teamId, 'hard')
   }
 
   const components = relevantPointComponents(baseStandings, remaining)
-  const covered = new Set<number>()
 
   for (const comp of components) {
-    for (const id of comp) covered.add(id)
     const matches = matchesTouchingTeams(remaining, new Set(comp))
     if (matches.length === 0) {
       for (const id of comp) {
         const row = baseStandings.find((s) => s.teamId === id)!
         bestByTeam.set(id, row.rank)
         worstByTeam.set(id, row.rank)
+        modeByTeam.set(id, 'exact')
       }
       continue
     }
     if (matches.length <= EXACT_LIMIT) {
-      // Ein gemeinsamer Exact-Durchlauf für alle Teams der Komponente
+      for (const id of comp) {
+        bestByTeam.set(id, nTeams)
+        worstByTeam.set(id, 1)
+      }
       accumulateRangesFromMasks(
         baseStandings,
         matches,
@@ -1092,53 +1113,16 @@ export function computePositionRanges(
         worstByTeam,
         new Set(comp),
       )
-    } else {
-      // Heuristik nur für Teams dieser (zu großen) Komponente
-      for (const id of comp) {
-        const best = simulateExtremeFinish(
-          baseStandings,
-          remaining,
-          id,
-          'best',
-          priorScores,
-        )
-        const worst = simulateExtremeFinish(
-          baseStandings,
-          remaining,
-          id,
-          'worst',
-          priorScores,
-        )
-        bestByTeam.set(id, Math.min(best.rank, worst.rank))
-        worstByTeam.set(id, Math.max(best.rank, worst.rank))
-      }
+      for (const id of comp) modeByTeam.set(id, 'exact')
     }
-  }
-
-  for (const row of baseStandings) {
-    if (covered.has(row.teamId)) continue
-    const best = simulateExtremeFinish(
-      baseStandings,
-      remaining,
-      row.teamId,
-      'best',
-      priorScores,
-    )
-    const worst = simulateExtremeFinish(
-      baseStandings,
-      remaining,
-      row.teamId,
-      'worst',
-      priorScores,
-    )
-    bestByTeam.set(row.teamId, Math.min(best.rank, worst.rank))
-    worstByTeam.set(row.teamId, Math.max(best.rank, worst.rank))
+    // sonst: harte Defaults bleiben
   }
 
   return baseStandings.map((row) => ({
     teamId: row.teamId,
     bestRank: bestByTeam.get(row.teamId)!,
     worstRank: worstByTeam.get(row.teamId)!,
+    mode: modeByTeam.get(row.teamId)!,
   }))
 }
 
@@ -1478,20 +1462,6 @@ export function computeNextMatchdayOutlook(
   if (!hardRange) return null
 
   if (fixtures.length > 12) {
-    const best = simulateExtremeFinish(
-      baseStandings,
-      fixtures,
-      teamId,
-      'best',
-      priorScores,
-    )
-    const worst = simulateExtremeFinish(
-      baseStandings,
-      fixtures,
-      teamId,
-      'worst',
-      priorScores,
-    )
     return {
       matchday,
       fixtureCount: fixtures.length,
@@ -1499,11 +1469,7 @@ export function computeNextMatchdayOutlook(
       opponentName,
       opponentIconUrl,
       homeAway,
-      range: {
-        teamId,
-        bestRank: Math.min(best.rank, worst.rank),
-        worstRank: Math.max(best.rank, worst.rank),
-      },
+      range: hardAsPositionRange(hardRange),
       hardRange,
       bestConditions: null,
       worstConditions: null,
@@ -1533,7 +1499,7 @@ export function computeNextMatchdayOutlook(
     opponentName,
     opponentIconUrl,
     homeAway,
-    range: { teamId, bestRank, worstRank },
+    range: { teamId, bestRank, worstRank, mode: 'exact' },
     hardRange,
     bestConditions: buildMatchdayCaseConditions(
       baseStandings,
