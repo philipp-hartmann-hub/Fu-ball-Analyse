@@ -270,23 +270,13 @@
   background: color-mix(in srgb, #b07050 75%, var(--muted) 25%);
 }
 
-.match-prediction-score {
-  margin: 0.55rem 0 0.2rem;
-  font-size: 0.84rem;
-}
-
-.match-prediction-exp {
-  color: var(--muted);
-  font-size: 0.78rem;
-}
-
-.match-prediction-disclaimer,
 .match-prediction-locked {
   margin: 0.25rem 0 0;
+  font-size: 0.86rem;
 }
 
-.match-prediction-locked {
-  font-size: 0.86rem;
+.match-prediction-disclaimer {
+  margin: 0.45rem 0 0;
 }
 
 .compare-h2h {

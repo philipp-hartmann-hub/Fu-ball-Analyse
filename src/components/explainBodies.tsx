@@ -44,9 +44,10 @@ export function ForecastExplainBody() {
       <p>
         Unter <strong>Vereine</strong>: dieselbe Simulation, aber alle Zonen-Szenarien mit
         Wahrscheinlichkeit (sortiert, Nullen ausgeblendet) plus Median-Rang und erwartete Punkte.
-        Zusätzlich die <strong>Spielschätzung</strong> für das nächste eigene Spiel (1/X/2 in
-        geschlossener Form aus denselben λ-Werten) – klar als Modellschätzung gekennzeichnet.
-        Im <strong>Vergleich</strong> erscheinen Direkt-Duell und optional das nächste Spiel je
+        Zusätzlich die <strong>Spielschätzung</strong> für das nächste eigene Spiel (Anteile
+        Sieg/Unentschieden/Niederlage in geschlossener Form aus denselben λ-Werten) – klar als
+        Modellschätzung gekennzeichnet, ohne konkretes Torergebnis. Im{' '}
+        <strong>Vergleich</strong> erscheinen Direkt-Duell und optional das nächste Spiel je
         Verein.
       </p>
       <p>
