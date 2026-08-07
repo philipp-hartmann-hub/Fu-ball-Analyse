@@ -687,6 +687,9 @@ export default function App() {
                 refreshing={refreshing}
                 liveCount={liveMatches.length}
                 variant="panel"
+                standings={projectedStandings}
+                scenarios={scenarios}
+                onExplain={openExplain}
               />
             ) : sideTab === 'scenario' ? (
               <ScenarioPanel

@@ -20,7 +20,7 @@ Echtzeit-Analyse für die **1., 2. und 3. Liga**: Tabelle, Restprogramm und mög
 ### Features
 
 - Live-Tabelle mit Zonen (BL1: CL/EL/Abstieg · BL2/3. Liga: Aufstieg/Abstieg); **Cache**: zuletzt geladene Daten sofort aus localStorage, Refresh im Hintergrund
-- **Ergebnisse**: Spieltag wählbar; Wappen; Live-Updates (laufende Spiele hervorgehoben als Zwischenstand); Tippen zeigt Torschützen; Live-Zwischenstände standardmäßig in der Tabelle; 2 Tage nach letztem Spiel → nächster Spieltag als Default
+- **Ergebnisse**: Spieltag wählbar; Wappen; Live-Updates (laufende Spiele hervorgehoben als Zwischenstand); Tippen zeigt Torschützen und bei offenen/laufenden Spielen die Spielschätzung 1/X/2; Live-Zwischenstände standardmäßig in der Tabelle; 2 Tage nach letztem Spiel → nächster Spieltag als Default
 - Spalte **Möglich**: rechnerisch noch mögliche Plätze – **exakt** bei ≤12 relevanten Restspielen je Verein (nach Punkte-Pruning), sonst **harte Außengrenze** aus Punktemaxima (Badge pro Zeile); alternativ Monte-Carlo-**Prognose** (umschaltbar; unter `MIN_GAMES` Spielen ohne Prozentanzeige)
 - Spalte **Restprog.**: Einschätzung sehr leicht → sehr schwer (immer in der Tabelle; auf schmalen Breiten ausgeblendet)
 - Seitenleiste: **Verein** (Überblick + Spieltag mit Wunschplatz/Bedingungen + Saison-Spanne inkl. mathematischer Zusatzspanne + Spielschätzung 1/X/2) · **Ergebnisse** · **Szenario** · **Vergleich** (inkl. Duell-/Next-Spielschätzung)
@@ -56,6 +56,16 @@ src/
 ---
 
 ## Änderungsprotokoll
+
+### 2026-08-07 — Prompt 92
+
+**User:** Spielschätzung (wie in der Vereinsübersicht) auch in die Ergebnis-Übersicht.
+
+**Aktion:**
+- `LiveMatchesBar`: bei offenen und laufenden Spielen `MatchPredictionCard` (1/X/2) im aufgeklappten Detail; alle Partien tippbar
+- Gleiches Modell wie Verein (`predictFixture` + Erklärungslink `forecast`)
+
+**Status:** erledigt
 
 ### 2026-08-07 — Prompt 91
 
