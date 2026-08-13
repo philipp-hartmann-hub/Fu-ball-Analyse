@@ -23,7 +23,7 @@ Echtzeit-Analyse für die **1., 2. und 3. Liga**: Tabelle, Restprogramm und mög
 - **Ergebnisse**: Spieltag wählbar; Wappen; Live-Updates (laufende Spiele hervorgehoben als Zwischenstand); Tippen zeigt Torschützen und bei offenen/laufenden Spielen die Spielschätzung 1/X/2; Live-Zwischenstände standardmäßig in der Tabelle; 2 Tage nach letztem Spiel → nächster Spieltag als Default
 - Spalte **Möglich**: rechnerisch noch mögliche Plätze – **exakt** bei ≤12 relevanten Restspielen je Verein (nach Punkte-Pruning), sonst **harte Außengrenze** aus Punktemaxima (Badge pro Zeile); alternativ Monte-Carlo-**Prognose** (umschaltbar; unter `MIN_GAMES` Spielen ohne Prozentanzeige)
 - Spalte **Restprog.**: Einschätzung sehr leicht → sehr schwer (immer in der Tabelle; auf schmalen Breiten ausgeblendet)
-- Seitenleiste: **Verein** (Überblick + Spieltag mit Wunschplatz/Bedingungen + Saison-Spanne inkl. mathematischer Zusatzspanne + Spielschätzung 1/X/2) · **Ergebnisse** · **Szenario** · **Vergleich** (inkl. Duell-/Next-Spielschätzung)
+- Seitenleiste: **Verein** · **Ergebnisse** · **Entscheidungen** (Radar: feststehende Statusse + Live-Delta) · **Szenario** · **Vergleich**
 - **Szenario-Simulator**: Partien mit Wappen; Grob (Sieg/Unentschieden) oder Fein-Tore; teilbar via `?s=`
 - **Stand nach Spieltag**: Auswahl (Dropdown) für historischen Stand
 - Toolbar: **Link teilen** (Zwischenablage) und **Zurücksetzen** (Szenarien + `?s=`)
@@ -56,6 +56,37 @@ src/
 ---
 
 ## Änderungsprotokoll
+
+### 2026-08-13 — Prompt 95
+
+**User:** Entscheidungs-Radar: Saison-Status vs. Spieltags-Auslöser klar trennen und beschriften; Live-Delta als Saison-Folge formulieren.
+
+**Aktion:**
+- Status-Labels mit „(Saison steht fest)“; Live-Delta-Texte mit Zwischenstand als Auslöser / Saison als Konsequenz
+- Auslöser getrennt: `matchdayTriggers` (diesen Spieltag) vs. `seasonTriggers` (Saison/Näherung); Spieltags-UI nur bei Live oder anstehendem Spieltag
+
+**Status:** erledigt
+
+### 2026-08-13 — Prompt 94
+
+**User:** Entscheidungs-Radar umsetzen: Live bestätigter vs. Zwischenstand, Status aus harten Grenzen, Auslöser-Hinweise, Reiter ohne Push/Alerts.
+
+**Aktion:**
+- `src/lib/decisions.ts` + Tests: Status (Meister/gerettet/abgestiegen/CL|Aufstieg …), Live-Delta, Schwellen via `deriveThresholdLines`
+- Reiter **Entscheidungen** (`DecisionRadarPanel`), Erklärpopup `decisions`
+- Parallelstände: bestätigt (`scenarios: []`) vs. Live (`liveScenarios` / `openMatches`)
+
+**Status:** erledigt
+
+### 2026-08-13 — Prompt 93
+
+**User:** Codebase für Feature „Entscheidungs-Radar“ explorieren (Zonen, Hard-Bounds, Thresholds, Live-Pfad, Side-Tabs, CaseConditions, CSS).
+
+**Aktion:**
+- Recherche: `src/lib/table.ts` (`zoneForRank`, `LeagueZoneId`), `src/lib/thresholds.ts`, `src/lib/scenarios.ts` (Hard-/Position-Ranges, CaseConditions), `src/lib/live.ts` + `App.tsx` (Live→Szenarien), Side-Tabs, UI-Helfer in `TeamInsight.tsx`, Panel-CSS in `App.css`
+- Keine Feature-Implementierung in diesem Prompt
+
+**Status:** erledigt
 
 ### 2026-08-07 — Prompt 92
 

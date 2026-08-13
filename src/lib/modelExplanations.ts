@@ -5,6 +5,7 @@ export type ExplainTopic =
   | 'thresholds'
   | 'hardness'
   | 'conditions'
+  | 'decisions'
 
 export const EXPLAIN_TITLES: Record<ExplainTopic, string> = {
   forecast: 'So funktioniert die Prognose',
@@ -12,4 +13,5 @@ export const EXPLAIN_TITLES: Record<ExplainTopic, string> = {
   thresholds: 'So entstehen Punktschwellen',
   hardness: 'So entsteht die Restprogramm-Härte',
   conditions: 'Was muss passieren?',
+  decisions: 'So funktioniert das Entscheidungs-Radar',
 }

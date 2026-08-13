@@ -2765,6 +2765,220 @@ button.range-btn.is-static {
   margin-bottom: 0.35rem;
 }
 
+.decision-radar .decision-intro {
+  margin-top: 0.35rem;
+}
+
+.decision-live-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.55rem 0 0.75rem;
+  padding: 0.4rem 0.55rem;
+  border-radius: 0.45rem;
+  font-size: 0.8rem;
+  color: #fecaca;
+  background: rgba(248, 113, 113, 0.14);
+  border: 1px solid rgba(248, 113, 113, 0.28);
+}
+
+.decision-block {
+  margin-top: 0.85rem;
+}
+
+.decision-block-title {
+  margin: 0 0 0.4rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.decision-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.decision-row {
+  border-radius: 0.5rem;
+  background: rgba(15, 31, 23, 0.45);
+  border: 1px solid transparent;
+  overflow: hidden;
+}
+
+.decision-row.has-delta {
+  background: rgba(248, 113, 113, 0.1);
+  border-color: rgba(248, 113, 113, 0.4);
+  box-shadow: inset 3px 0 0 #f87171;
+}
+
+.decision-row-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.55rem;
+  width: 100%;
+  padding: 0.45rem 0.55rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.decision-row-main:hover {
+  background: rgba(196, 240, 97, 0.06);
+}
+
+.decision-rank {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--muted);
+  min-width: 1.6rem;
+}
+
+.decision-name {
+  font-weight: 600;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.decision-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  justify-content: flex-end;
+}
+
+.decision-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: 0.3rem;
+  font-size: 0.68rem;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.decision-pill-horizon {
+  font-size: 0.58rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+.decision-pill.tone-good {
+  color: var(--accent);
+  background: rgba(196, 240, 97, 0.16);
+}
+
+.decision-pill.tone-bad {
+  color: #fca5a5;
+  background: rgba(248, 113, 113, 0.18);
+}
+
+.decision-pill.tone-neutral {
+  color: var(--muted);
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+}
+
+.decision-range {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.decision-delta {
+  margin: 0;
+  padding: 0.3rem 0.55rem 0.45rem;
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+
+.decision-delta.tone-good {
+  color: var(--accent);
+}
+
+.decision-delta.tone-bad {
+  color: #fca5a5;
+}
+
+.decision-triggers {
+  list-style: none;
+  margin: 0;
+  padding: 0 0.55rem 0.45rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.decision-triggers li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.45rem;
+  align-items: baseline;
+  font-size: 0.72rem;
+}
+
+.decision-triggers .horizon-tag {
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 0.05rem 0.28rem;
+  border-radius: 0.2rem;
+}
+
+.decision-triggers.horizon-matchday .horizon-tag {
+  color: #fecaca;
+  background: rgba(248, 113, 113, 0.16);
+}
+
+.decision-triggers.horizon-season .horizon-tag {
+  color: var(--accent);
+  background: rgba(196, 240, 97, 0.14);
+}
+
+.decision-triggers .approx.exact {
+  color: var(--accent);
+}
+
+.decision-triggers .label {
+  color: var(--muted);
+}
+
+.decision-triggers .primary {
+  font-weight: 600;
+}
+
+.decision-triggers .secondary {
+  color: var(--muted);
+}
+
+.decision-triggers .approx {
+  font-size: 0.62rem;
+  color: var(--muted);
+  padding: 0.05rem 0.25rem;
+  border-radius: 0.2rem;
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+}
+
+.decision-triggers li.tone-good .primary {
+  color: var(--accent);
+}
+
+.decision-triggers li.tone-bad .primary {
+  color: #fca5a5;
+}
+
 .hint {
   margin: 0.5rem 0 0;
   color: var(--muted);

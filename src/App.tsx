@@ -8,12 +8,14 @@ import { StandingsTable, type TableViewMode } from './components/StandingsTable'
 import { TeamInsight } from './components/TeamInsight'
 import { TeamCompare } from './components/TeamCompare'
 import { LiveMatchesBar } from './components/LiveMatchesBar'
+import { DecisionRadarPanel } from './components/DecisionRadarPanel'
 import { ZoneLegend } from './components/ZoneLegend'
 import type { ExplainTopic } from './lib/modelExplanations'
 import {
   liveMatchesToScenarios,
   mergeScenarios,
 } from './lib/live'
+import { buildDecisionRadar } from './lib/decisions'
 import { getLeague, type LeagueId } from './leagues'
 import { useLeagueData } from './hooks/useLeagueData'
 import { useMatchdayOutlooks } from './hooks/useMatchdayOutlooks'
@@ -80,7 +82,7 @@ export default function App() {
   const [tableView, setTableView] = useState<TableViewMode>('range')
   const [explainTopic, setExplainTopic] = useState<ExplainTopic | null>(null)
   const [sideTab, setSideTab] = useState<
-    'club' | 'results' | 'scenario' | 'compare'
+    'club' | 'results' | 'scenario' | 'compare' | 'decisions'
   >('club')
   const [compareA, setCompareA] = useState<number | null>(null)
   const [compareB, setCompareB] = useState<number | null>(null)
@@ -193,6 +195,43 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [matchesVersion, cutoff, liveScenarios],
   )
+  const confirmedStandings = useMemo(
+    () =>
+      buildStandings(matches, {
+        maxMatchday: cutoff,
+        scenarios: [],
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- matches via matchesVersion
+    [matchesVersion, cutoff],
+  )
+  const remainingConfirmed = useMemo(
+    () => remainingMatches(matches, cutoff),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [matchesVersion, cutoff],
+  )
+
+  const decisionRadar = useMemo(
+    () =>
+      buildDecisionRadar({
+        league: leagueId,
+        confirmedStandings,
+        liveStandings: baseStandings,
+        remainingConfirmed,
+        remainingLive: openMatches,
+        hasLive: liveMatches.length > 0 && includeLiveInTable,
+        includeTriggers: true,
+      }),
+    [
+      leagueId,
+      confirmedStandings,
+      baseStandings,
+      remainingConfirmed,
+      openMatches,
+      liveMatches.length,
+      includeLiveInTable,
+    ],
+  )
+
   const projectedStandings = useMemo(
     () =>
       buildStandings(matches, {
@@ -658,6 +697,7 @@ export default function App() {
                 [
                   { id: 'club', label: 'Verein' },
                   { id: 'results', label: 'Ergebnisse' },
+                  { id: 'decisions', label: 'Entscheidungen' },
                   { id: 'scenario', label: 'Szenario' },
                   { id: 'compare', label: 'Vergleich' },
                 ] as const
@@ -689,6 +729,16 @@ export default function App() {
                 variant="panel"
                 standings={projectedStandings}
                 scenarios={scenarios}
+                onExplain={openExplain}
+              />
+            ) : sideTab === 'decisions' ? (
+              <DecisionRadarPanel
+                radar={decisionRadar}
+                liveCount={liveMatches.length}
+                onSelectTeam={(id) => {
+                  setSelectedTeamId(id)
+                  setSideTab('club')
+                }}
                 onExplain={openExplain}
               />
             ) : sideTab === 'scenario' ? (
