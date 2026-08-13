@@ -6,6 +6,7 @@ import {
 } from '../lib/modelExplanations'
 import {
   ConditionsExplainBody,
+  DecisionsExplainBody,
   ForecastExplainBody,
   HardnessExplainBody,
   SpanExplainBody,
@@ -29,6 +30,8 @@ function ExplainContent({ topic }: { topic: ExplainTopic }) {
       return <HardnessExplainBody />
     case 'conditions':
       return <ConditionsExplainBody />
+    case 'decisions':
+      return <DecisionsExplainBody />
   }
 }
 

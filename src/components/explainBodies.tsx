@@ -214,3 +214,34 @@ export function ConditionsExplainBody() {
     </>
   )
 }
+
+export function DecisionsExplainBody() {
+  return (
+    <>
+      <p className="modal-lead">
+        Das <strong>Entscheidungs-Radar</strong> trennt klar: was für die{' '}
+        <strong>Saison</strong> feststeht, und was sich an einem{' '}
+        <strong>Spieltag</strong> entscheiden kann. Passiv, ohne Alerts.
+      </p>
+      <h3>Saison-Status (garantiert)</h3>
+      <p>
+        Labels wie „Gerettet (Saison steht fest)“ kommen aus den harten Platzgrenzen
+        über <em>alle</em> Restspiele. Das ist keine Aussage nur für heute — der
+        Endplatz der Saison liegt immer in dieser Grenze.
+      </p>
+      <h3>Live → Saison-Folge</h3>
+      <p>
+        Läuft ein Spiel, ist der <strong>Zwischenstand der Auslöser</strong>, die
+        Konsequenz gilt für die <strong>restliche Saison</strong> (z. B. „für die
+        Saison jetzt gerettet“). Ohne laufende Spiele erscheint dieser Block nicht.
+      </p>
+      <h3>Auslöser: Spieltag vs. Saison</h3>
+      <p>
+        <strong>Diesen Spieltag</strong> (wenn Spiele laufen oder der Spieltag
+        ansteht): was sich heute entscheiden kann — aus der Spieltags-Rechnung,
+        möglichst exakt. <strong>Saison</strong>: Hinweise über mehrere Spieltage,
+        oft Näherung und so gekennzeichnet.
+      </p>
+    </>
+  )
+}
