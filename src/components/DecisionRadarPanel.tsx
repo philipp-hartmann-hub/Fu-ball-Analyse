@@ -1,4 +1,6 @@
+import { useEffect, useRef } from 'react'
 import type { DecisionRadar, DecisionTeamRow } from '../lib/decisions'
+import { triggersBeyondStatus } from '../lib/decisions'
 import type { ThresholdLine } from '../lib/thresholds'
 import type { ExplainTopic } from '../lib/modelExplanations'
 import { ExplainLink } from './ExplainLink'
@@ -6,6 +8,7 @@ import { ExplainLink } from './ExplainLink'
 interface Props {
   radar: DecisionRadar
   liveCount: number
+  selectedTeamId?: number | null
   onSelectTeam: (teamId: number) => void
   onExplain?: (topic: ExplainTopic) => void
 }
@@ -97,6 +100,7 @@ function TeamRow({
   highlightDelta,
   showMatchdayTriggers,
   showSeasonTriggers,
+  selected,
   onSelect,
 }: {
   row: DecisionTeamRow
@@ -104,16 +108,20 @@ function TeamRow({
   highlightDelta: boolean
   showMatchdayTriggers: boolean
   showSeasonTriggers: boolean
+  selected: boolean
   onSelect: () => void
 }) {
   const statuses = useLive ? row.liveStatuses : row.confirmedStatuses
-  const showTriggers = statuses.length === 0
+  const leftoverSeason = triggersBeyondStatus(statuses, row.seasonTriggers)
+  const leftoverMatchday = triggersBeyondStatus(statuses, row.matchdayTriggers)
 
   return (
     <li
+      data-decision-team={row.teamId}
       className={[
         'decision-row',
         highlightDelta && row.deltas.length > 0 ? 'has-delta' : '',
+        selected ? 'is-selected' : '',
       ]
         .filter(Boolean)
         .join(' ')}
@@ -134,16 +142,16 @@ function TeamRow({
             {d.message}
           </p>
         ))}
-      {showTriggers && showMatchdayTriggers && (
+      {(showMatchdayTriggers || selected) && leftoverMatchday.length > 0 && (
         <TriggerList
-          lines={row.matchdayTriggers}
+          lines={leftoverMatchday}
           horizon="matchday"
           approximate={!row.matchdayTriggersExact}
         />
       )}
-      {showTriggers && showSeasonTriggers && (
+      {showSeasonTriggers && leftoverSeason.length > 0 && (
         <TriggerList
-          lines={row.seasonTriggers}
+          lines={leftoverSeason}
           horizon="season"
           approximate
         />
@@ -155,11 +163,13 @@ function TeamRow({
 export function DecisionRadarPanel({
   radar,
   liveCount,
+  selectedTeamId = null,
   onSelectTeam,
   onExplain,
 }: Props) {
   const useLive = radar.hasLive
   const showMatchday = radar.showMatchdayHorizon
+  const rootRef = useRef<HTMLElement>(null)
   const deltaRows = showMatchday
     ? radar.all.filter((r) => r.deltas.length > 0)
     : []
@@ -179,13 +189,42 @@ export function DecisionRadarPanel({
             r.matchdayTriggers.length > 0,
         )
       : []
+  const visibleIds = new Set([
+    ...deltaRows.map((r) => r.teamId),
+    ...matchdayNear.map((r) => r.teamId),
+    ...decided.map((r) => r.teamId),
+    ...seasonNear.map((r) => r.teamId),
+  ])
+  const focusRow =
+    selectedTeamId != null && !visibleIds.has(selectedTeamId)
+      ? (radar.all.find((r) => r.teamId === selectedTeamId) ?? null)
+      : null
+
+  useEffect(() => {
+    if (selectedTeamId == null) return
+    const el = rootRef.current?.querySelector(
+      `[data-decision-team="${selectedTeamId}"]`,
+    )
+    if (el instanceof HTMLElement) {
+      el.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+    }
+  }, [selectedTeamId, radar])
 
   return (
-    <section className="panel decision-radar" aria-label="Entscheidungs-Radar">
+    <section
+      ref={rootRef}
+      className="panel decision-radar"
+      aria-label="Entscheidungs-Radar"
+    >
       <div className="panel-head">
         <h2>Entscheidungen</h2>
         {onExplain && (
-          <ExplainLink topic="decisions" onExplain={onExplain} />
+          <span className="panel-head-links">
+            <ExplainLink topic="decisions" onExplain={onExplain} />
+            <ExplainLink topic="thresholds" onExplain={onExplain}>
+              Punktschwellen
+            </ExplainLink>
+          </span>
         )}
       </div>
 
@@ -228,8 +267,9 @@ export function DecisionRadarPanel({
                 row={row}
                 useLive={useLive}
                 highlightDelta
-                showMatchdayTriggers={false}
-                showSeasonTriggers={false}
+                showMatchdayTriggers
+                showSeasonTriggers
+                selected={selectedTeamId === row.teamId}
                 onSelect={() => onSelectTeam(row.teamId)}
               />
             ))}
@@ -259,6 +299,7 @@ export function DecisionRadarPanel({
                 highlightDelta={false}
                 showMatchdayTriggers
                 showSeasonTriggers={false}
+                selected={selectedTeamId === row.teamId}
                 onSelect={() => onSelectTeam(row.teamId)}
               />
             ))}
@@ -282,8 +323,9 @@ export function DecisionRadarPanel({
                 row={row}
                 useLive={useLive}
                 highlightDelta={false}
-                showMatchdayTriggers={false}
-                showSeasonTriggers={false}
+                showMatchdayTriggers={showMatchday}
+                showSeasonTriggers
+                selected={selectedTeamId === row.teamId}
                 onSelect={() => onSelectTeam(row.teamId)}
               />
             ))}
@@ -291,7 +333,7 @@ export function DecisionRadarPanel({
         )}
       </div>
 
-      {seasonNear.length > 0 && (
+      {(seasonNear.length > 0 || focusRow) && (
         <div className="decision-block">
           <h3 className="decision-block-title">Saison noch offen</h3>
           <p className="hint tight">
@@ -306,9 +348,22 @@ export function DecisionRadarPanel({
                 highlightDelta={false}
                 showMatchdayTriggers={false}
                 showSeasonTriggers
+                selected={selectedTeamId === row.teamId}
                 onSelect={() => onSelectTeam(row.teamId)}
               />
             ))}
+            {focusRow && (
+              <TeamRow
+                key={`focus-${focusRow.teamId}`}
+                row={focusRow}
+                useLive={useLive}
+                highlightDelta={false}
+                showMatchdayTriggers
+                showSeasonTriggers
+                selected
+                onSelect={() => onSelectTeam(focusRow.teamId)}
+              />
+            )}
           </ul>
         </div>
       )}

@@ -19,7 +19,6 @@ import {
   relegationCutoffRank,
   zoneLabelFor,
 } from '../lib/table'
-import type { ThresholdLine } from '../lib/thresholds'
 import {
   hardnessGrade,
   hardnessGradeLabel,
@@ -55,8 +54,6 @@ interface Props {
   pointsAboveRelegation?: number | null
   onEnableMatchdayCutoff?: (matchday: number) => void
   suggestedCutoff?: number | null
-  matchdayThresholds?: ThresholdLine[]
-  seasonThresholds?: ThresholdLine[]
   scheduleHardness?: ScheduleHardness | null
   leagueTeamCount?: number
   /** Aktuelle Tabelle für Poisson-Spielschätzung */
@@ -67,44 +64,44 @@ interface Props {
   scenarios?: ScenarioResult[]
   onExplain?: (topic: ExplainTopic) => void
   onApplyConditions?: (conditions: CaseConditions) => void
+  /** Wechselt zum Reiter Entscheidungen (Radar) */
+  onOpenDecisions?: () => void
 }
 
-function ThresholdList({
-  lines,
-  emptyHint,
-  summary = 'Punktschwellen',
-  onExplain,
-}: {
-  lines: ThresholdLine[]
-  emptyHint?: string
-  summary?: string
-  onExplain?: (topic: ExplainTopic) => void
-}) {
-  if (!lines.length) {
-    return emptyHint ? <p className="hint tight">{emptyHint}</p> : null
-  }
+function DecisionsHint({ onOpen }: { onOpen?: () => void }) {
+  if (!onOpen) return null
   return (
-    <details className="threshold-details">
-      <summary className="threshold-summary">
-        {summary}
-        <span className="threshold-count">{lines.length}</span>
+    <p className="hint tight decisions-hint">
+      Wann ist der Verein rechnerisch durch?{' '}
+      <button type="button" className="linkish" onClick={onOpen}>
+        → Entscheidungen
+      </button>
+    </p>
+  )
+}
+
+/** Native Klappe: zu als Default, Tastatur über summary, aria-expanded am Umschalter. */
+function Disclosure({
+  closedLabel,
+  openLabel,
+  children,
+}: {
+  closedLabel: string
+  openLabel: string
+  children: ReactNode
+}) {
+  const [open, setOpen] = useState(false)
+  return (
+    <details
+      className="insight-disclosure"
+      onToggle={(e) => {
+        setOpen((e.currentTarget as HTMLDetailsElement).open)
+      }}
+    >
+      <summary aria-expanded={open}>
+        {open ? openLabel : closedLabel}
       </summary>
-      <ul className="threshold-list">
-        {lines.map((line) => (
-          <li key={line.key} className={`threshold-item tone-${line.tone}`}>
-            <span className="threshold-label">{line.label}</span>
-            <span className="threshold-primary">{line.primary}</span>
-            {line.secondary && (
-              <span className="threshold-secondary">{line.secondary}</span>
-            )}
-          </li>
-        ))}
-      </ul>
-      {onExplain && (
-        <p className="hint tight threshold-explain">
-          <ExplainLink topic="thresholds" onExplain={onExplain} />
-        </p>
-      )}
+      <div className="insight-disclosure-body">{children}</div>
     </details>
   )
 }
@@ -721,8 +718,6 @@ function VariantPanel({
   note,
   empty,
   emptyAction,
-  thresholds,
-  thresholdSummary,
   onExplain,
   bestConditions,
   worstConditions,
@@ -731,6 +726,7 @@ function VariantPanel({
   matchup,
   matchPredictionSlot,
   targetSlot,
+  onOpenDecisions,
 }: {
   heading: string
   range: PositionRange | null
@@ -740,8 +736,6 @@ function VariantPanel({
   note?: string
   empty?: string
   emptyAction?: ReactNode
-  thresholds?: ThresholdLine[]
-  thresholdSummary?: string
   onExplain?: (topic: ExplainTopic) => void
   bestConditions?: CaseConditions | null
   worstConditions?: CaseConditions | null
@@ -755,6 +749,7 @@ function VariantPanel({
   } | null
   matchPredictionSlot?: ReactNode
   targetSlot?: ReactNode
+  onOpenDecisions?: () => void
 }) {
   const [openCase, setOpenCase] = useState<'best' | 'worst' | null>(null)
 
@@ -908,15 +903,16 @@ function VariantPanel({
             </div>
           )}
 
-          {targetSlot}
-
-          {thresholds && thresholds.length > 0 && (
-            <ThresholdList
-              lines={thresholds}
-              summary={thresholdSummary}
-              onExplain={onExplain}
-            />
+          {targetSlot && (
+            <Disclosure
+              closedLabel="Wunschplatz anzeigen"
+              openLabel="Wunschplatz ausblenden"
+            >
+              {targetSlot}
+            </Disclosure>
           )}
+
+          <DecisionsHint onOpen={onOpenDecisions} />
 
           {range.bestRank === range.worstRank && (
             <p className="hint tight">Platz in dieser Sicht bereits fest.</p>
@@ -952,8 +948,6 @@ export function TeamInsight({
   pointsAboveRelegation,
   onEnableMatchdayCutoff,
   suggestedCutoff,
-  matchdayThresholds = [],
-  seasonThresholds = [],
   scheduleHardness = null,
   leagueTeamCount = 18,
   standings = [],
@@ -961,6 +955,7 @@ export function TeamInsight({
   scenarios = [],
   onExplain,
   onApplyConditions,
+  onOpenDecisions,
 }: Props) {
   const ownNextMatch = useMemo(() => {
     if (!team || !nextMatchday?.plays) return null
@@ -1013,6 +1008,17 @@ export function TeamInsight({
       : null
 
   const relegCutoff = relegationCutoffRank(league)
+  const remainingFixtures = openMatches
+    .filter(
+      (m) =>
+        m.team1.teamId === team.teamId || m.team2.teamId === team.teamId,
+    )
+    .sort(
+      (a, b) =>
+        a.group.groupOrderID - b.group.groupOrderID || a.matchID - b.matchID,
+    )
+  const goalDiffLabel =
+    team.goalDiff > 0 ? `+${team.goalDiff}` : String(team.goalDiff)
 
   return (
     <div className="insight-column">
@@ -1026,8 +1032,8 @@ export function TeamInsight({
           <div>
             <h2>{team.teamName}</h2>
             <p className="meta">
-              Platz {team.rank} · {team.points} Pkt. · {team.won}S {team.draw}U {team.lost}N ·{' '}
-              {remainingCount} Restspiele
+              Platz {team.rank} · {team.points} Pkt. · Tordiff. {goalDiffLabel} ·{' '}
+              {team.won}S {team.draw}U {team.lost}N · {remainingCount} Restspiele
             </p>
           </div>
         </div>
@@ -1092,19 +1098,54 @@ export function TeamInsight({
         {scheduleHardness &&
           scheduleHardness.remainingGames > 0 &&
           scheduleHardness.reliable && (
-            <p className="hint tight">
-              Härte relativ zur Liga: sehr leicht → sehr schwer. Rang 1 = schwerstes
-              Restprogramm.
-            </p>
+            <Disclosure
+              closedLabel="Härte-Erklärung anzeigen"
+              openLabel="Härte-Erklärung ausblenden"
+            >
+              <p className="hint tight">
+                Härte relativ zur Liga: sehr leicht → sehr schwer. Rang 1 =
+                schwerstes Restprogramm.
+              </p>
+            </Disclosure>
           )}
 
-        <ForecastZoneBreakdown
-          forecast={forecast}
-          loading={forecastLoading}
-          reliable={forecastReliable}
-          league={league}
-          onExplain={onExplain}
-        />
+        {remainingFixtures.length > 0 && (
+          <Disclosure
+            closedLabel={`Restprogramm (${remainingFixtures.length} ${
+              remainingFixtures.length === 1 ? 'Spiel' : 'Spiele'
+            }) anzeigen`}
+            openLabel="Restprogramm ausblenden"
+          >
+            <ul className="insight-remaining">
+              {remainingFixtures.map((m) => {
+                const home = m.team1.teamId === team.teamId
+                const opp = home ? m.team2 : m.team1
+                return (
+                  <li key={m.matchID}>
+                    <span className="md">ST {m.group.groupOrderID}</span>
+                    <span className={`venue venue-${home ? 'H' : 'A'}`}>
+                      {home ? 'H' : 'A'}
+                    </span>
+                    <span className="opp">{opp.shortName || opp.teamName}</span>
+                  </li>
+                )
+              })}
+            </ul>
+          </Disclosure>
+        )}
+
+        <Disclosure
+          closedLabel="Saison-Prognose anzeigen"
+          openLabel="Saison-Prognose ausblenden"
+        >
+          <ForecastZoneBreakdown
+            forecast={forecast}
+            loading={forecastLoading}
+            reliable={forecastReliable}
+            league={league}
+            onExplain={onExplain}
+          />
+        </Disclosure>
       </div>
 
       <VariantPanel
@@ -1142,8 +1183,6 @@ export function TeamInsight({
             />
           ) : null
         }
-        thresholds={matchdayThresholds}
-        thresholdSummary="Nach dem nächsten Spieltag"
         onExplain={onExplain}
         bestConditions={nextMatchday?.bestConditions ?? null}
         worstConditions={nextMatchday?.worstConditions ?? null}
@@ -1162,6 +1201,7 @@ export function TeamInsight({
             onExplain={onExplain}
           />
         }
+        onOpenDecisions={onOpenDecisions}
         note={
           matchdayOutlookLoading
             ? 'Spieltag-Analyse wird berechnet…'
@@ -1189,9 +1229,8 @@ export function TeamInsight({
         hardRange={seasonOutlook?.hardRange ?? null}
         league={league}
         focusTeam={team}
-        thresholds={seasonThresholds}
-        thresholdSummary="Saison (Schätzung)"
         onExplain={onExplain}
+        onOpenDecisions={onOpenDecisions}
         note={
           seasonOutlook?.range
             ? seasonOutlook.range.bestRank === seasonOutlook.range.worstRank

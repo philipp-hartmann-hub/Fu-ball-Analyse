@@ -23,11 +23,8 @@ import { useSeasonForecast } from './hooks/useSeasonForecast'
 import {
   computePositionRanges,
   computeSeasonOutlook,
-  enumerateMatchdayOutcomes,
   scenariosFromConditions,
-  seasonExtremeOutcomes,
 } from './lib/scenarios'
-import { deriveThresholdLines } from './lib/thresholds'
 import { computeScheduleHardness } from './lib/schedule'
 import { hasEnoughData, NOT_ENOUGH_DATA_LABEL } from './lib/reliability'
 import { matchesDataVersion } from './lib/matchSignature'
@@ -220,6 +217,7 @@ export default function App() {
         remainingLive: openMatches,
         hasLive: liveMatches.length > 0 && includeLiveInTable,
         includeTriggers: true,
+        priorScores: playedScores,
       }),
     [
       leagueId,
@@ -229,6 +227,7 @@ export default function App() {
       openMatches,
       liveMatches.length,
       includeLiveInTable,
+      playedScores,
     ],
   )
 
@@ -314,56 +313,6 @@ export default function App() {
       playedScores,
     )
   }, [baseStandings, openMatches, selectedTeamId, playedScores])
-
-  const matchdayThresholds = useMemo(() => {
-    if (!selectedTeam) return []
-    const outcomes = enumerateMatchdayOutcomes(
-      baseStandings,
-      openMatches,
-      selectedTeam.teamId,
-      playedScores,
-    )
-    if (!outcomes) return []
-    const playsNext = nextMatchdayOutlook?.plays ?? false
-    const reachableMax = selectedTeam.points + (playsNext ? 3 : 0)
-    return deriveThresholdLines(
-      outcomes,
-      selectedTeam.points,
-      selectedTeam.rank,
-      leagueId,
-      {
-        exact: (nextMatchdayOutlook?.fixtureCount ?? 99) <= 12,
-        reachableMax,
-        horizon: 'matchday',
-      },
-    )
-  }, [
-    selectedTeam,
-    baseStandings,
-    openMatches,
-    playedScores,
-    nextMatchdayOutlook?.fixtureCount,
-    nextMatchdayOutlook?.plays,
-    leagueId,
-  ])
-
-  const seasonThresholds = useMemo(() => {
-    if (!selectedTeam) return []
-    const outcomes = seasonExtremeOutcomes(
-      baseStandings,
-      openMatches,
-      selectedTeam.teamId,
-      playedScores,
-    )
-    if (!outcomes) return []
-    return deriveThresholdLines(
-      outcomes,
-      selectedTeam.points,
-      selectedTeam.rank,
-      leagueId,
-      { exact: false, horizon: 'season' },
-    )
-  }, [selectedTeam, baseStandings, openMatches, playedScores, leagueId])
 
   const leaderPoints = projectedStandings[0]?.points ?? 0
   const relegCutoff = relegationCutoffRank(leagueId)
@@ -735,6 +684,7 @@ export default function App() {
               <DecisionRadarPanel
                 radar={decisionRadar}
                 liveCount={liveMatches.length}
+                selectedTeamId={selectedTeamId}
                 onSelectTeam={(id) => {
                   setSelectedTeamId(id)
                   setSideTab('club')
@@ -782,8 +732,6 @@ export default function App() {
                 league={leagueId}
                 suggestedCutoff={suggestedCutoff}
                 onEnableMatchdayCutoff={enableMatchdayCutoff}
-                matchdayThresholds={matchdayThresholds}
-                seasonThresholds={seasonThresholds}
                 standings={projectedStandings}
                 openMatches={openMatches}
                 scenarios={scenarios}
@@ -808,6 +756,7 @@ export default function App() {
                 }
                 leagueTeamCount={baseStandings.length}
                 onExplain={openExplain}
+                onOpenDecisions={() => setSideTab('decisions')}
                 onApplyConditions={(cond) => {
                   const added = scenariosFromConditions(cond)
                   setScenarios((prev) => {

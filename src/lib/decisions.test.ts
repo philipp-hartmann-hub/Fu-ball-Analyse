@@ -5,6 +5,7 @@ import {
   deriveDecisionStatuses,
   diffDecisionStatuses,
   statusConsistentWithExact,
+  triggersBeyondStatus,
 } from './decisions'
 import { computeExactPositionRanges, computeHardRanges } from './scenarios'
 
@@ -443,5 +444,74 @@ describe('Konsistenz Status vs. Exact', () => {
       const e = exact.find((r) => r.teamId === h.teamId)!
       expect(statusConsistentWithExact(h, e, 'bl1')).toBe(true)
     }
+  })
+})
+
+describe('triggersBeyondStatus', () => {
+  const safe = {
+    kind: 'safe' as const,
+    shortLabel: 'Gerettet',
+    label: 'Gerettet (Saison steht fest)',
+    tone: 'good' as const,
+  }
+  const relegated = {
+    kind: 'relegated' as const,
+    shortLabel: 'Abgestiegen',
+    label: 'Abgestiegen (Saison steht fest)',
+    tone: 'bad' as const,
+  }
+
+  it('blendet Status-Doppelungen aus, behält zusätzliche Schwellen', () => {
+    const leftover = triggersBeyondStatus(
+      [safe],
+      [
+        {
+          key: 'survive-safe',
+          label: 'Klassenerhalt',
+          primary: 'sicher',
+          tone: 'good',
+        },
+        {
+          key: 'target-possible-from',
+          label: 'CL möglich',
+          primary: 'ab 58',
+          tone: 'neutral',
+        },
+      ],
+    )
+    expect(leftover.map((l) => l.key)).toEqual(['target-possible-from'])
+  })
+
+  it('blendet Abstieg-sicher aus, wenn Status bereits abgestiegen', () => {
+    const leftover = triggersBeyondStatus(
+      [relegated],
+      [
+        {
+          key: 'releg-certain',
+          label: 'Abstieg',
+          primary: 'sicher',
+          tone: 'bad',
+        },
+        {
+          key: 'target-gone',
+          label: 'CL',
+          primary: 'nicht mehr möglich',
+          tone: 'bad',
+        },
+      ],
+    )
+    expect(leftover.map((l) => l.key)).toEqual(['target-gone'])
+  })
+
+  it('lässt alle Zeilen, wenn kein Status feststeht', () => {
+    const lines = [
+      {
+        key: 'survive-from',
+        label: 'Klassenerhalt',
+        primary: 'ab 40',
+        tone: 'good' as const,
+      },
+    ]
+    expect(triggersBeyondStatus([], lines)).toEqual(lines)
   })
 })
