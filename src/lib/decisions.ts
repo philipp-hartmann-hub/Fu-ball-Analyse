@@ -221,6 +221,20 @@ export function triggersBeyondStatus(
   })
 }
 
+/**
+ * Saison-Ziel und Abstieg sind beide noch möglich — Spieltags-Zonen (Platz nach
+ * 90 Minuten) wären keine Saison-Entscheidung.
+ */
+export function seasonFateStillOpen(
+  hard: HardRange,
+  league: LeagueZoneId,
+): boolean {
+  return (
+    isTopTargetRank(hard.hardBest, league) &&
+    isRelegationRank(hard.hardWorst, league)
+  )
+}
+
 function kickoffMs(match: Match): number | null {
   const raw = match.matchDateTimeUTC || match.matchDateTime
   if (!raw) return null
@@ -297,8 +311,13 @@ export function buildDecisionRadar(input: {
   const matchdayExact =
     matchdayFixtures.length > 0 && matchdayFixtures.length <= 12
 
+  const anySeasonDecisionOnMatchday = standingsForHorizon.some((row) => {
+    const h = liveHardById.get(row.teamId) ?? confHardById.get(row.teamId)
+    return h != null && !seasonFateStillOpen(h, league)
+  })
+
   const matchdayOutcomesByTeam =
-    includeTriggers && nextMatchday != null
+    includeTriggers && nextMatchday != null && anySeasonDecisionOnMatchday
       ? enumerateMatchdayOutcomesByTeam(
           standingsForHorizon,
           remainingForHorizon,
@@ -354,7 +373,10 @@ export function buildDecisionRadar(input: {
         )
       }
 
-      if (nextMatchday != null) {
+      if (
+        nextMatchday != null &&
+        !seasonFateStillOpen(hasLive ? lh : ch, league)
+      ) {
         const mdOutcomes = matchdayOutcomesByTeam?.get(row.teamId)
         if (mdOutcomes) {
           const playsNext = matchdayFixtures.some(

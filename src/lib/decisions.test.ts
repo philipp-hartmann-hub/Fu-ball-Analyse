@@ -4,6 +4,7 @@ import {
   buildDecisionRadar,
   deriveDecisionStatuses,
   diffDecisionStatuses,
+  seasonFateStillOpen,
   statusConsistentWithExact,
   triggersBeyondStatus,
 } from './decisions'
@@ -111,6 +112,34 @@ function safeFixture() {
     openMatch(1, team(16, 'Low 16'), team(17, 'Low 17')),
     openMatch(2, team(17, 'Low 17'), team(18, 'Low 18')),
   ]
+  return { standings, remaining }
+}
+
+/** Saisonanfang: jeder kann noch 1. und letzter werden. */
+function earlySeasonFixture() {
+  const standings: StandingRow[] = []
+  for (let i = 1; i <= 18; i++) {
+    standings.push(
+      standingRow({
+        teamId: i,
+        teamName: `Team ${i}`,
+        points: i <= 3 ? 3 : i <= 9 ? 1 : 0,
+        goalDiff: 4 - i,
+        goalsFor: 3,
+        played: 1,
+        rank: i,
+      }),
+    )
+  }
+  const remaining: Match[] = []
+  let id = 100
+  for (let day = 2; day <= 34; day++) {
+    for (let k = 0; k < 9; k++) {
+      const a = k * 2 + 1
+      const b = k * 2 + 2
+      remaining.push(openMatch(id++, team(a, `Team ${a}`), team(b, `Team ${b}`), day))
+    }
+  }
   return { standings, remaining }
 }
 
@@ -275,6 +304,26 @@ describe('buildDecisionRadar / Live-Delta', () => {
       const other = withTriggers.all.find((r) => r.teamId === row.teamId)!
       expect(other.confirmedStatuses).toEqual(row.confirmedStatuses)
       expect(other.liveStatuses).toEqual(row.liveStatuses)
+    }
+  })
+
+  it('Saisonanfang: keine Spieltags-Aufstieg/Klassenerhalt-Zeilen', () => {
+    const { standings, remaining } = earlySeasonFixture()
+    const hard = computeHardRanges(standings, remaining)
+    expect(hard.every((h) => seasonFateStillOpen(h, 'bl2'))).toBe(true)
+
+    const radar = buildDecisionRadar({
+      league: 'bl2',
+      confirmedStandings: standings,
+      liveStandings: standings,
+      remainingConfirmed: remaining,
+      remainingLive: remaining,
+      hasLive: false,
+      includeTriggers: true,
+    })
+    for (const row of radar.all) {
+      expect(row.matchdayTriggers).toEqual([])
+      expect(row.confirmedStatuses).toEqual([])
     }
   })
 
@@ -540,5 +589,19 @@ describe('triggersBeyondStatus', () => {
       },
     ]
     expect(triggersBeyondStatus([], lines)).toEqual(lines)
+  })
+})
+
+describe('seasonFateStillOpen', () => {
+  it('ist offen, wenn Saison-Spanne noch Ziel und Abstieg umfasst', () => {
+    expect(
+      seasonFateStillOpen({ teamId: 1, hardBest: 1, hardWorst: 18 }, 'bl2'),
+    ).toBe(true)
+    expect(
+      seasonFateStillOpen({ teamId: 1, hardBest: 1, hardWorst: 10 }, 'bl2'),
+    ).toBe(false)
+    expect(
+      seasonFateStillOpen({ teamId: 1, hardBest: 5, hardWorst: 18 }, 'bl2'),
+    ).toBe(false)
   })
 })

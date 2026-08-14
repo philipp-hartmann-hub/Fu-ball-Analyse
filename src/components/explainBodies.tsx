@@ -238,10 +238,12 @@ export function DecisionsExplainBody() {
       <h3>Auslöser: Spieltag vs. Saison</h3>
       <p>
         <strong>Diesen Spieltag</strong> (wenn Spiele laufen oder der Spieltag
-        ansteht): was sich heute entscheiden kann — aus der Spieltags-Rechnung,
-        möglichst exakt. <strong>Saison</strong>: Hinweise über mehrere Spieltage,
-        oft Näherung und so gekennzeichnet. Die Zahlen stammen aus derselben
-        Punktschwellen-Rechnung (Spieltags-Enumeration bzw. Saison-Extremfälle).
+        ansteht): nur was sich <em>heute für die Saison</em> entscheiden kann —
+        aus der Spieltags-Rechnung, möglichst exakt. Solange ein Verein
+        saisonweit noch Aufstieg/CL <em>und</em> Abstieg erreichen kann, zeigen
+        wir keine Spieltags-Zeilen (die wären nur der Platz nach 90 Minuten,
+        kein Saison-Urteil). <strong>Saison</strong>: Hinweise über mehrere
+        Spieltage, oft Näherung und so gekennzeichnet.
       </p>
     </>
   )
