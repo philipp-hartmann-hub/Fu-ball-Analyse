@@ -1,4 +1,5 @@
 import type { HardRange, Match, PositionRange, StandingRow } from '../types'
+import type { MatchScore } from './table'
 import { MATCHDAY_DISPLAY_HOLD_MS } from './live'
 import {
   computeHardRanges,
@@ -180,7 +181,7 @@ export function diffDecisionStatuses(
   return deltas
 }
 
-function compactTriggers(lines: ThresholdLine[], max = 2): ThresholdLine[] {
+function sortTriggers(lines: ThresholdLine[]): ThresholdLine[] {
   const preferred = [
     'survive-from',
     'survive-safe',
@@ -190,12 +191,34 @@ function compactTriggers(lines: ThresholdLine[], max = 2): ThresholdLine[] {
     'target-gone',
     'target-possible-from',
   ]
-  const ranked = [...lines].sort((a, b) => {
+  return [...lines].sort((a, b) => {
     const ia = preferred.indexOf(a.key)
     const ib = preferred.indexOf(b.key)
     return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib)
   })
-  return ranked.slice(0, max)
+}
+
+/**
+ * Schwellen, die der feststehende Status nicht schon sagt
+ * (z. B. „CL möglich ab X“ obwohl schon gerettet).
+ */
+export function triggersBeyondStatus(
+  statuses: DecisionStatus[],
+  lines: ThresholdLine[],
+): ThresholdLine[] {
+  const kinds = new Set(statuses.map((s) => s.kind))
+  return lines.filter((line) => {
+    if (line.key === 'survive-safe' && kinds.has('safe')) return false
+    if (line.key === 'releg-certain' && kinds.has('relegated')) return false
+    if (
+      line.key === 'target-safe' &&
+      (kinds.has('title_secure') || kinds.has('champion'))
+    ) {
+      return false
+    }
+    if (line.key === 'target-gone' && kinds.has('title_gone')) return false
+    return true
+  })
 }
 
 function kickoffMs(match: Match): number | null {
@@ -237,6 +260,7 @@ export function buildDecisionRadar(input: {
   hasLive: boolean
   includeTriggers?: boolean
   nowMs?: number
+  priorScores?: MatchScore[]
 }): DecisionRadar {
   const {
     league,
@@ -247,6 +271,7 @@ export function buildDecisionRadar(input: {
     hasLive,
     includeTriggers = true,
     nowMs = Date.now(),
+    priorScores = [],
   } = input
 
   const remainingForHorizon = hasLive ? remainingLive : remainingConfirmed
@@ -303,9 +328,10 @@ export function buildDecisionRadar(input: {
         standingsForHorizon,
         remainingForHorizon,
         row.teamId,
+        priorScores,
       )
       if (seasonOutcomes) {
-        seasonTriggers = compactTriggers(
+        seasonTriggers = sortTriggers(
           deriveThresholdLines(
             seasonOutcomes,
             liveRow.points,
@@ -316,11 +342,12 @@ export function buildDecisionRadar(input: {
         )
       }
 
-      if (showMatchdayHorizon && nextMatchday != null) {
+      if (nextMatchday != null) {
         const mdOutcomes = enumerateMatchdayOutcomes(
           standingsForHorizon,
           remainingForHorizon,
           row.teamId,
+          priorScores,
         )
         if (mdOutcomes) {
           const playsNext = matchdayFixtures.some(
@@ -328,7 +355,7 @@ export function buildDecisionRadar(input: {
               m.team1.teamId === row.teamId || m.team2.teamId === row.teamId,
           )
           matchdayTriggersExact = matchdayExact
-          matchdayTriggers = compactTriggers(
+          matchdayTriggers = sortTriggers(
             deriveThresholdLines(
               mdOutcomes,
               liveRow.points,

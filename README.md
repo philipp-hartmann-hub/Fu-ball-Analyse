@@ -23,7 +23,7 @@ Echtzeit-Analyse für die **1., 2. und 3. Liga**: Tabelle, Restprogramm und mög
 - **Ergebnisse**: Spieltag wählbar; Wappen; Live-Updates (laufende Spiele hervorgehoben als Zwischenstand); Tippen zeigt Torschützen und bei offenen/laufenden Spielen die Spielschätzung 1/X/2; Live-Zwischenstände standardmäßig in der Tabelle; 2 Tage nach letztem Spiel → nächster Spieltag als Default
 - Spalte **Möglich**: rechnerisch noch mögliche Plätze – **exakt** bei ≤12 relevanten Restspielen je Verein (nach Punkte-Pruning), sonst **harte Außengrenze** aus Punktemaxima (Badge pro Zeile); alternativ Monte-Carlo-**Prognose** (umschaltbar; unter `MIN_GAMES` Spielen ohne Prozentanzeige)
 - Spalte **Restprog.**: Einschätzung sehr leicht → sehr schwer (immer in der Tabelle; auf schmalen Breiten ausgeblendet)
-- Seitenleiste: **Verein** · **Ergebnisse** · **Entscheidungen** (Radar: feststehende Statusse + Live-Delta) · **Szenario** · **Vergleich**
+- Seitenleiste: **Verein** (Kern sofort, Wunschplatz/Restprogramm/Härte hinter Klappen) · **Ergebnisse** · **Entscheidungen** (alleiniger Ort für feststehenden Saison-Status, Live-Delta und Punktschwellen/Auslöser) · **Szenario** · **Vergleich**
 - **Szenario-Simulator**: Partien mit Wappen; Grob (Sieg/Unentschieden) oder Fein-Tore; teilbar via `?s=`
 - **Stand nach Spieltag**: Auswahl (Dropdown) für historischen Stand
 - Toolbar: **Link teilen** (Zwischenablage) und **Zurücksetzen** (Szenarien + `?s=`)
@@ -48,7 +48,7 @@ src/
   leagues.ts
   api/openliga.ts / matchSchema.ts / dataSource.ts
   hooks/useLeagueData.ts
-  lib/table.ts / scenarios.ts / schedule.ts / reliability.ts / simulation.ts / thresholds.ts / live.ts
+  lib/table.ts / scenarios.ts / schedule.ts / reliability.ts / simulation.ts / thresholds.ts / decisions.ts / live.ts
   components/…             # UI
   App.tsx
 ```
@@ -56,6 +56,28 @@ src/
 ---
 
 ## Änderungsprotokoll
+
+### 2026-08-14 — Prompt 97
+
+**User:** Vereinsanalyse entzerren: Kern sofort sichtbar, seltenere Blöcke hinter nativen Klappen (progressive disclosure).
+
+**Aktion:**
+- `TeamInsight`: Wunschplatz, Restprogramm-Liste, Härte-Erklärung und Saison-Prognose standardmäßig eingeklappt (`<details>`/`<summary>`, `aria-expanded`)
+- Sofort sichtbar bleiben Kopf (inkl. Tordiff.), Best-/Schlechtfall-Spanne und Spielschätzung; Bedingungen an der Spanne unverändert
+- Keine Änderung an den Rechnungen
+
+**Status:** erledigt
+
+### 2026-08-14 — Prompt 96
+
+**User:** Doppelte „ist mein Verein durch?“-Anzeige konsolidieren: Punktschwellen nur noch im Entscheidungs-Radar, in der Vereinsanalyse nur ein Verweis.
+
+**Aktion:**
+- `TeamInsight`: Punktschwellen-Block entfernt; dezenten Link „Wann ist der Verein rechnerisch durch? → Entscheidungen“ (wechselt zum Radar und hebt den Verein hervor)
+- Radar: alle Auslöser-Zeilen (nicht nur 2); Schwellen, die der Status nicht schon sagt; `priorScores` wie zuvor in der Vereinsanalyse; gewählter Verein wird gescrollt/markiert
+- `deriveThresholdLines` bleibt (Radar nutzt sie weiter)
+
+**Status:** erledigt
 
 ### 2026-08-13 — Prompt 95
 

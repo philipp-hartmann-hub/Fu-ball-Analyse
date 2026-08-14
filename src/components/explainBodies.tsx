@@ -240,7 +240,8 @@ export function DecisionsExplainBody() {
         <strong>Diesen Spieltag</strong> (wenn Spiele laufen oder der Spieltag
         ansteht): was sich heute entscheiden kann — aus der Spieltags-Rechnung,
         möglichst exakt. <strong>Saison</strong>: Hinweise über mehrere Spieltage,
-        oft Näherung und so gekennzeichnet.
+        oft Näherung und so gekennzeichnet. Die Zahlen stammen aus derselben
+        Punktschwellen-Rechnung (Spieltags-Enumeration bzw. Saison-Extremfälle).
       </p>
     </>
   )
