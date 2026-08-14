@@ -15,6 +15,8 @@ import {
   computeSeasonOutlook,
   computeTargetMatchdayOutlook,
   deriveExactCaseConditions,
+  enumerateMatchdayOutcomes,
+  enumerateMatchdayOutcomesByTeam,
   relevantMatchesForTeam,
   scenarioFromOutcome,
   scenarioFromScore,
@@ -23,7 +25,7 @@ import {
   selectRelevantTeamIds,
   simulateExtremeFinishForTest,
 } from './scenarios'
-import { applyScore, buildStandings, rankStandings } from './table'
+import { applyScore, buildStandings, rankStandings, remainingMatches } from './table'
 import type { Match, MatchOutcome, StandingRow, TeamInfo } from '../types'
 
 describe('scenarioFromScore / Punktevergabe', () => {
@@ -1877,5 +1879,18 @@ describe('simulateExtremeFinish Rivalen-TD', () => {
     const oldRank = table.find((t) => t.teamId === FOCUS.teamId)!.rank
     expect(oldRank).toBe(1)
     expect(worst.rank).toBeGreaterThan(oldRank)
+  })
+})
+
+describe('enumerateMatchdayOutcomesByTeam', () => {
+  it('liefert dieselben (Punkte, Rang) wie die Einzel-Enumeration je Team', () => {
+    const base = buildStandings(MINI_LEAGUE_MATCHES, { maxMatchday: 1 })
+    const remaining = remainingMatches(MINI_LEAGUE_MATCHES, 1)
+    const all = enumerateMatchdayOutcomesByTeam(base, remaining)
+    expect(all).not.toBeNull()
+    for (const row of base) {
+      const one = enumerateMatchdayOutcomes(base, remaining, row.teamId)
+      expect(all!.get(row.teamId)).toEqual(one)
+    }
   })
 })

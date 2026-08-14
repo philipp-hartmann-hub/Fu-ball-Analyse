@@ -251,6 +251,33 @@ describe('buildDecisionRadar / Live-Delta', () => {
     expect(row.deltas).toEqual([])
   })
 
+  it('ein Spieltags-Durchlauf füllt Trigger ohne die Statusse zu ändern', () => {
+    const { standings, remaining } = safeFixture()
+    const without = buildDecisionRadar({
+      league: 'bl1',
+      confirmedStandings: standings,
+      liveStandings: standings,
+      remainingConfirmed: remaining,
+      remainingLive: remaining,
+      hasLive: false,
+      includeTriggers: false,
+    })
+    const withTriggers = buildDecisionRadar({
+      league: 'bl1',
+      confirmedStandings: standings,
+      liveStandings: standings,
+      remainingConfirmed: remaining,
+      remainingLive: remaining,
+      hasLive: false,
+      includeTriggers: true,
+    })
+    for (const row of without.all) {
+      const other = withTriggers.all.find((r) => r.teamId === row.teamId)!
+      expect(other.confirmedStatuses).toEqual(row.confirmedStatuses)
+      expect(other.liveStatuses).toEqual(row.liveStatuses)
+    }
+  })
+
   it('Fixture abgestiegen → Status', () => {
     const { standings, remaining } = relegatedFixture()
     const radar = buildDecisionRadar({
