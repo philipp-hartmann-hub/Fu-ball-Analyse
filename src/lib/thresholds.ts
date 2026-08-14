@@ -44,6 +44,12 @@ export function topTargetLabel(league: LeagueZoneId): string {
   return 'CL'
 }
 
+/** Spieltags-Sicht: Platz in der Tabelle nach diesem Spieltag, kein Saison-Urteil. */
+function topTargetPlaceLabel(league: LeagueZoneId): string {
+  if (league === 'bl2' || league === 'bl3') return 'Aufstiegsplatz'
+  return 'CL-Platz'
+}
+
 function neededPoints(threshold: number, currentPoints: number): string | undefined {
   const need = threshold - currentPoints
   if (need > 0) return `noch ${need} Pkt.`
@@ -69,12 +75,15 @@ function qualitativeFromExtremes(
   outcomes: PointRankOutcome[],
   league: LeagueZoneId,
   withTag: (s: string) => string,
+  horizon: ThresholdHorizon,
 ): ThresholdLine[] {
   const canRelegate = outcomes.some((o) => isRelegationRank(o.rank, league))
   const canSurvive = outcomes.some((o) => !isRelegationRank(o.rank, league))
   const canReachTarget = outcomes.some((o) => isTopTargetRank(o.rank, league))
   const targetCertain = outcomes.every((o) => isTopTargetRank(o.rank, league))
   const goalName = topTargetLabel(league)
+  const placeName = topTargetPlaceLabel(league)
+  const md = horizon === 'matchday'
 
   // Ziel und Abstieg beide noch möglich → nichts Entscheidendes sagbar
   if (canReachTarget && canRelegate) return []
@@ -84,15 +93,15 @@ function qualitativeFromExtremes(
   if (!canRelegate && canSurvive) {
     lines.push({
       key: 'survive-safe',
-      label: 'Klassenerhalt',
-      primary: withTag('rechnerisch sicher'),
+      label: md ? 'Nach diesem Spieltag' : 'Klassenerhalt',
+      primary: withTag(md ? 'kein Abstiegsplatz' : 'rechnerisch sicher'),
       tone: 'good',
     })
   } else if (!canSurvive && canRelegate) {
     lines.push({
       key: 'releg-certain',
-      label: 'Abstieg',
-      primary: withTag('nicht mehr abwendbar'),
+      label: md ? 'Nach diesem Spieltag' : 'Abstieg',
+      primary: withTag(md ? 'Abstiegsplatz' : 'nicht mehr abwendbar'),
       tone: 'bad',
     })
   }
@@ -100,15 +109,15 @@ function qualitativeFromExtremes(
   if (!canReachTarget) {
     lines.push({
       key: 'target-gone',
-      label: goalName,
-      primary: withTag('nicht mehr erreichbar'),
+      label: md ? 'Nach diesem Spieltag' : goalName,
+      primary: withTag(md ? `kein ${placeName}` : 'nicht mehr erreichbar'),
       tone: 'bad',
     })
   } else if (targetCertain) {
     lines.push({
       key: 'target-safe',
-      label: goalName,
-      primary: withTag('rechnerisch sicher'),
+      label: md ? 'Nach diesem Spieltag' : goalName,
+      primary: withTag(md ? placeName : 'rechnerisch sicher'),
       tone: 'good',
     })
   }
@@ -152,6 +161,8 @@ function exactThresholdLines(
     (!canReachTarget && currentRank <= 12)
 
   const goalName = topTargetLabel(league)
+  const placeName = topTargetPlaceLabel(league)
+  const md = horizon === 'matchday'
   const lines: ThresholdLine[] = []
 
   // Offenes Regime: Ziel und Abstieg beide möglich → gar keine Punkt-Schwellen
@@ -164,15 +175,15 @@ function exactThresholdLines(
     if (!canRelegate) {
       lines.push({
         key: 'survive-safe',
-        label: matchdayLabel('Klassenerhalt', horizon),
-        primary: 'rechnerisch sicher',
+        label: md ? 'Nach diesem Spieltag' : matchdayLabel('Klassenerhalt', horizon),
+        primary: md ? 'kein Abstiegsplatz' : 'rechnerisch sicher',
         tone: 'good',
       })
     } else if (!canSurvive) {
       lines.push({
         key: 'releg-certain',
-        label: matchdayLabel('Abstieg', horizon),
-        primary: 'nicht mehr abwendbar',
+        label: md ? 'Nach diesem Spieltag' : matchdayLabel('Abstieg', horizon),
+        primary: md ? 'Abstiegsplatz' : 'nicht mehr abwendbar',
         tone: 'bad',
       })
     } else {
@@ -181,7 +192,9 @@ function exactThresholdLines(
       if (withinReach(safeFrom, reachableMax)) {
         lines.push({
           key: 'survive-from',
-          label: matchdayLabel('Klassenerhalt ab', horizon),
+          label: md
+            ? 'Kein Abstiegsplatz ab'
+            : matchdayLabel('Klassenerhalt ab', horizon),
           primary: `${safeFrom} Pkt.`,
           secondary: neededPoints(safeFrom, currentPoints),
           tone: 'neutral',
@@ -194,15 +207,15 @@ function exactThresholdLines(
     if (!canReachTarget) {
       lines.push({
         key: 'target-gone',
-        label: matchdayLabel(goalName, horizon),
-        primary: 'nicht mehr erreichbar',
+        label: md ? 'Nach diesem Spieltag' : matchdayLabel(goalName, horizon),
+        primary: md ? `kein ${placeName}` : 'nicht mehr erreichbar',
         tone: 'bad',
       })
     } else if (targetCertain) {
       lines.push({
         key: 'target-safe',
-        label: matchdayLabel(goalName, horizon),
-        primary: 'rechnerisch sicher',
+        label: md ? 'Nach diesem Spieltag' : matchdayLabel(goalName, horizon),
+        primary: md ? placeName : 'rechnerisch sicher',
         tone: 'good',
       })
     } else {
@@ -213,7 +226,9 @@ function exactThresholdLines(
       if (withinReach(safeFrom, reachableMax)) {
         lines.push({
           key: 'target-secure-from',
-          label: matchdayLabel(`${goalName} sicher ab`, horizon),
+          label: md
+            ? `${placeName} sicher ab`
+            : matchdayLabel(`${goalName} sicher ab`, horizon),
           primary: `${safeFrom} Pkt.`,
           secondary: neededPoints(safeFrom, currentPoints),
           tone: 'good',
@@ -222,7 +237,9 @@ function exactThresholdLines(
       if (withinReach(minPtsTarget, reachableMax)) {
         lines.push({
           key: 'target-possible-from',
-          label: matchdayLabel(`${goalName} möglich ab`, horizon),
+          label: md
+            ? `${placeName} möglich ab`
+            : matchdayLabel(`${goalName} möglich ab`, horizon),
           primary: `${minPtsTarget} Pkt.`,
           secondary: neededPoints(minPtsTarget, currentPoints),
           tone: 'neutral',
@@ -255,7 +272,12 @@ export function deriveThresholdLines(
   const withTag = (s: string) => (tag ? `${s} (${tag})` : s)
 
   if (!options.exact) {
-    return qualitativeFromExtremes(outcomes, league, withTag)
+    return qualitativeFromExtremes(
+      outcomes,
+      league,
+      withTag,
+      options.horizon ?? 'season',
+    )
   }
 
   return exactThresholdLines(

@@ -307,7 +307,7 @@ describe('buildDecisionRadar / Live-Delta', () => {
     }
   })
 
-  it('Saisonanfang: keine Spieltags-Aufstieg/Klassenerhalt-Zeilen', () => {
+  it('Saisonanfang: Spieltags-Zeilen ohne Saison-Urteil-Formulierung', () => {
     const { standings, remaining } = earlySeasonFixture()
     const hard = computeHardRanges(standings, remaining)
     expect(hard.every((h) => seasonFateStillOpen(h, 'bl2'))).toBe(true)
@@ -320,10 +320,16 @@ describe('buildDecisionRadar / Live-Delta', () => {
       remainingLive: remaining,
       hasLive: false,
       includeTriggers: true,
+      nowMs: Date.parse('2026-08-14T12:00:00Z'),
     })
+    expect(radar.all.some((r) => r.matchdayTriggers.length > 0)).toBe(true)
     for (const row of radar.all) {
-      expect(row.matchdayTriggers).toEqual([])
       expect(row.confirmedStatuses).toEqual([])
+      const blob = row.matchdayTriggers
+        .map((t) => `${t.label} ${t.primary}`)
+        .join(' ')
+      expect(blob).not.toMatch(/nicht mehr erreichbar/)
+      expect(blob).not.toMatch(/Klassenerhalt/)
     }
   })
 

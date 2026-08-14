@@ -57,6 +57,26 @@ src/
 
 ## Änderungsprotokoll
 
+### 2026-08-14 — Prompt 102
+
+**User:** Änderungen committen und nach `main` mergen (Production).
+
+**Aktion:**
+- Feature-Branch, PR und Merge der Spieltags-Formulierung (Prompt 101)
+
+**Status:** erledigt
+
+### 2026-08-14 — Prompt 101
+
+**User:** Spieltags-Block darf nicht leer werden; Spieltag und Saison bleiben, nur die falsche Saison-Sprache war das Problem.
+
+**Aktion:**
+- `seasonFateStillOpen`-Filter für Spieltags-Auslöser rückgängig — Block „Diesen Spieltag“ wieder befüllt
+- Spieltags-Zeilen umformuliert auf Tabellenplatz („kein Aufstiegsplatz“, „Aufstiegsplatz ab X“), nicht „Aufstieg nicht mehr erreichbar“
+- Block „Diesen Spieltag“ bleibt sichtbar, auch wenn nach dem Spieltag Ziel- und Abstiegsplatz für alle noch offen sind
+
+**Status:** erledigt
+
 ### 2026-08-14 — Prompt 100
 
 **User:** Screenshot Entscheidungs-Radar bei Spieltag 2: „Aufstieg nicht mehr erreichbar“ / „Klassenerhalt sicher“ trotz Tabelle 1.–18.
