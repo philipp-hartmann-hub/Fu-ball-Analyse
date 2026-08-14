@@ -363,25 +363,6 @@ export default function App() {
     flashShareHint('Szenarien zurückgesetzt')
   }
 
-  const copyShareLink = async () => {
-    const state: ShareState = {
-      leagueId,
-      season,
-      useCutoff,
-      asOfMatchday: useCutoff ? asOfMatchday : null,
-      scenarios,
-    }
-    const url = shouldPersistShare(state)
-      ? replaceShareQuery(encodeShareState(state))
-      : replaceShareQuery(null)
-    try {
-      await navigator.clipboard.writeText(url)
-      flashShareHint('Link kopiert')
-    } catch {
-      flashShareHint('Kopieren fehlgeschlagen')
-    }
-  }
-
   return (
     <div className="app">
       <header className="hero">
@@ -489,9 +470,6 @@ export default function App() {
           </div>
         )}
         <div className="toolbar-actions">
-          <button type="button" className="ghost" onClick={() => void copyShareLink()}>
-            Link teilen
-          </button>
           <button
             type="button"
             className="ghost"
