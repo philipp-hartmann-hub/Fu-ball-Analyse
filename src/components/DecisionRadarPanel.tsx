@@ -284,11 +284,11 @@ export function DecisionRadarPanel({
             {radar.nextMatchday != null ? ` · ST ${radar.nextMatchday}` : ''}
           </h3>
           <p className="hint tight">
-            Was sich heute für die <strong>Saison</strong> entscheiden kann
+            Tabellenplatz nach diesem Spieltag — nicht das Saison-Ziel
             {matchdayNear.some((r) => r.matchdayTriggersExact)
               ? ' (exakte Enumeration)'
               : ' (ggf. Näherung)'}
-            . Nicht der Tabellenplatz nach 90 Minuten.
+            .
           </p>
           <ul className="decision-list">
             {matchdayNear.map((row) => (
@@ -304,6 +304,20 @@ export function DecisionRadarPanel({
               />
             ))}
           </ul>
+        </div>
+      )}
+
+      {showMatchday && matchdayNear.length === 0 && (
+        <div className="decision-block">
+          <h3 className="decision-block-title">
+            Diesen Spieltag
+            {radar.nextMatchday != null ? ` · ST ${radar.nextMatchday}` : ''}
+          </h3>
+          <p className="hint tight">
+            Tabellenplatz nach diesem Spieltag — nicht das Saison-Ziel.
+            Für keinen Verein eine Schwelle: Zielplatz und Abstiegsplatz sind
+            nach den heutigen Spielen beide noch möglich.
+          </p>
         </div>
       )}
 

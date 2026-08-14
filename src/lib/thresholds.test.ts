@@ -55,7 +55,7 @@ describe('deriveThresholdLines', () => {
     const row = ok.find((l) => l.key === 'survive-from')
     expect(row?.primary).toBe('40 Pkt.')
     expect(row?.secondary).toBe('noch 2 Pkt.')
-    expect(row?.label).toContain('Nach Spieltag')
+    expect(row?.label).toContain('Abstiegsplatz')
   })
 
   it('Abstieg nicht mehr abwendbar', () => {
@@ -70,7 +70,7 @@ describe('deriveThresholdLines', () => {
       { exact: true, reachableMax: 33, horizon: 'matchday' },
     )
     expect(lines.find((l) => l.key === 'releg-certain')?.primary).toBe(
-      'nicht mehr abwendbar',
+      'Abstiegsplatz',
     )
   })
 
@@ -143,7 +143,7 @@ describe('deriveThresholdLines', () => {
       'bl2',
       { exact: true, reachableMax: 55, horizon: 'matchday' },
     )
-    expect(lines.some((l) => l.label.includes('Aufstieg'))).toBe(true)
+    expect(lines.some((l) => l.label.includes('Aufstiegsplatz'))).toBe(true)
     expect(lines.some((l) => /\bCL\b/.test(l.label))).toBe(false)
   })
 
@@ -211,7 +211,7 @@ describe('deriveThresholdLines', () => {
       { exact: true, reachableMax: 43, horizon: 'matchday' },
     )
     const gone = lines.find((l) => l.key === 'target-gone')
-    expect(gone?.primary).toBe('nicht mehr erreichbar')
+    expect(gone?.primary).toBe('kein CL-Platz')
     expect(gone?.primary).not.toMatch(/\d+\s*Pkt/)
     expect(lines.some((l) => l.key.includes('from'))).toBe(false)
   })
@@ -284,5 +284,24 @@ describe('deriveThresholdLines', () => {
       'rechnerisch sicher',
     )
     expect(pointValues(lines)).toHaveLength(0)
+  })
+
+  it('Spieltag (Näherung): Platz-Formulierung, kein Saison-Urteil', () => {
+    const lines = deriveThresholdLines(
+      [
+        { points: 6, rank: 8 },
+        { points: 3, rank: 12 },
+      ],
+      3,
+      10,
+      'bl2',
+      { exact: false, horizon: 'matchday' },
+    )
+    const gone = lines.find((l) => l.key === 'target-gone')
+    expect(gone?.primary).toContain('kein Aufstiegsplatz')
+    expect(gone?.primary).not.toMatch(/nicht mehr erreichbar/)
+    expect(lines.some((l) => /Klassenerhalt|Aufstieg/.test(l.label))).toBe(
+      false,
+    )
   })
 })

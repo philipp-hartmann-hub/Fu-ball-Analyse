@@ -114,10 +114,11 @@ export function ThresholdsExplainBody() {
       </p>
       <h3>Nach dem nächsten Spieltag</h3>
       <p>
-        Aus den möglichen Punkten nach dem Spieltag (0, 1 oder 3 aus dem eigenen Spiel) entstehen
-        Sätze wie „Klassenerhalt ab X Punkten“ – aber nur, wenn X in diesem Spieltag überhaupt
-        erreichbar ist. Sind Ziel <em>und</em> Abstieg noch beides möglich, zeigen wir bewusst{' '}
-        <strong>keine</strong> Punktzahl: Es ist noch nichts entschieden.
+        Das ist der <strong>Tabellenplatz nach diesem Spieltag</strong>, kein
+        Saison-Urteil. Sätze wie „Aufstiegsplatz ab X Punkten“ oder „kein
+        Abstiegsplatz“ gelten nur für die Tabelle nach den heutigen Spielen.
+        Sind Zielplatz <em>und</em> Abstiegsplatz in dieser Enumeration beide
+        noch möglich, zeigen wir bewusst keine Punktzahl.
       </p>
       <h3>Gesamte Saison</h3>
       <p>
@@ -238,12 +239,11 @@ export function DecisionsExplainBody() {
       <h3>Auslöser: Spieltag vs. Saison</h3>
       <p>
         <strong>Diesen Spieltag</strong> (wenn Spiele laufen oder der Spieltag
-        ansteht): nur was sich <em>heute für die Saison</em> entscheiden kann —
-        aus der Spieltags-Rechnung, möglichst exakt. Solange ein Verein
-        saisonweit noch Aufstieg/CL <em>und</em> Abstieg erreichen kann, zeigen
-        wir keine Spieltags-Zeilen (die wären nur der Platz nach 90 Minuten,
-        kein Saison-Urteil). <strong>Saison</strong>: Hinweise über mehrere
-        Spieltage, oft Näherung und so gekennzeichnet.
+        ansteht): welcher <em>Tabellenplatz nach den heutigen Spielen</em>{' '}
+        möglich ist — nicht, ob Aufstieg oder Klassenerhalt für die Saison schon
+        feststehen. Formulierungen wie „kein Aufstiegsplatz“ gelten nur für
+        diesen Spieltag. <strong>Saison</strong>: was über alle Restspiele
+        feststeht, oft Näherung und so gekennzeichnet.
       </p>
     </>
   )

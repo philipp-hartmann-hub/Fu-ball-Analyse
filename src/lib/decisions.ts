@@ -311,13 +311,8 @@ export function buildDecisionRadar(input: {
   const matchdayExact =
     matchdayFixtures.length > 0 && matchdayFixtures.length <= 12
 
-  const anySeasonDecisionOnMatchday = standingsForHorizon.some((row) => {
-    const h = liveHardById.get(row.teamId) ?? confHardById.get(row.teamId)
-    return h != null && !seasonFateStillOpen(h, league)
-  })
-
   const matchdayOutcomesByTeam =
-    includeTriggers && nextMatchday != null && anySeasonDecisionOnMatchday
+    includeTriggers && nextMatchday != null
       ? enumerateMatchdayOutcomesByTeam(
           standingsForHorizon,
           remainingForHorizon,
@@ -373,10 +368,7 @@ export function buildDecisionRadar(input: {
         )
       }
 
-      if (
-        nextMatchday != null &&
-        !seasonFateStillOpen(hasLive ? lh : ch, league)
-      ) {
+      if (nextMatchday != null) {
         const mdOutcomes = matchdayOutcomesByTeam?.get(row.teamId)
         if (mdOutcomes) {
           const playsNext = matchdayFixtures.some(
