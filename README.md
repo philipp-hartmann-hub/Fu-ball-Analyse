@@ -24,9 +24,9 @@ Echtzeit-Analyse für die **1., 2. und 3. Liga**: Tabelle, Restprogramm und mög
 - Spalte **Möglich**: rechnerisch noch mögliche Plätze – **exakt** bei ≤12 relevanten Restspielen je Verein (nach Punkte-Pruning), sonst **harte Außengrenze** aus Punktemaxima (Badge pro Zeile); alternativ Monte-Carlo-**Prognose** (umschaltbar; unter `MIN_GAMES` Spielen ohne Prozentanzeige)
 - Spalte **Restprog.**: Einschätzung sehr leicht → sehr schwer (immer in der Tabelle; auf schmalen Breiten ausgeblendet)
 - Seitenleiste: **Verein** (Kern sofort, Wunschplatz/Restprogramm/Härte hinter Klappen) · **Ergebnisse** · **Entscheidungen** (alleiniger Ort für feststehenden Saison-Status, Live-Delta und Punktschwellen/Auslöser) · **Szenario** · **Vergleich**
-- **Szenario-Simulator**: Partien mit Wappen; Grob (Sieg/Unentschieden) oder Fein-Tore; teilbar via `?s=`
+- **Szenario-Simulator**: Partien mit Wappen; Grob (Sieg/Unentschieden) oder Fein-Tore
 - **Stand nach Spieltag**: Auswahl (Dropdown) für historischen Stand
-- Toolbar: **Link teilen** (Zwischenablage) und **Zurücksetzen** (Szenarien + `?s=`)
+- Toolbar: **Zurücksetzen** (Szenarien + `?s=`)
 
 ---
 
@@ -56,6 +56,15 @@ src/
 ---
 
 ## Änderungsprotokoll
+
+### 2026-08-14 — Prompt 99
+
+**User:** „Link teilen“ aus der Toolbar entfernen.
+
+**Aktion:**
+- Button und Clipboard-Kopie in `App.tsx` entfernt; Zurücksetzen und `?s=`-Persistenz bleiben
+
+**Status:** erledigt
 
 ### 2026-08-14 — Prompt 98
 
