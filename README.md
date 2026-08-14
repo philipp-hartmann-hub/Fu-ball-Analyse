@@ -57,6 +57,16 @@ src/
 
 ## Änderungsprotokoll
 
+### 2026-08-14 — Prompt 100
+
+**User:** Screenshot Entscheidungs-Radar bei Spieltag 2: „Aufstieg nicht mehr erreichbar“ / „Klassenerhalt sicher“ trotz Tabelle 1.–18.
+
+**Aktion:**
+- Ursache: Spieltags-Schwellen beschreiben den Platz nach 90 Minuten, klingen aber wie Saison-Urteile
+- Radar zeigt Spieltags-Auslöser nur noch, wenn die Saison-Härtespanne für den Verein nicht mehr Ziel *und* Abstieg umfasst (`seasonFateStillOpen`)
+
+**Status:** erledigt
+
 ### 2026-08-14 — Prompt 99
 
 **User:** „Link teilen“ aus der Toolbar entfernen.

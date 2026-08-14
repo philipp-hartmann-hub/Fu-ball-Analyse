@@ -284,11 +284,11 @@ export function DecisionRadarPanel({
             {radar.nextMatchday != null ? ` · ST ${radar.nextMatchday}` : ''}
           </h3>
           <p className="hint tight">
-            Was sich heute entscheiden kann
+            Was sich heute für die <strong>Saison</strong> entscheiden kann
             {matchdayNear.some((r) => r.matchdayTriggersExact)
               ? ' (exakte Enumeration)'
               : ' (ggf. Näherung)'}
-            .
+            . Nicht der Tabellenplatz nach 90 Minuten.
           </p>
           <ul className="decision-list">
             {matchdayNear.map((row) => (
