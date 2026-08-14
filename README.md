@@ -57,6 +57,17 @@ src/
 
 ## Änderungsprotokoll
 
+### 2026-08-14 — Prompt 98
+
+**User:** Lange Ladezeit durch Entscheidungs-Radar beheben: nur rechnen wenn der Reiter sichtbar ist; Spieltag einmal enumerieren statt 18×.
+
+**Aktion:**
+- `App.tsx`: `buildDecisionRadar` nur bei `sideTab === 'decisions'` (nicht mehr beim Start/Poll auf Verein)
+- `enumerateMatchdayOutcomesByTeam`: ein 3ⁿ-Durchlauf, dieselben Outcomes wie die Einzel-Enumeration; Radar nutzt das
+- Kein Worker — nach 1)+2) nicht nötig für den Standard-Reiter
+
+**Status:** erledigt
+
 ### 2026-08-14 — Prompt 97
 
 **User:** Vereinsanalyse entzerren: Kern sofort sichtbar, seltenere Blöcke hinter nativen Klappen (progressive disclosure).

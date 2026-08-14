@@ -1790,6 +1790,151 @@ export function enumerateMatchdayOutcomes(
   return out
 }
 
+/**
+ * Dieselben Spieltags-Outcomes wie `enumerateMatchdayOutcomes`, aber in einem
+ * 3ⁿ-Durchlauf für alle Teams. Fokus-Tore nur am eigenen Spiel (identisch zur
+ * Einzel-Enumeration); die übrigen Spiele bleiben 1:0 / 1:1 / 0:1.
+ */
+export function enumerateMatchdayOutcomesByTeam(
+  baseStandings: StandingRow[],
+  remaining: Match[],
+  priorScores: MatchScore[] = [],
+): Map<number, PointRankOutcome[]> | null {
+  const matchday = nextOpenMatchday(remaining)
+  if (matchday == null) return null
+  const fixtures = matchesOnMatchday(remaining, matchday)
+  if (!fixtures.length) return null
+
+  if (fixtures.length > 12) {
+    const byTeam = new Map<number, PointRankOutcome[]>()
+    for (const row of baseStandings) {
+      const out = enumerateMatchdayOutcomes(
+        baseStandings,
+        remaining,
+        row.teamId,
+        priorScores,
+      )
+      if (out) byTeam.set(row.teamId, out)
+    }
+    return byTeam.size ? byTeam : null
+  }
+
+  const byTeam = new Map<number, PointRankOutcome[]>()
+  for (const row of baseStandings) byTeam.set(row.teamId, [])
+
+  const total = 3 ** fixtures.length
+  const ranksFrom = (
+    table: Map<number, StandingRow>,
+    scores: MatchScore[],
+  ): Map<number, number> => {
+    const ranked = rankStandings(toDrafts([...table.values()]), {
+      matchScores: scores,
+    })
+    return new Map(ranked.map((r) => [r.teamId, r.rank]))
+  }
+
+  const patchOwnMatch = (
+    table: Map<number, StandingRow>,
+    scores: MatchScore[],
+    match: Match,
+    outcomeIdx: number,
+    focusId: number,
+  ): (() => void) | null => {
+    const [oldH, oldA] = scorelineForFixture(match, outcomeIdx, -1)
+    const [newH, newA] = scorelineForFixture(match, outcomeIdx, focusId)
+    if (oldH === newH && oldA === newA) return null
+    const home = table.get(match.team1.teamId)
+    const away = table.get(match.team2.teamId)
+    if (!home || !away) return null
+    const dH = newH - oldH
+    const dA = newA - oldA
+    home.goalsFor += dH
+    home.goalsAgainst += dA
+    away.goalsFor += dA
+    away.goalsAgainst += dH
+    home.goalDiff = home.goalsFor - home.goalsAgainst
+    away.goalDiff = away.goalsFor - away.goalsAgainst
+    const si = scores.findIndex((s) => s.matchId === match.matchID)
+    const prev = si >= 0 ? scores[si]! : null
+    if (si >= 0) {
+      scores[si] = { ...prev!, homeGoals: newH, awayGoals: newA }
+    }
+    return () => {
+      home.goalsFor -= dH
+      home.goalsAgainst -= dA
+      away.goalsFor -= dA
+      away.goalsAgainst -= dH
+      home.goalDiff = home.goalsFor - home.goalsAgainst
+      away.goalDiff = away.goalsFor - away.goalsAgainst
+      if (si >= 0 && prev) scores[si] = prev
+    }
+  }
+
+  for (let mask = 0; mask < total; mask++) {
+    const idxs: number[] = []
+    let x = mask
+    for (let i = 0; i < fixtures.length; i++) {
+      idxs.push(x % 3)
+      x = Math.floor(x / 3)
+    }
+
+    const table = new Map(baseStandings.map((s) => [s.teamId, cloneRow(s)]))
+    const scores: MatchScore[] = [...priorScores]
+    for (let i = 0; i < fixtures.length; i++) {
+      const match = fixtures[i]!
+      const [hg, ag] = scorelineForFixture(match, idxs[i]!, -1)
+      applyOutcome(table, match.team1.teamId, match.team2.teamId, hg, ag)
+      scores.push({
+        matchId: match.matchID,
+        homeId: match.team1.teamId,
+        awayId: match.team2.teamId,
+        homeGoals: hg,
+        awayGoals: ag,
+      })
+    }
+
+    const genericRanks = ranksFrom(table, scores)
+    const recorded = new Set<number>()
+
+    for (let i = 0; i < fixtures.length; i++) {
+      const match = fixtures[i]!
+      const revert = patchOwnMatch(
+        table,
+        scores,
+        match,
+        idxs[i]!,
+        match.team1.teamId,
+      )
+      const ranks = revert ? ranksFrom(table, scores) : genericRanks
+      for (const teamId of [match.team1.teamId, match.team2.teamId]) {
+        const live = table.get(teamId)
+        const list = byTeam.get(teamId)
+        if (live && list) {
+          list.push({
+            points: live.points,
+            rank: ranks.get(teamId) ?? live.rank,
+          })
+          recorded.add(teamId)
+        }
+      }
+      revert?.()
+    }
+
+    for (const row of baseStandings) {
+      if (recorded.has(row.teamId)) continue
+      const live = table.get(row.teamId)
+      const list = byTeam.get(row.teamId)
+      if (!live || !list) continue
+      list.push({
+        points: live.points,
+        rank: genericRanks.get(row.teamId) ?? live.rank,
+      })
+    }
+  }
+
+  return byTeam
+}
+
 /** Best-/Schlechtfall-Outcomes für die Saison (exakt im Limit, sonst Heuristik). */
 export function seasonExtremeOutcomes(
   baseStandings: StandingRow[],

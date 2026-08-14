@@ -4,7 +4,7 @@ import { MATCHDAY_DISPLAY_HOLD_MS } from './live'
 import {
   computeHardRanges,
   computePositionRanges,
-  enumerateMatchdayOutcomes,
+  enumerateMatchdayOutcomesByTeam,
   matchesOnMatchday,
   nextOpenMatchday,
   seasonExtremeOutcomes,
@@ -297,6 +297,15 @@ export function buildDecisionRadar(input: {
   const matchdayExact =
     matchdayFixtures.length > 0 && matchdayFixtures.length <= 12
 
+  const matchdayOutcomesByTeam =
+    includeTriggers && nextMatchday != null
+      ? enumerateMatchdayOutcomesByTeam(
+          standingsForHorizon,
+          remainingForHorizon,
+          priorScores,
+        )
+      : null
+
   const all: DecisionTeamRow[] = confirmedStandings.map((row) => {
     const ch = confHardById.get(row.teamId) ?? {
       teamId: row.teamId,
@@ -323,6 +332,9 @@ export function buildDecisionRadar(input: {
     let matchdayTriggers: ThresholdLine[] = []
     let matchdayTriggersExact = false
 
+    // Spieltag: ein 3ⁿ-Durchlauf für alle Teams (nicht 18×). Saison bleibt
+    // team-spezifisch (andere Restspiele). useMatchdayOutlooks ist nur der
+    // gewählte Verein und hier nicht wiederverwendbar.
     if (includeTriggers) {
       const seasonOutcomes = seasonExtremeOutcomes(
         standingsForHorizon,
@@ -343,12 +355,7 @@ export function buildDecisionRadar(input: {
       }
 
       if (nextMatchday != null) {
-        const mdOutcomes = enumerateMatchdayOutcomes(
-          standingsForHorizon,
-          remainingForHorizon,
-          row.teamId,
-          priorScores,
-        )
+        const mdOutcomes = matchdayOutcomesByTeam?.get(row.teamId)
         if (mdOutcomes) {
           const playsNext = matchdayFixtures.some(
             (m) =>

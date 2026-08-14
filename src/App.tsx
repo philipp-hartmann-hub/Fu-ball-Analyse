@@ -209,17 +209,20 @@ export default function App() {
 
   const decisionRadar = useMemo(
     () =>
-      buildDecisionRadar({
-        league: leagueId,
-        confirmedStandings,
-        liveStandings: baseStandings,
-        remainingConfirmed,
-        remainingLive: openMatches,
-        hasLive: liveMatches.length > 0 && includeLiveInTable,
-        includeTriggers: true,
-        priorScores: playedScores,
-      }),
+      sideTab === 'decisions'
+        ? buildDecisionRadar({
+            league: leagueId,
+            confirmedStandings,
+            liveStandings: baseStandings,
+            remainingConfirmed,
+            remainingLive: openMatches,
+            hasLive: liveMatches.length > 0 && includeLiveInTable,
+            includeTriggers: true,
+            priorScores: playedScores,
+          })
+        : null,
     [
+      sideTab,
       leagueId,
       confirmedStandings,
       baseStandings,
@@ -680,7 +683,7 @@ export default function App() {
                 scenarios={scenarios}
                 onExplain={openExplain}
               />
-            ) : sideTab === 'decisions' ? (
+            ) : sideTab === 'decisions' && decisionRadar ? (
               <DecisionRadarPanel
                 radar={decisionRadar}
                 liveCount={liveMatches.length}
@@ -691,6 +694,8 @@ export default function App() {
                 }}
                 onExplain={openExplain}
               />
+            ) : sideTab === 'decisions' ? (
+              <p className="hint tight">Entscheidungs-Radar wird berechnet…</p>
             ) : sideTab === 'scenario' ? (
               <ScenarioPanel
                 matches={openMatches}
