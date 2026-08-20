@@ -400,9 +400,10 @@ describe('buildDecisionRadar / Live-Delta', () => {
       expect(mdBlob).not.toMatch(/nicht mehr erreichbar/)
       expect(mdBlob).not.toMatch(/Klassenerhalt/)
       expect(mdBlob).not.toMatch(/Aufstieg sicher/)
+      expect(mdBlob).not.toMatch(/kann auf Platz|Platz \d+–\d+|bleibt Platz/)
       if (row.matchdayTriggers.length > 0) {
         expect(mdBlob).toMatch(
-          /Platz|Tabellenführer|Aufstiegsplatz|Abstiegsplatz|bleibt/,
+          /Tabellenführer|Aufstiegsplatz|Abstiegsplatz/,
         )
       }
     }
@@ -434,13 +435,10 @@ describe('buildDecisionRadar / Live-Delta', () => {
       nowMs: Date.parse('2026-08-14T12:00:00Z'),
     })
     const row = radar.all.find((r) => r.teamId === 2)!
-    expect(
-      row.matchdayTriggers.some(
-        (t) => t.key === 'live-rank' || t.key.startsWith('live-'),
-      ),
-    ).toBe(true)
-    const blob = row.matchdayTriggers.map((t) => t.primary).join(' ')
-    expect(blob).toMatch(/jetzt/)
+    expect(row.matchdayTriggers.some((t) => t.key === 'live-leader')).toBe(true)
+    expect(row.matchdayTriggers.map((t) => t.primary).join(' ')).toMatch(
+      /Tabellenführer/,
+    )
   })
 
   it('vorletzter Spieltag: Saison-Clinch und Spieltags-Position getrennt, konsistent', () => {
@@ -464,10 +462,13 @@ describe('buildDecisionRadar / Live-Delta', () => {
       nowMs: Date.parse('2025-04-20T12:00:00Z'),
     })
     const row = radar.all.find((r) => r.teamId === focusId)!
-    expect(row.matchdayTriggers.length).toBeGreaterThan(0)
-    const mdBlob = row.matchdayTriggers.map((t) => t.primary).join(' ')
-    expect(mdBlob).not.toMatch(/nicht mehr erreichbar/)
-    expect(mdBlob).toMatch(/Platz|Aufstiegsplatz|Tabellenführer|Abstiegsplatz/)
+    // Bereits Aufstiegsplatz: Spieltag nur bei Tabellenführer/Zone-Wechsel
+    for (const t of row.matchdayTriggers) {
+      expect(`${t.label} ${t.primary}`).toMatch(
+        /Tabellenführer|Aufstiegsplatz|Abstiegsplatz/,
+      )
+      expect(t.primary).not.toMatch(/kann auf Platz|Platz \d+–\d+/)
+    }
 
     expect(
       row.seasonTriggers.some((t) =>
@@ -545,8 +546,19 @@ describe('buildDecisionRadar / Live-Delta', () => {
     expect(kept.map((l) => l.key)).toEqual(['target-secure-from'])
   })
 
-  it('deriveMatchdayPositionLines: Positions-Sprache ohne Saison-Clinch', () => {
-    const lines = deriveMatchdayPositionLines(
+  it('deriveMatchdayPositionLines: nur relevante Platzierungen, keine Spanne', () => {
+    const mid = deriveMatchdayPositionLines(
+      [
+        { points: 4, rank: 8 },
+        { points: 3, rank: 10 },
+        { points: 1, rank: 12 },
+      ],
+      9,
+      'bl2',
+    )
+    expect(mid).toEqual([])
+
+    const leader = deriveMatchdayPositionLines(
       [
         { points: 6, rank: 1 },
         { points: 4, rank: 5 },
@@ -555,9 +567,10 @@ describe('buildDecisionRadar / Live-Delta', () => {
       4,
       'bl2',
     )
-    const blob = lines.map((l) => `${l.label} ${l.primary}`).join(' ')
-    expect(blob).toMatch(/kann Tabellenführer werden|kann Platz 1 erreichen/)
+    const blob = leader.map((l) => `${l.label} ${l.primary}`).join(' ')
+    expect(blob).toMatch(/kann Tabellenführer werden/)
     expect(blob).toMatch(/Aufstiegsplatz möglich/)
+    expect(blob).not.toMatch(/kann auf Platz|Platz \d+–\d+|bleibt Platz/)
     expect(blob).not.toMatch(/nicht mehr erreichbar|Klassenerhalt|Aufstieg sicher/)
   })
 

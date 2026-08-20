@@ -256,7 +256,9 @@ export function DecisionRadarPanel({
             {radar.nextMatchday != null ? ` · ST ${radar.nextMatchday}` : ''}
           </h3>
           <p className="hint tight">
-            Tabellenplatz nach diesem Spieltag — keine Saison-Gewissheit
+            Nur relevante Platzierungen nach allen Spieltags-Konstellationen
+            (Tabellenführer, Aufstiegs-/CL-Platz, Abstiegsplatz) — Vereine ohne
+            solche Chance erscheinen hier nicht
             {matchdayRows.some((r) => r.matchdayTriggersExact)
               ? ' (exakte Enumeration)'
               : ' (ggf. Näherung)'}
