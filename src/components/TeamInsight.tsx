@@ -1109,6 +1109,14 @@ export function TeamInsight({
             </Disclosure>
           )}
 
+        <ForecastZoneBreakdown
+          forecast={forecast}
+          loading={forecastLoading}
+          reliable={forecastReliable}
+          league={league}
+          onExplain={onExplain}
+        />
+
         {remainingFixtures.length > 0 && (
           <Disclosure
             closedLabel={`Restprogramm (${remainingFixtures.length} ${
@@ -1133,19 +1141,6 @@ export function TeamInsight({
             </ul>
           </Disclosure>
         )}
-
-        <Disclosure
-          closedLabel="Saison-Prognose anzeigen"
-          openLabel="Saison-Prognose ausblenden"
-        >
-          <ForecastZoneBreakdown
-            forecast={forecast}
-            loading={forecastLoading}
-            reliable={forecastReliable}
-            league={league}
-            onExplain={onExplain}
-          />
-        </Disclosure>
       </div>
 
       <VariantPanel

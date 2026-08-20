@@ -85,9 +85,6 @@ function TriggerList({
           <span className="primary">{t.primary}</span>
           {t.secondary && <span className="secondary">{t.secondary}</span>}
           {approximate && <span className="approx">Näherung</span>}
-          {!approximate && horizon === 'matchday' && (
-            <span className="approx exact">exakt</span>
-          )}
         </li>
       ))}
     </ul>
@@ -256,12 +253,13 @@ export function DecisionRadarPanel({
             {radar.nextMatchday != null ? ` · ST ${radar.nextMatchday}` : ''}
           </h3>
           <p className="hint tight">
-            Nur relevante Platzierungen nach allen Spieltags-Konstellationen
-            (Tabellenführer, Aufstiegs-/CL-Platz, Abstiegsplatz) — Vereine ohne
-            solche Chance erscheinen hier nicht
-            {matchdayRows.some((r) => r.matchdayTriggersExact)
-              ? ' (exakte Enumeration)'
-              : ' (ggf. Näherung)'}
+            Relevante Plätze nach allen Spieltags-Konstellationen
+            (Tabellenführer, CL/EL/Aufstieg, Relegation, Abstieg) — auch wenn
+            der Verein dort schon steht. Ohne solche Chance erscheint er hier
+            nicht
+            {matchdayRows.some((r) => !r.matchdayTriggersExact)
+              ? ' (ggf. Näherung)'
+              : ''}
             .
           </p>
           {matchdayRows.length === 0 ? (

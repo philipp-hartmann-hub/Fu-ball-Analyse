@@ -15,11 +15,15 @@ import {
   isRelegationRank,
   isTopTargetRank,
   topTargetLabel,
-  topTargetPlaceLabel,
   type PointRankOutcome,
   type ThresholdLine,
 } from './thresholds'
-import { zoneForRank, zoneLabelFor, type LeagueZoneId } from './table'
+import {
+  zoneForRank,
+  zoneLabelFor,
+  zoneLegendFor,
+  type LeagueZoneId,
+} from './table'
 
 /** Feststehender Status aus harten Grenzen — immer eine Saison-Aussage. */
 export type DecisionStatusKind =
@@ -421,9 +425,68 @@ export function filterSeasonTriggersByHard(
 }
 
 /**
- * Spieltags-Ebene: nur relevante Platzierungen über alle Spieltags-Konstellationen
- * (volle Enumeration der Partien, nicht nur Fokus-Extrem).
- * Keine generischen „Platz X–Y“ / „kann auf Platz Z fallen“-Zeilen.
+ * Kurze Platz-Bezeichnung für die Spieltags-Ebene (nicht Saison-Clinch).
+ */
+function matchdayPlaceLabel(zone: string, league: LeagueZoneId): string {
+  if (league === 'bl1') {
+    if (zone === 'champion') return 'Meisterplatz'
+    if (zone === 'cl') return 'CL-Platz'
+    if (zone === 'el') return 'EL-Platz'
+    if (zone === 'ecl') return 'ECL-Platz'
+    if (zone === 'relegation') return 'Relegationsplatz'
+    if (zone === 'direct-relegation') return 'Abstiegsplatz'
+  }
+  if (league === 'bl2' || league === 'bl3') {
+    if (zone === 'champion') return 'Aufstiegsplatz'
+    if (zone === 'cl') return 'Relegationsplatz Aufstieg'
+    if (zone === 'relegation') return 'Relegationsplatz Abstieg'
+    if (zone === 'direct-relegation') return 'Abstiegsplatz'
+  }
+  return zoneLabelFor(
+    zone === 'champion' ? 1 : zone === 'cl' ? 4 : 18,
+    league,
+  )
+}
+
+function pushZoneMatchdayLines(
+  lines: ThresholdLine[],
+  keyPrefix: string,
+  placeLabel: string,
+  toneReach: 'good' | 'bad' | 'neutral',
+  can: boolean,
+  certain: boolean,
+  nowIn: boolean,
+): void {
+  if (certain) {
+    lines.push({
+      key: `${keyPrefix}-safe`,
+      label: 'Nach diesem Spieltag',
+      primary: `${placeLabel} sicher`,
+      tone: toneReach === 'bad' ? 'bad' : 'good',
+    })
+  } else if (can) {
+    lines.push({
+      key: `${keyPrefix}-possible`,
+      label: nowIn ? 'Diesen Spieltag' : 'Nach diesem Spieltag',
+      primary: nowIn
+        ? `bleibt ${placeLabel} möglich`
+        : `${placeLabel} möglich`,
+      tone: toneReach,
+    })
+  } else if (nowIn) {
+    lines.push({
+      key: `${keyPrefix}-gone`,
+      label: 'Nach diesem Spieltag',
+      primary: `kein ${placeLabel} mehr`,
+      tone: toneReach === 'bad' ? 'good' : 'bad',
+    })
+  }
+}
+
+/**
+ * Spieltags-Ebene: relevante Zonen (Tabellenführer, CL/EL/ECL, Relegation,
+ * Aufstieg/Abstieg) über alle Spieltags-Konstellationen.
+ * Wer schon auf so einem Platz steht, erscheint ebenfalls.
  * Leere Liste = Verein in der Spieltags-Liste weglassen.
  */
 export function deriveMatchdayPositionLines(
@@ -437,7 +500,9 @@ export function deriveMatchdayPositionLines(
   },
 ): ThresholdLine[] {
   const lines: ThresholdLine[] = []
-  const placeName = topTargetPlaceLabel(league)
+  const zones = zoneLegendFor(league)
+  const inZone = (rank: number, zone: string) =>
+    zoneForRank(rank, league) === zone
 
   if (opts?.hasLive && opts.liveRank != null && opts.confirmedRank != null) {
     const live = opts.liveRank
@@ -457,38 +522,23 @@ export function deriveMatchdayPositionLines(
         tone: 'bad',
       })
     }
-    const liveTarget = isTopTargetRank(live, league)
-    const confTarget = isTopTargetRank(conf, league)
-    if (liveTarget && !confTarget) {
+    for (const { zone } of zones) {
+      const placeLabel = matchdayPlaceLabel(zone, league)
+      const liveIn = inZone(live, zone)
+      const confIn = inZone(conf, zone)
+      if (liveIn === confIn) continue
+      const badZone = zone === 'relegation' || zone === 'direct-relegation'
       lines.push({
-        key: 'live-target',
+        key: `live-${zone}`,
         label: 'Zwischenstand',
-        primary: `jetzt ${placeName}`,
-        tone: 'good',
-      })
-    } else if (!liveTarget && confTarget) {
-      lines.push({
-        key: 'live-target-lost',
-        label: 'Zwischenstand',
-        primary: `nicht mehr ${placeName}`,
-        tone: 'bad',
-      })
-    }
-    const liveReleg = isRelegationRank(live, league)
-    const confReleg = isRelegationRank(conf, league)
-    if (liveReleg && !confReleg) {
-      lines.push({
-        key: 'live-releg',
-        label: 'Zwischenstand',
-        primary: 'jetzt Abstiegsplatz',
-        tone: 'bad',
-      })
-    } else if (!liveReleg && confReleg) {
-      lines.push({
-        key: 'live-releg-cleared',
-        label: 'Zwischenstand',
-        primary: 'kein Abstiegsplatz mehr',
-        tone: 'good',
+        primary: liveIn ? `jetzt ${placeLabel}` : `nicht mehr ${placeLabel}`,
+        tone: liveIn
+          ? badZone
+            ? 'bad'
+            : 'good'
+          : badZone
+            ? 'good'
+            : 'bad',
       })
     }
   }
@@ -497,15 +547,9 @@ export function deriveMatchdayPositionLines(
 
   const canLead = outcomes.some((o) => o.rank === 1)
   const leadCertain = outcomes.every((o) => o.rank === 1)
-  const canTarget = outcomes.some((o) => isTopTargetRank(o.rank, league))
-  const targetCertain = outcomes.every((o) => isTopTargetRank(o.rank, league))
-  const canReleg = outcomes.some((o) => isRelegationRank(o.rank, league))
-  const relegCertain = outcomes.every((o) => isRelegationRank(o.rank, league))
-  const nowTarget = isTopTargetRank(currentRank, league)
-  const nowReleg = isRelegationRank(currentRank, league)
   const nowLead = currentRank === 1
 
-  if (leadCertain && !nowLead) {
+  if (leadCertain) {
     lines.push({
       key: 'md-leader-safe',
       label: 'Nach diesem Spieltag',
@@ -519,6 +563,13 @@ export function deriveMatchdayPositionLines(
       primary: 'kann Tabellenführer werden',
       tone: 'good',
     })
+  } else if (canLead && nowLead) {
+    lines.push({
+      key: 'md-leader-stay',
+      label: 'Diesen Spieltag',
+      primary: 'bleibt Tabellenführer möglich',
+      tone: 'good',
+    })
   } else if (!canLead && nowLead) {
     lines.push({
       key: 'md-leader-gone',
@@ -528,50 +579,25 @@ export function deriveMatchdayPositionLines(
     })
   }
 
-  if (targetCertain && !nowTarget) {
-    lines.push({
-      key: 'md-target-safe',
-      label: 'Nach diesem Spieltag',
-      primary: `${placeName} sicher`,
-      tone: 'good',
-    })
-  } else if (canTarget && !nowTarget) {
-    lines.push({
-      key: 'md-target-possible',
-      label: 'Nach diesem Spieltag',
-      primary: `${placeName} möglich`,
-      tone: 'neutral',
-    })
-  } else if (!canTarget && nowTarget) {
-    lines.push({
-      key: 'md-target-gone',
-      label: 'Nach diesem Spieltag',
-      primary: `kein ${placeName}`,
-      tone: 'bad',
-    })
-  }
+  for (const { zone } of zones) {
+    // Tabellenführer deckt BL1-Meister / Platz 1 ab — champion-Zone für BL1
+    // zusätzlich als Meisterplatz nur wenn nicht redundant mit Leader-Zeilen
+    if (league === 'bl1' && zone === 'champion') continue
 
-  if (relegCertain && !nowReleg) {
-    lines.push({
-      key: 'md-releg-safe',
-      label: 'Nach diesem Spieltag',
-      primary: 'Abstiegsplatz sicher',
-      tone: 'bad',
-    })
-  } else if (canReleg && !nowReleg) {
-    lines.push({
-      key: 'md-releg-possible',
-      label: 'Nach diesem Spieltag',
-      primary: 'Abstiegsplatz möglich',
-      tone: 'neutral',
-    })
-  } else if (!canReleg && nowReleg) {
-    lines.push({
-      key: 'md-releg-clear',
-      label: 'Nach diesem Spieltag',
-      primary: 'kein Abstiegsplatz',
-      tone: 'good',
-    })
+    const placeLabel = matchdayPlaceLabel(zone, league)
+    const can = outcomes.some((o) => inZone(o.rank, zone))
+    const certain = outcomes.every((o) => inZone(o.rank, zone))
+    const nowIn = inZone(currentRank, zone)
+    const badZone = zone === 'relegation' || zone === 'direct-relegation'
+    pushZoneMatchdayLines(
+      lines,
+      `md-${zone}`,
+      placeLabel,
+      badZone ? 'bad' : 'neutral',
+      can,
+      certain,
+      nowIn,
+    )
   }
 
   return lines
