@@ -15,6 +15,8 @@ import {
   isRelegationRank,
   isTopTargetRank,
   topTargetLabel,
+  topTargetPlaceLabel,
+  type PointRankOutcome,
   type ThresholdLine,
 } from './thresholds'
 import { zoneForRank, zoneLabelFor, type LeagueZoneId } from './table'
@@ -72,10 +74,12 @@ export interface DecisionTeamRow {
 export interface DecisionRadar {
   hasLive: boolean
   /**
-   * Spieltags-/Live-Blöcke zeigen: laufende Spiele oder nächster Spieltag steht an.
-   * Sonst nur Saison-Status + Saison-Auslöser.
+   * Spieltags-Block zeigen, sobald Restspiele (nächster Spieltag) oder Live existieren.
+   * Leer-Aussage statt den Block zu verstecken.
    */
   showMatchdayHorizon: boolean
+  /** Nächster Spieltag steht im Anstoß-Fenster (für Banner-Text). */
+  matchdayAtHand: boolean
   nextMatchday: number | null
   decided: DecisionTeamRow[]
   /** Live-Deltas und/oder Teams mit Auslöser-Hinweisen (ohne feststehenden Status) */
@@ -387,6 +391,218 @@ export function filterMatchdayTriggersBySeasonHard(
   })
 }
 
+/**
+ * Saison-Zeilen dürfen der harten Spanne (Möglich) nie widersprechen.
+ */
+export function filterSeasonTriggersByHard(
+  lines: ThresholdLine[],
+  seasonHard: HardRange,
+  league: LeagueZoneId,
+): ThresholdLine[] {
+  return lines.filter((line) => {
+    switch (line.key) {
+      case 'target-gone':
+        return !isTopTargetRank(seasonHard.hardBest, league)
+      case 'target-safe':
+        return isTopTargetRank(seasonHard.hardWorst, league)
+      case 'target-secure-from':
+      case 'target-possible-from':
+        return seasonTargetOpen(seasonHard, league)
+      case 'survive-safe':
+        return !isRelegationRank(seasonHard.hardWorst, league)
+      case 'survive-from':
+        return seasonSurvivalOpen(seasonHard, league)
+      case 'releg-certain':
+        return isRelegationRank(seasonHard.hardBest, league)
+      default:
+        return true
+    }
+  })
+}
+
+/**
+ * Spieltags-Ebene: Tabellenplatz nach/an diesem Spieltag — nie Saison-Clinch-Sprache.
+ */
+export function deriveMatchdayPositionLines(
+  outcomes: PointRankOutcome[],
+  currentRank: number,
+  league: LeagueZoneId,
+  opts?: {
+    hasLive?: boolean
+    liveRank?: number
+    confirmedRank?: number
+  },
+): ThresholdLine[] {
+  const lines: ThresholdLine[] = []
+  const placeName = topTargetPlaceLabel(league)
+
+  if (opts?.hasLive && opts.liveRank != null && opts.confirmedRank != null) {
+    if (opts.liveRank !== opts.confirmedRank) {
+      lines.push({
+        key: 'live-rank',
+        label: 'Zwischenstand',
+        primary: `jetzt Platz ${opts.liveRank}`,
+        secondary:
+          opts.liveRank < opts.confirmedRank
+            ? `vorher ${opts.confirmedRank}.`
+            : `vorher ${opts.confirmedRank}.`,
+        tone: opts.liveRank < opts.confirmedRank ? 'good' : 'bad',
+      })
+    }
+    const liveTarget = isTopTargetRank(opts.liveRank, league)
+    const confTarget = isTopTargetRank(opts.confirmedRank, league)
+    if (liveTarget && !confTarget) {
+      lines.push({
+        key: 'live-target',
+        label: 'Zwischenstand',
+        primary: `jetzt ${placeName}`,
+        tone: 'good',
+      })
+    } else if (!liveTarget && confTarget) {
+      lines.push({
+        key: 'live-target-lost',
+        label: 'Zwischenstand',
+        primary: `nicht mehr ${placeName}`,
+        tone: 'bad',
+      })
+    }
+    const liveReleg = isRelegationRank(opts.liveRank, league)
+    const confReleg = isRelegationRank(opts.confirmedRank, league)
+    if (liveReleg && !confReleg) {
+      lines.push({
+        key: 'live-releg',
+        label: 'Zwischenstand',
+        primary: 'jetzt Abstiegsplatz',
+        tone: 'bad',
+      })
+    } else if (!liveReleg && confReleg) {
+      lines.push({
+        key: 'live-releg-cleared',
+        label: 'Zwischenstand',
+        primary: 'kein Abstiegsplatz mehr',
+        tone: 'good',
+      })
+    }
+  }
+
+  if (!outcomes.length) return lines
+
+  const ranks = outcomes.map((o) => o.rank)
+  const bestRank = Math.min(...ranks)
+  const worstRank = Math.max(...ranks)
+  const canTarget = outcomes.some((o) => isTopTargetRank(o.rank, league))
+  const targetCertain = outcomes.every((o) => isTopTargetRank(o.rank, league))
+  const canReleg = outcomes.some((o) => isRelegationRank(o.rank, league))
+  const relegCertain = outcomes.every((o) => isRelegationRank(o.rank, league))
+
+  if (bestRank < currentRank) {
+    lines.push({
+      key: 'md-best',
+      label: 'Diesen Spieltag',
+      primary:
+        bestRank === 1
+          ? 'kann Tabellenführer werden'
+          : `kann Platz ${bestRank} erreichen`,
+      tone: 'good',
+    })
+  }
+
+  if (worstRank > currentRank) {
+    lines.push({
+      key: 'md-worst',
+      label: 'Diesen Spieltag',
+      primary: `kann auf Platz ${worstRank} fallen`,
+      tone: 'bad',
+    })
+  }
+
+  if (targetCertain) {
+    lines.push({
+      key: 'md-target-safe',
+      label: 'Nach diesem Spieltag',
+      primary: `${placeName} sicher`,
+      tone: 'good',
+    })
+  } else if (canTarget) {
+    lines.push({
+      key: 'md-target-possible',
+      label: 'Nach diesem Spieltag',
+      primary: `${placeName} möglich`,
+      tone: 'neutral',
+    })
+  } else if (isTopTargetRank(currentRank, league) || currentRank <= 6) {
+    lines.push({
+      key: 'md-target-gone',
+      label: 'Nach diesem Spieltag',
+      primary: `kein ${placeName}`,
+      tone: 'bad',
+    })
+  }
+
+  if (relegCertain) {
+    lines.push({
+      key: 'md-releg-safe',
+      label: 'Nach diesem Spieltag',
+      primary: 'Abstiegsplatz sicher',
+      tone: 'bad',
+    })
+  } else if (canReleg) {
+    lines.push({
+      key: 'md-releg-possible',
+      label: 'Nach diesem Spieltag',
+      primary: 'Abstiegsplatz möglich',
+      tone: 'neutral',
+    })
+  } else if (isRelegationRank(currentRank, league) || currentRank >= 12) {
+    lines.push({
+      key: 'md-releg-clear',
+      label: 'Nach diesem Spieltag',
+      primary: 'kein Abstiegsplatz',
+      tone: 'good',
+    })
+  }
+
+  // Spanne nach dem Spieltag, wenn noch nichts Zonales gesagt wurde
+  if (
+    lines.every((l) => !l.key.startsWith('md-') && !l.key.startsWith('live-'))
+  ) {
+    // no lines at all from outcomes - shouldn't happen if we have ranks
+  }
+  if (
+    !lines.some((l) => l.key.startsWith('md-')) &&
+    bestRank === worstRank
+  ) {
+    lines.push({
+      key: 'md-stay',
+      label: 'Nach diesem Spieltag',
+      primary: `bleibt Platz ${bestRank}`,
+      tone: 'neutral',
+    })
+  } else if (
+    !lines.some((l) => l.key === 'md-best' || l.key === 'md-worst') &&
+    bestRank !== worstRank
+  ) {
+    lines.push({
+      key: 'md-span',
+      label: 'Nach diesem Spieltag',
+      primary: `Platz ${bestRank}–${worstRank} möglich`,
+      tone: 'neutral',
+    })
+  }
+
+  return lines
+}
+
+function mergeTriggersByKey(
+  base: ThresholdLine[],
+  extra: ThresholdLine[],
+): ThresholdLine[] {
+  const byKey = new Map<string, ThresholdLine>()
+  for (const line of base) byKey.set(line.key, line)
+  for (const line of extra) byKey.set(line.key, line)
+  return sortTriggers([...byKey.values()])
+}
+
 function kickoffMs(match: Match): number | null {
   const raw = match.matchDateTimeUTC || match.matchDateTime
   if (!raw) return null
@@ -443,8 +659,8 @@ export function buildDecisionRadar(input: {
   const remainingForHorizon = hasLive ? remainingLive : remainingConfirmed
   const standingsForHorizon = hasLive ? liveStandings : confirmedStandings
   const matchdayAtHand = isMatchdayAtHand(remainingForHorizon, nowMs)
-  const showMatchdayHorizon = hasLive || matchdayAtHand
   const nextMatchday = nextOpenMatchday(remainingForHorizon)
+  const showMatchdayHorizon = hasLive || nextMatchday != null
 
   const confirmedHard = computeHardRanges(confirmedStandings, remainingConfirmed)
   const liveHard = hasLive
@@ -502,6 +718,7 @@ export function buildDecisionRadar(input: {
     // team-spezifisch (andere Restspiele). useMatchdayOutlooks ist nur der
     // gewählte Verein und hier nicht wiederverwendbar.
     if (includeTriggers) {
+      const seasonHard = hasLive ? lh : ch
       const seasonOutcomes = seasonExtremeOutcomes(
         standingsForHorizon,
         remainingForHorizon,
@@ -510,12 +727,16 @@ export function buildDecisionRadar(input: {
       )
       if (seasonOutcomes) {
         seasonTriggers = sortTriggers(
-          deriveThresholdLines(
-            seasonOutcomes,
-            liveRow.points,
-            liveRow.rank,
+          filterSeasonTriggersByHard(
+            deriveThresholdLines(
+              seasonOutcomes,
+              liveRow.points,
+              liveRow.rank,
+              league,
+              { exact: false, horizon: 'season' },
+            ),
+            seasonHard,
             league,
-            { exact: false, horizon: 'season' },
           ),
         )
       }
@@ -527,7 +748,6 @@ export function buildDecisionRadar(input: {
             (m) =>
               m.team1.teamId === row.teamId || m.team2.teamId === row.teamId,
           )
-          const seasonHard = hasLive ? lh : ch
           const caps = {
             canSecureTarget: matchdayCanSecureTarget(
               standingsForHorizon,
@@ -558,8 +778,8 @@ export function buildDecisionRadar(input: {
               league,
             ),
           }
-          matchdayTriggersExact = matchdayExact
-          matchdayTriggers = sortTriggers(
+          // Saison-Clinch, der diesen Spieltag kippen kann — Saison-Sprache
+          const seasonClinch = filterSeasonTriggersByHard(
             filterMatchdayTriggersBySeasonHard(
               deriveThresholdLines(
                 mdOutcomes,
@@ -569,13 +789,29 @@ export function buildDecisionRadar(input: {
                 {
                   exact: matchdayExact,
                   reachableMax: liveRow.points + (playsNext ? 3 : 0),
-                  horizon: 'matchday',
+                  horizon: 'season',
                 },
               ),
               seasonHard,
               league,
               caps,
             ),
+            seasonHard,
+            league,
+          )
+          seasonTriggers = mergeTriggersByKey(seasonTriggers, seasonClinch)
+
+          // Spieltags-Ebene: nur Positions-Aussagen
+          matchdayTriggersExact = matchdayExact
+          matchdayTriggers = deriveMatchdayPositionLines(
+            mdOutcomes,
+            liveRow.rank,
+            league,
+            {
+              hasLive,
+              liveRank: liveRow.rank,
+              confirmedRank: row.rank,
+            },
           )
         }
       }
@@ -617,6 +853,7 @@ export function buildDecisionRadar(input: {
   return {
     hasLive,
     showMatchdayHorizon,
+    matchdayAtHand,
     nextMatchday,
     decided,
     pending,

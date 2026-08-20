@@ -45,7 +45,7 @@ export function topTargetLabel(league: LeagueZoneId): string {
 }
 
 /** Spieltags-Sicht: Platz in der Tabelle nach diesem Spieltag, kein Saison-Urteil. */
-function topTargetPlaceLabel(league: LeagueZoneId): string {
+export function topTargetPlaceLabel(league: LeagueZoneId): string {
   if (league === 'bl2' || league === 'bl3') return 'Aufstiegsplatz'
   return 'CL-Platz'
 }
