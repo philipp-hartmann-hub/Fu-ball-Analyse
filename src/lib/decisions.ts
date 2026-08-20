@@ -421,7 +421,10 @@ export function filterSeasonTriggersByHard(
 }
 
 /**
- * Spieltags-Ebene: Tabellenplatz nach/an diesem Spieltag — nie Saison-Clinch-Sprache.
+ * Spieltags-Ebene: nur relevante Platzierungen über alle Spieltags-Konstellationen
+ * (volle Enumeration der Partien, nicht nur Fokus-Extrem).
+ * Keine generischen „Platz X–Y“ / „kann auf Platz Z fallen“-Zeilen.
+ * Leere Liste = Verein in der Spieltags-Liste weglassen.
  */
 export function deriveMatchdayPositionLines(
   outcomes: PointRankOutcome[],
@@ -437,20 +440,25 @@ export function deriveMatchdayPositionLines(
   const placeName = topTargetPlaceLabel(league)
 
   if (opts?.hasLive && opts.liveRank != null && opts.confirmedRank != null) {
-    if (opts.liveRank !== opts.confirmedRank) {
+    const live = opts.liveRank
+    const conf = opts.confirmedRank
+    if (live === 1 && conf !== 1) {
       lines.push({
-        key: 'live-rank',
+        key: 'live-leader',
         label: 'Zwischenstand',
-        primary: `jetzt Platz ${opts.liveRank}`,
-        secondary:
-          opts.liveRank < opts.confirmedRank
-            ? `vorher ${opts.confirmedRank}.`
-            : `vorher ${opts.confirmedRank}.`,
-        tone: opts.liveRank < opts.confirmedRank ? 'good' : 'bad',
+        primary: 'jetzt Tabellenführer',
+        tone: 'good',
+      })
+    } else if (conf === 1 && live !== 1) {
+      lines.push({
+        key: 'live-leader-lost',
+        label: 'Zwischenstand',
+        primary: 'nicht mehr Tabellenführer',
+        tone: 'bad',
       })
     }
-    const liveTarget = isTopTargetRank(opts.liveRank, league)
-    const confTarget = isTopTargetRank(opts.confirmedRank, league)
+    const liveTarget = isTopTargetRank(live, league)
+    const confTarget = isTopTargetRank(conf, league)
     if (liveTarget && !confTarget) {
       lines.push({
         key: 'live-target',
@@ -466,8 +474,8 @@ export function deriveMatchdayPositionLines(
         tone: 'bad',
       })
     }
-    const liveReleg = isRelegationRank(opts.liveRank, league)
-    const confReleg = isRelegationRank(opts.confirmedRank, league)
+    const liveReleg = isRelegationRank(live, league)
+    const confReleg = isRelegationRank(conf, league)
     if (liveReleg && !confReleg) {
       lines.push({
         key: 'live-releg',
@@ -487,50 +495,54 @@ export function deriveMatchdayPositionLines(
 
   if (!outcomes.length) return lines
 
-  const ranks = outcomes.map((o) => o.rank)
-  const bestRank = Math.min(...ranks)
-  const worstRank = Math.max(...ranks)
+  const canLead = outcomes.some((o) => o.rank === 1)
+  const leadCertain = outcomes.every((o) => o.rank === 1)
   const canTarget = outcomes.some((o) => isTopTargetRank(o.rank, league))
   const targetCertain = outcomes.every((o) => isTopTargetRank(o.rank, league))
   const canReleg = outcomes.some((o) => isRelegationRank(o.rank, league))
   const relegCertain = outcomes.every((o) => isRelegationRank(o.rank, league))
+  const nowTarget = isTopTargetRank(currentRank, league)
+  const nowReleg = isRelegationRank(currentRank, league)
+  const nowLead = currentRank === 1
 
-  if (bestRank < currentRank) {
+  if (leadCertain && !nowLead) {
     lines.push({
-      key: 'md-best',
-      label: 'Diesen Spieltag',
-      primary:
-        bestRank === 1
-          ? 'kann Tabellenführer werden'
-          : `kann Platz ${bestRank} erreichen`,
+      key: 'md-leader-safe',
+      label: 'Nach diesem Spieltag',
+      primary: 'Tabellenführer sicher',
       tone: 'good',
     })
-  }
-
-  if (worstRank > currentRank) {
+  } else if (canLead && !nowLead) {
     lines.push({
-      key: 'md-worst',
+      key: 'md-leader',
       label: 'Diesen Spieltag',
-      primary: `kann auf Platz ${worstRank} fallen`,
+      primary: 'kann Tabellenführer werden',
+      tone: 'good',
+    })
+  } else if (!canLead && nowLead) {
+    lines.push({
+      key: 'md-leader-gone',
+      label: 'Nach diesem Spieltag',
+      primary: 'kein Tabellenführer mehr',
       tone: 'bad',
     })
   }
 
-  if (targetCertain) {
+  if (targetCertain && !nowTarget) {
     lines.push({
       key: 'md-target-safe',
       label: 'Nach diesem Spieltag',
       primary: `${placeName} sicher`,
       tone: 'good',
     })
-  } else if (canTarget) {
+  } else if (canTarget && !nowTarget) {
     lines.push({
       key: 'md-target-possible',
       label: 'Nach diesem Spieltag',
       primary: `${placeName} möglich`,
       tone: 'neutral',
     })
-  } else if (isTopTargetRank(currentRank, league) || currentRank <= 6) {
+  } else if (!canTarget && nowTarget) {
     lines.push({
       key: 'md-target-gone',
       label: 'Nach diesem Spieltag',
@@ -539,54 +551,26 @@ export function deriveMatchdayPositionLines(
     })
   }
 
-  if (relegCertain) {
+  if (relegCertain && !nowReleg) {
     lines.push({
       key: 'md-releg-safe',
       label: 'Nach diesem Spieltag',
       primary: 'Abstiegsplatz sicher',
       tone: 'bad',
     })
-  } else if (canReleg) {
+  } else if (canReleg && !nowReleg) {
     lines.push({
       key: 'md-releg-possible',
       label: 'Nach diesem Spieltag',
       primary: 'Abstiegsplatz möglich',
       tone: 'neutral',
     })
-  } else if (isRelegationRank(currentRank, league) || currentRank >= 12) {
+  } else if (!canReleg && nowReleg) {
     lines.push({
       key: 'md-releg-clear',
       label: 'Nach diesem Spieltag',
       primary: 'kein Abstiegsplatz',
       tone: 'good',
-    })
-  }
-
-  // Spanne nach dem Spieltag, wenn noch nichts Zonales gesagt wurde
-  if (
-    lines.every((l) => !l.key.startsWith('md-') && !l.key.startsWith('live-'))
-  ) {
-    // no lines at all from outcomes - shouldn't happen if we have ranks
-  }
-  if (
-    !lines.some((l) => l.key.startsWith('md-')) &&
-    bestRank === worstRank
-  ) {
-    lines.push({
-      key: 'md-stay',
-      label: 'Nach diesem Spieltag',
-      primary: `bleibt Platz ${bestRank}`,
-      tone: 'neutral',
-    })
-  } else if (
-    !lines.some((l) => l.key === 'md-best' || l.key === 'md-worst') &&
-    bestRank !== worstRank
-  ) {
-    lines.push({
-      key: 'md-span',
-      label: 'Nach diesem Spieltag',
-      primary: `Platz ${bestRank}–${worstRank} möglich`,
-      tone: 'neutral',
     })
   }
 

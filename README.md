@@ -57,6 +57,27 @@ src/
 
 ## Änderungsprotokoll
 
+### 2026-08-20 — Prompt 113
+
+**User:** Änderungen committen und nach `main` mergen.
+
+**Aktion:**
+- Feature-Branch, PR und Merge der relevanten Spieltags-Platzierungen (Prompt 112)
+
+**Status:** erledigt
+
+### 2026-08-20 — Prompt 112
+
+**User:** Spieltags-Ebene: keine generischen Platzierungen — nur Tabellenführer und vergleichbare relevante Plätze; Vereine ohne Chance weglassen; alle Spieltags-Konstellationen nutzen.
+
+**Aktion:**
+- `deriveMatchdayPositionLines` auf Tabellenführer / Aufstiegs-CL-Platz / Abstiegsplatz (inkl. Wechsel) beschränkt; Spannen und „Platz X fallen/bleiben“ entfernt
+- Leere Trigger → Verein erscheint nicht im Spieltags-Block (Panel filtert wie bisher)
+- Grundlage bleibt die Enumeration aller Partien des Spieltags
+- Tests und Erklärtexte angepasst
+
+**Status:** erledigt
+
 ### 2026-08-20 — Prompt 111
 
 **User:** Änderungen committen und nach `main` mergen.

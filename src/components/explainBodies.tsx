@@ -238,12 +238,13 @@ export function DecisionsExplainBody() {
       </p>
       <h3>Auslöser: Spieltag vs. Saison</h3>
       <p>
-        <strong>Spieltag</strong>: Tabellenplatz nach den heutigen Spielen —
-        Formulierungen wie „kann Platz 1 erreichen“ oder „Aufstiegsplatz
-        möglich“. Keine Saison-Gewissheit. <strong>Saison</strong>: nur was die
-        harten Grenzen (wie „Möglich“) über alle Restspiele hergeben; Clinch-Zeilen
-        nur wenn die Zone noch offen ist und kippbar. Am Saisonanfang ist die
-        Saison-Ebene leer, die Spieltags-Ebene nicht.
+        <strong>Spieltag</strong>: nur relevante Platzierungen aus der
+        Enumeration aller Partien dieses Spieltags — z. B. „kann Tabellenführer
+        werden“ oder „Aufstiegsplatz möglich“. Keine generischen Platzspannen;
+        Vereine ohne solche Chance fehlen in der Liste. Keine Saison-Gewissheit.{' '}
+        <strong>Saison</strong>: nur was die harten Grenzen (wie „Möglich“) über
+        alle Restspiele hergeben; Clinch-Zeilen nur wenn die Zone noch offen und
+        kippbar ist.
       </p>
     </>
   )
