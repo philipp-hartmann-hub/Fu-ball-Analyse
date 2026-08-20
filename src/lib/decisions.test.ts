@@ -4,11 +4,14 @@ import {
   buildDecisionRadar,
   deriveDecisionStatuses,
   diffDecisionStatuses,
+  filterMatchdayTriggersBySeasonHard,
+  matchdayCanSecureTarget,
   seasonFateStillOpen,
   statusConsistentWithExact,
   triggersBeyondStatus,
 } from './decisions'
 import { computeExactPositionRanges, computeHardRanges } from './scenarios'
+import { isRelegationRank, isTopTargetRank } from './thresholds'
 
 function team(id: number, name: string): TeamInfo {
   return {
@@ -141,6 +144,68 @@ function earlySeasonFixture() {
     }
   }
   return { standings, remaining }
+}
+
+/**
+ * Vorletzter Spieltag BL2: Team 1 kann Aufstieg diesen Spieltag hart sichern
+ * (+3 → hardWorst ≤ 2), Spanne vorher noch offen (hardBest in Top-2, hardWorst nicht).
+ */
+function lateSeasonPromotionClinchFixture() {
+  const focusId = 1
+  const standings: StandingRow[] = []
+  // Team 1: 50 Pkt., Team 2: 55 (sicher darüber), 3–18: 49 Pkt. mit je 1 Restspiel
+  standings.push(
+    standingRow({
+      teamId: 1,
+      teamName: 'Leader',
+      points: 50,
+      goalDiff: 20,
+      goalsFor: 60,
+      played: 33,
+      rank: 2,
+    }),
+  )
+  standings.push(
+    standingRow({
+      teamId: 2,
+      teamName: 'Top',
+      points: 55,
+      goalDiff: 25,
+      goalsFor: 65,
+      played: 33,
+      rank: 1,
+    }),
+  )
+  for (let i = 3; i <= 18; i++) {
+    standings.push(
+      standingRow({
+        teamId: i,
+        teamName: `Pack ${i}`,
+        points: 49,
+        goalDiff: 10 - i,
+        goalsFor: 40,
+        played: 33,
+        rank: i,
+      }),
+    )
+  }
+  // ST 34: alle 18 Teams — Leader gegen Pack 3, Rest paaren
+  const remaining: Match[] = [
+    openMatch(1, team(1, 'Leader'), team(3, 'Pack 3'), 34),
+    openMatch(2, team(2, 'Top'), team(4, 'Pack 4'), 34),
+  ]
+  let id = 10
+  for (let i = 5; i <= 18; i += 2) {
+    remaining.push(
+      openMatch(
+        id++,
+        team(i, `Pack ${i}`),
+        team(i + 1, `Pack ${i + 1}`),
+        34,
+      ),
+    )
+  }
+  return { standings, remaining, focusId }
 }
 
 /** Fokus kann maximal Platz 17 erreichen → abgestiegen. */
@@ -307,7 +372,7 @@ describe('buildDecisionRadar / Live-Delta', () => {
     }
   })
 
-  it('Saisonanfang: Spieltags-Zeilen ohne Saison-Urteil-Formulierung', () => {
+  it('Saisonanfang: keine Spieltags-Clinch-Auslöser', () => {
     const { standings, remaining } = earlySeasonFixture()
     const hard = computeHardRanges(standings, remaining)
     expect(hard.every((h) => seasonFateStillOpen(h, 'bl2'))).toBe(true)
@@ -322,15 +387,100 @@ describe('buildDecisionRadar / Live-Delta', () => {
       includeTriggers: true,
       nowMs: Date.parse('2026-08-14T12:00:00Z'),
     })
-    expect(radar.all.some((r) => r.matchdayTriggers.length > 0)).toBe(true)
     for (const row of radar.all) {
       expect(row.confirmedStatuses).toEqual([])
-      const blob = row.matchdayTriggers
-        .map((t) => `${t.label} ${t.primary}`)
-        .join(' ')
-      expect(blob).not.toMatch(/nicht mehr erreichbar/)
-      expect(blob).not.toMatch(/Klassenerhalt/)
+      expect(row.matchdayTriggers).toEqual([])
     }
+  })
+
+  it('vorletzter Spieltag: Aufstieg sicherbar → Spieltags-Auslöser, konsistent mit harter Spanne', () => {
+    const { standings, remaining, focusId } = lateSeasonPromotionClinchFixture()
+    const hard = computeHardRanges(standings, remaining)
+    const focusHard = hard.find((h) => h.teamId === focusId)!
+    expect(isTopTargetRank(focusHard.hardBest, 'bl2')).toBe(true)
+    expect(isTopTargetRank(focusHard.hardWorst, 'bl2')).toBe(false)
+    expect(
+      matchdayCanSecureTarget(standings, remaining, 34, focusId, 'bl2'),
+    ).toBe(true)
+
+    const radar = buildDecisionRadar({
+      league: 'bl2',
+      confirmedStandings: standings,
+      liveStandings: standings,
+      remainingConfirmed: remaining,
+      remainingLive: remaining,
+      hasLive: false,
+      includeTriggers: true,
+      nowMs: Date.parse('2025-04-20T12:00:00Z'),
+    })
+    const row = radar.all.find((r) => r.teamId === focusId)!
+    expect(row.matchdayTriggers.length).toBeGreaterThan(0)
+    expect(
+      row.matchdayTriggers.some((t) =>
+        ['target-safe', 'target-secure-from', 'target-possible-from'].includes(
+          t.key,
+        ),
+      ),
+    ).toBe(true)
+
+    for (const teamRow of radar.all) {
+      const h = hard.find((x) => x.teamId === teamRow.teamId)!
+      for (const line of teamRow.matchdayTriggers) {
+        if (line.key === 'target-gone') {
+          expect(isTopTargetRank(h.hardBest, 'bl2')).toBe(false)
+        }
+        if (line.key === 'survive-safe') {
+          expect(isRelegationRank(h.hardWorst, 'bl2')).toBe(false)
+        }
+        if (line.key === 'target-safe' || line.key === 'target-secure-from') {
+          // Zone muss noch offen sein (nicht schon Saison-sicher), Tip möglich
+          expect(isTopTargetRank(h.hardBest, 'bl2')).toBe(true)
+          expect(isTopTargetRank(h.hardWorst, 'bl2')).toBe(false)
+        }
+      }
+    }
+  })
+
+  it('filterMatchdayTriggersBySeasonHard: keine Zeile gegen offene Saison-Spanne', () => {
+    const open: HardRange = { teamId: 1, hardBest: 1, hardWorst: 18 }
+    const lines = [
+      {
+        key: 'target-gone',
+        label: 'Aufstieg',
+        primary: 'nicht mehr erreichbar',
+        tone: 'bad' as const,
+      },
+      {
+        key: 'survive-safe',
+        label: 'Klassenerhalt',
+        primary: 'rechnerisch sicher',
+        tone: 'good' as const,
+      },
+      {
+        key: 'target-secure-from',
+        label: 'Aufstieg sicher ab',
+        primary: '5 Pkt.',
+        tone: 'good' as const,
+      },
+    ]
+    expect(
+      filterMatchdayTriggersBySeasonHard(lines, open, 'bl2', {
+        canSecureTarget: false,
+        canEliminateTarget: false,
+        canSecureSurvival: false,
+        canForceRelegation: false,
+      }),
+    ).toEqual([])
+
+    // Offene Zielzone + Spieltag kann sichern → secure-from bleibt
+    const border: HardRange = { teamId: 1, hardBest: 1, hardWorst: 10 }
+    const kept = filterMatchdayTriggersBySeasonHard(lines, border, 'bl2', {
+      canSecureTarget: true,
+      canEliminateTarget: false,
+      canSecureSurvival: false,
+      canForceRelegation: false,
+    })
+    expect(kept.map((l) => l.key)).toEqual(['target-secure-from'])
   })
 
   it('Fixture abgestiegen → Status', () => {

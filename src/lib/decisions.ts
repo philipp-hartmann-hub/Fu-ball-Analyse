@@ -2,6 +2,7 @@ import type { HardRange, Match, PositionRange, StandingRow } from '../types'
 import type { MatchScore } from './table'
 import { MATCHDAY_DISPLAY_HOLD_MS } from './live'
 import {
+  computeHardBounds,
   computeHardRanges,
   computePositionRanges,
   enumerateMatchdayOutcomesByTeam,
@@ -235,6 +236,157 @@ export function seasonFateStillOpen(
   )
 }
 
+function seasonTargetOpen(hard: HardRange, league: LeagueZoneId): boolean {
+  return (
+    isTopTargetRank(hard.hardBest, league) &&
+    !isTopTargetRank(hard.hardWorst, league)
+  )
+}
+
+function seasonSurvivalOpen(hard: HardRange, league: LeagueZoneId): boolean {
+  return (
+    !isRelegationRank(hard.hardBest, league) &&
+    isRelegationRank(hard.hardWorst, league)
+  )
+}
+
+/**
+ * Sound-Näherung: Fokus bekommt `focusGain` Punkte, alle Spieltags-Partien
+ * entfallen ohne Punkte für die übrigen. Wenn selbst so die Saison-Zone nicht
+ * kippt, kann kein realer Spieltagsausgang sie entscheiden.
+ */
+function hardAfterMatchdayFocusGain(
+  standings: StandingRow[],
+  remaining: Match[],
+  matchday: number,
+  teamId: number,
+  focusGain: 0 | 1 | 3,
+): HardRange | null {
+  const afterFixtures = remaining.filter(
+    (m) => m.group.groupOrderID !== matchday,
+  )
+  const next = standings.map((row) => {
+    if (row.teamId !== teamId || focusGain === 0) return row
+    return {
+      ...row,
+      points: row.points + focusGain,
+      won: row.won + (focusGain === 3 ? 1 : 0),
+      draw: row.draw + (focusGain === 1 ? 1 : 0),
+      played: row.played + 1,
+    }
+  })
+  return computeHardBounds(next, afterFixtures, teamId)
+}
+
+export function matchdayCanSecureTarget(
+  standings: StandingRow[],
+  remaining: Match[],
+  matchday: number,
+  teamId: number,
+  league: LeagueZoneId,
+): boolean {
+  const hard = hardAfterMatchdayFocusGain(
+    standings,
+    remaining,
+    matchday,
+    teamId,
+    3,
+  )
+  return hard != null && isTopTargetRank(hard.hardWorst, league)
+}
+
+export function matchdayCanEliminateTarget(
+  standings: StandingRow[],
+  remaining: Match[],
+  matchday: number,
+  teamId: number,
+  league: LeagueZoneId,
+): boolean {
+  const hard = hardAfterMatchdayFocusGain(
+    standings,
+    remaining,
+    matchday,
+    teamId,
+    0,
+  )
+  return hard != null && !isTopTargetRank(hard.hardBest, league)
+}
+
+export function matchdayCanSecureSurvival(
+  standings: StandingRow[],
+  remaining: Match[],
+  matchday: number,
+  teamId: number,
+  league: LeagueZoneId,
+): boolean {
+  const hard = hardAfterMatchdayFocusGain(
+    standings,
+    remaining,
+    matchday,
+    teamId,
+    3,
+  )
+  return hard != null && !isRelegationRank(hard.hardWorst, league)
+}
+
+export function matchdayCanForceRelegation(
+  standings: StandingRow[],
+  remaining: Match[],
+  matchday: number,
+  teamId: number,
+  league: LeagueZoneId,
+): boolean {
+  const hard = hardAfterMatchdayFocusGain(
+    standings,
+    remaining,
+    matchday,
+    teamId,
+    0,
+  )
+  return hard != null && isRelegationRank(hard.hardBest, league)
+}
+
+/**
+ * Spieltags-Schwellen nur behalten, wenn die zugehörige Saison-Zone an der
+ * harten Spanne (wie Möglich) noch offen ist und dieser Spieltag sie kippen kann.
+ * `deriveThresholdLines` bleibt unverändert — nur Radar-Gating.
+ */
+export function filterMatchdayTriggersBySeasonHard(
+  lines: ThresholdLine[],
+  seasonHard: HardRange,
+  league: LeagueZoneId,
+  caps: {
+    canSecureTarget: boolean
+    canEliminateTarget: boolean
+    canSecureSurvival: boolean
+    canForceRelegation: boolean
+  },
+): ThresholdLine[] {
+  const targetOpen = seasonTargetOpen(seasonHard, league)
+  const survivalOpen = seasonSurvivalOpen(seasonHard, league)
+
+  return lines.filter((line) => {
+    switch (line.key) {
+      case 'target-gone':
+        return targetOpen && caps.canEliminateTarget
+      case 'target-safe':
+      case 'target-secure-from':
+        return targetOpen && caps.canSecureTarget
+      case 'target-possible-from':
+        return (
+          targetOpen && (caps.canSecureTarget || caps.canEliminateTarget)
+        )
+      case 'survive-safe':
+      case 'survive-from':
+        return survivalOpen && caps.canSecureSurvival
+      case 'releg-certain':
+        return survivalOpen && caps.canForceRelegation
+      default:
+        return false
+    }
+  })
+}
+
 function kickoffMs(match: Match): number | null {
   const raw = match.matchDateTimeUTC || match.matchDateTime
   if (!raw) return null
@@ -375,18 +527,54 @@ export function buildDecisionRadar(input: {
             (m) =>
               m.team1.teamId === row.teamId || m.team2.teamId === row.teamId,
           )
+          const seasonHard = hasLive ? lh : ch
+          const caps = {
+            canSecureTarget: matchdayCanSecureTarget(
+              standingsForHorizon,
+              remainingForHorizon,
+              nextMatchday,
+              row.teamId,
+              league,
+            ),
+            canEliminateTarget: matchdayCanEliminateTarget(
+              standingsForHorizon,
+              remainingForHorizon,
+              nextMatchday,
+              row.teamId,
+              league,
+            ),
+            canSecureSurvival: matchdayCanSecureSurvival(
+              standingsForHorizon,
+              remainingForHorizon,
+              nextMatchday,
+              row.teamId,
+              league,
+            ),
+            canForceRelegation: matchdayCanForceRelegation(
+              standingsForHorizon,
+              remainingForHorizon,
+              nextMatchday,
+              row.teamId,
+              league,
+            ),
+          }
           matchdayTriggersExact = matchdayExact
           matchdayTriggers = sortTriggers(
-            deriveThresholdLines(
-              mdOutcomes,
-              liveRow.points,
-              liveRow.rank,
+            filterMatchdayTriggersBySeasonHard(
+              deriveThresholdLines(
+                mdOutcomes,
+                liveRow.points,
+                liveRow.rank,
+                league,
+                {
+                  exact: matchdayExact,
+                  reachableMax: liveRow.points + (playsNext ? 3 : 0),
+                  horizon: 'matchday',
+                },
+              ),
+              seasonHard,
               league,
-              {
-                exact: matchdayExact,
-                reachableMax: liveRow.points + (playsNext ? 3 : 0),
-                horizon: 'matchday',
-              },
+              caps,
             ),
           )
         }

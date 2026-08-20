@@ -57,6 +57,74 @@ src/
 
 ## Änderungsprotokoll
 
+### 2026-08-20 — Prompt 109
+
+**User:** Änderungen committen und nach `main` mergen.
+
+**Aktion:**
+- Feature-Branch, PR und Merge des Saison-Gatings für Spieltags-Auslöser (Prompt 108)
+
+**Status:** erledigt
+
+### 2026-08-20 — Prompt 108
+
+**User:** Absurde „Diesen Spieltag“-Clinch-Auslöser am Saisonanfang (Aufstieg/Klassenerhalt nach 1–2 Spielen) beheben — Gating an harter Saison-Spanne wie Möglich.
+
+**Aktion:**
+- `filterMatchdayTriggersBySeasonHard` + Tip-Checks (`matchdayCanSecureTarget` etc.) in `decisions.ts`: Spieltags-Zeilen nur wenn Zone an Hartgrenzen offen und dieser Spieltag sie kippen kann
+- `deriveThresholdLines` unverändert; Radar wendet die Schicht nach dem Ableiten an
+- Tests: Saisonanfang ohne Clinch-Zeilen; vorletzter ST mit sicherbarer Aufstiegszone; Filter gegen offene Spanne
+- Panel-/Erklärtexte an Saison-Kipp-Logik angepasst
+
+**Status:** erledigt
+
+### 2026-08-15 — Prompt 107
+
+**User:** Hinweis zum abgebrochenen Vite-Dev-Server (Port 5174).
+
+**Aktion:**
+- Kurz informiert: Server gestoppt; Grün-Theme unverändert
+
+**Status:** erledigt
+
+### 2026-08-14 — Prompt 106
+
+**User:** Charcoal-Theme sieht nicht gut aus — bei Grün bleiben.
+
+**Aktion:**
+- `index.css`, `App.css`, Favicon und `index.html` auf das bisherige Grün-Schema zurückgesetzt (nicht committed gewesen)
+
+**Status:** erledigt
+
+### 2026-08-14 — Prompt 105
+
+**User:** Wo kann ich das neue Farbschema sehen?
+
+**Aktion:**
+- Hinweis: nur lokal, nicht Production/Preview; Dev-Server gestartet
+
+**Status:** erledigt
+
+### 2026-08-14 — Prompt 104
+
+**User:** Variante 1 umsetzen: Charcoal-Raum, Grün nur als Signal.
+
+**Aktion:**
+- Tokens in `index.css`: warmer Nacht-Charcoal, Cream-Accent, `--good` Grün, `--on-accent`
+- UI-Chrome (Tabs, Buttons, Auswahl) auf Cream; „gut“/Meister/Tor-Flash/Puls auf Grün
+- Favicon und `theme-color` angepasst; Zonenfarben CL/EL/Abstieg unverändert
+
+**Status:** erledigt
+
+### 2026-08-14 — Prompt 103
+
+**User:** Leitfarbe ist Grün — würde eine andere Farbe besser passen? (Denk-Modus, keine Umsetzung)
+
+**Aktion:**
+- Einschätzung: Grün als Raumfarbe ist fußballtypisch, kollidiert aber mit Zonenfarben und dem editorialen Satzbild; Empfehlung eher Hierarchie ändern (Grün als Signal, nicht als ganze Fläche) statt auf Blau/Rot zu wechseln
+
+**Status:** erledigt
+
 ### 2026-08-14 — Prompt 102
 
 **User:** Änderungen committen und nach `main` mergen (Production).
