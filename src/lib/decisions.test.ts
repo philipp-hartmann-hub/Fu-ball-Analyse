@@ -3,6 +3,7 @@ import type { HardRange, Match, StandingRow, TeamInfo } from '../types'
 import {
   buildDecisionRadar,
   deriveDecisionStatuses,
+  deriveMatchdayPositionLines,
   diffDecisionStatuses,
   filterMatchdayTriggersBySeasonHard,
   matchdayCanSecureTarget,
@@ -372,7 +373,7 @@ describe('buildDecisionRadar / Live-Delta', () => {
     }
   })
 
-  it('Saisonanfang: keine Spieltags-Clinch-Auslöser', () => {
+  it('2. Spieltag: Saison leer, Spieltag mit Positions-Aussagen ohne Clinch-Sprache', () => {
     const { standings, remaining } = earlySeasonFixture()
     const hard = computeHardRanges(standings, remaining)
     expect(hard.every((h) => seasonFateStillOpen(h, 'bl2'))).toBe(true)
@@ -387,13 +388,62 @@ describe('buildDecisionRadar / Live-Delta', () => {
       includeTriggers: true,
       nowMs: Date.parse('2026-08-14T12:00:00Z'),
     })
+    expect(radar.showMatchdayHorizon).toBe(true)
+    expect(radar.decided).toEqual([])
+    expect(radar.all.every((r) => r.seasonTriggers.length === 0)).toBe(true)
+    expect(radar.all.some((r) => r.matchdayTriggers.length > 0)).toBe(true)
     for (const row of radar.all) {
       expect(row.confirmedStatuses).toEqual([])
-      expect(row.matchdayTriggers).toEqual([])
+      const mdBlob = row.matchdayTriggers
+        .map((t) => `${t.label} ${t.primary}`)
+        .join(' ')
+      expect(mdBlob).not.toMatch(/nicht mehr erreichbar/)
+      expect(mdBlob).not.toMatch(/Klassenerhalt/)
+      expect(mdBlob).not.toMatch(/Aufstieg sicher/)
+      if (row.matchdayTriggers.length > 0) {
+        expect(mdBlob).toMatch(
+          /Platz|Tabellenführer|Aufstiegsplatz|Abstiegsplatz|bleibt/,
+        )
+      }
     }
   })
 
-  it('vorletzter Spieltag: Aufstieg sicherbar → Spieltags-Auslöser, konsistent mit harter Spanne', () => {
+  it('2. Spieltag mit Live: Spieltags-Ebene zeigt Zwischenstand-Delta', () => {
+    const { standings, remaining } = earlySeasonFixture()
+    const live = standings.map((r) =>
+      r.teamId === 2
+        ? { ...r, points: r.points + 3, rank: 1, won: r.won + 1, played: r.played + 1 }
+        : r.teamId === 1
+          ? { ...r, rank: 2 }
+          : r,
+    )
+    // Ranks neu setzen grob: Team 2 führt
+    live.sort((a, b) => b.points - a.points || b.goalDiff - a.goalDiff)
+    live.forEach((r, i) => {
+      r.rank = i + 1
+    })
+
+    const radar = buildDecisionRadar({
+      league: 'bl2',
+      confirmedStandings: standings,
+      liveStandings: live,
+      remainingConfirmed: remaining,
+      remainingLive: remaining,
+      hasLive: true,
+      includeTriggers: true,
+      nowMs: Date.parse('2026-08-14T12:00:00Z'),
+    })
+    const row = radar.all.find((r) => r.teamId === 2)!
+    expect(
+      row.matchdayTriggers.some(
+        (t) => t.key === 'live-rank' || t.key.startsWith('live-'),
+      ),
+    ).toBe(true)
+    const blob = row.matchdayTriggers.map((t) => t.primary).join(' ')
+    expect(blob).toMatch(/jetzt/)
+  })
+
+  it('vorletzter Spieltag: Saison-Clinch und Spieltags-Position getrennt, konsistent', () => {
     const { standings, remaining, focusId } = lateSeasonPromotionClinchFixture()
     const hard = computeHardRanges(standings, remaining)
     const focusHard = hard.find((h) => h.teamId === focusId)!
@@ -415,25 +465,37 @@ describe('buildDecisionRadar / Live-Delta', () => {
     })
     const row = radar.all.find((r) => r.teamId === focusId)!
     expect(row.matchdayTriggers.length).toBeGreaterThan(0)
+    const mdBlob = row.matchdayTriggers.map((t) => t.primary).join(' ')
+    expect(mdBlob).not.toMatch(/nicht mehr erreichbar/)
+    expect(mdBlob).toMatch(/Platz|Aufstiegsplatz|Tabellenführer|Abstiegsplatz/)
+
     expect(
-      row.matchdayTriggers.some((t) =>
+      row.seasonTriggers.some((t) =>
         ['target-safe', 'target-secure-from', 'target-possible-from'].includes(
           t.key,
         ),
       ),
     ).toBe(true)
+    const seasonBlob = row.seasonTriggers.map((t) => `${t.label} ${t.primary}`).join(' ')
+    expect(seasonBlob).toMatch(/Aufstieg/)
+    expect(seasonBlob).not.toMatch(/Nach diesem Spieltag/)
 
     for (const teamRow of radar.all) {
       const h = hard.find((x) => x.teamId === teamRow.teamId)!
-      for (const line of teamRow.matchdayTriggers) {
+      for (const line of teamRow.seasonTriggers) {
         if (line.key === 'target-gone') {
           expect(isTopTargetRank(h.hardBest, 'bl2')).toBe(false)
         }
         if (line.key === 'survive-safe') {
           expect(isRelegationRank(h.hardWorst, 'bl2')).toBe(false)
         }
-        if (line.key === 'target-safe' || line.key === 'target-secure-from') {
-          // Zone muss noch offen sein (nicht schon Saison-sicher), Tip möglich
+        if (line.key === 'target-safe') {
+          expect(isTopTargetRank(h.hardWorst, 'bl2')).toBe(true)
+        }
+        if (
+          line.key === 'target-secure-from' ||
+          line.key === 'target-possible-from'
+        ) {
           expect(isTopTargetRank(h.hardBest, 'bl2')).toBe(true)
           expect(isTopTargetRank(h.hardWorst, 'bl2')).toBe(false)
         }
@@ -481,6 +543,22 @@ describe('buildDecisionRadar / Live-Delta', () => {
       canForceRelegation: false,
     })
     expect(kept.map((l) => l.key)).toEqual(['target-secure-from'])
+  })
+
+  it('deriveMatchdayPositionLines: Positions-Sprache ohne Saison-Clinch', () => {
+    const lines = deriveMatchdayPositionLines(
+      [
+        { points: 6, rank: 1 },
+        { points: 4, rank: 5 },
+        { points: 3, rank: 8 },
+      ],
+      4,
+      'bl2',
+    )
+    const blob = lines.map((l) => `${l.label} ${l.primary}`).join(' ')
+    expect(blob).toMatch(/kann Tabellenführer werden|kann Platz 1 erreichen/)
+    expect(blob).toMatch(/Aufstiegsplatz möglich/)
+    expect(blob).not.toMatch(/nicht mehr erreichbar|Klassenerhalt|Aufstieg sicher/)
   })
 
   it('Fixture abgestiegen → Status', () => {

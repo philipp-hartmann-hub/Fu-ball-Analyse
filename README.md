@@ -57,6 +57,27 @@ src/
 
 ## Änderungsprotokoll
 
+### 2026-08-20 — Prompt 111
+
+**User:** Änderungen committen und nach `main` mergen.
+
+**Aktion:**
+- Feature-Branch, PR und Merge der getrennten Spieltag-/Saison-Ebenen im Entscheidungs-Radar (Prompt 110)
+
+**Status:** erledigt
+
+### 2026-08-20 — Prompt 110
+
+**User:** Entscheidungs-Radar: Saison- und Spieltags-Auslöser sauber trennen — Spieltag mit eigener Positions-Sprache, nicht verschwinden.
+
+**Aktion:**
+- `deriveMatchdayPositionLines`: Spieltags-Ebene (Platz/Aufstiegsplatz/Zwischenstand), ohne Saison-Clinch
+- Saison-Clinch (gegatet an Hartspanne + Tip) bleibt in `seasonTriggers`; `filterSeasonTriggersByHard` gegen Möglich-Spanne
+- Panel: Abschnitte „Spieltag“ und „Saison“; Spieltags-Block auch mit Leer-Hinweis; `showMatchdayHorizon` bei offenem Spieltag
+- Tests: ST2 Saison leer / Spieltag gefüllt; Live-Zwischenstand; vorletzter ST beide Ebenen
+
+**Status:** erledigt
+
 ### 2026-08-20 — Prompt 109
 
 **User:** Änderungen committen und nach `main` mergen.

@@ -79,7 +79,7 @@ function TriggerList({
       {lines.map((t) => (
         <li key={`${horizon}-${t.key}`} className={`tone-${t.tone}`}>
           <span className="horizon-tag">
-            {horizon === 'matchday' ? 'Diesen Spieltag' : 'Saison'}
+            {horizon === 'matchday' ? 'Spieltag' : 'Saison'}
           </span>
           <span className="label">{t.label}</span>
           <span className="primary">{t.primary}</span>
@@ -113,7 +113,10 @@ function TeamRow({
 }) {
   const statuses = useLive ? row.liveStatuses : row.confirmedStatuses
   const leftoverSeason = triggersBeyondStatus(statuses, row.seasonTriggers)
-  const leftoverMatchday = triggersBeyondStatus(statuses, row.matchdayTriggers)
+  // Positions-Zeilen haben eigene Keys — Status-Filter nicht nötig, aber harmlos
+  const leftoverMatchday = showMatchdayTriggers
+    ? row.matchdayTriggers
+    : []
 
   return (
     <li
@@ -142,7 +145,7 @@ function TeamRow({
             {d.message}
           </p>
         ))}
-      {(showMatchdayTriggers || selected) && leftoverMatchday.length > 0 && (
+      {leftoverMatchday.length > 0 && (
         <TriggerList
           lines={leftoverMatchday}
           horizon="matchday"
@@ -170,28 +173,20 @@ export function DecisionRadarPanel({
   const useLive = radar.hasLive
   const showMatchday = radar.showMatchdayHorizon
   const rootRef = useRef<HTMLElement>(null)
-  const deltaRows = showMatchday
-    ? radar.all.filter((r) => r.deltas.length > 0)
-    : []
+  const seasonDeltas = radar.all.filter((r) => r.deltas.length > 0)
   const decided = radar.decided
-  const seasonNear = radar.pending.filter(
+  const seasonNear = radar.all.filter(
     (r) =>
       r.deltas.length === 0 &&
       (useLive ? r.liveStatuses : r.confirmedStatuses).length === 0 &&
       r.seasonTriggers.length > 0,
   )
-  const matchdayNear =
-    showMatchday
-      ? radar.pending.filter(
-          (r) =>
-            r.deltas.length === 0 &&
-            (useLive ? r.liveStatuses : r.confirmedStatuses).length === 0 &&
-            r.matchdayTriggers.length > 0,
-        )
-      : []
+  const matchdayRows = showMatchday
+    ? radar.all.filter((r) => r.matchdayTriggers.length > 0)
+    : []
   const visibleIds = new Set([
-    ...deltaRows.map((r) => r.teamId),
-    ...matchdayNear.map((r) => r.teamId),
+    ...seasonDeltas.map((r) => r.teamId),
+    ...matchdayRows.map((r) => r.teamId),
     ...decided.map((r) => r.teamId),
     ...seasonNear.map((r) => r.teamId),
   ])
@@ -229,159 +224,157 @@ export function DecisionRadarPanel({
       </div>
 
       <p className="hint tight decision-intro">
-        Status = was für die <strong>gesamte Saison</strong> feststeht. Auslöser
-        getrennt nach <strong>Spieltag</strong> und <strong>Saison</strong>.
+        Zwei Ebenen: <strong>Spieltag</strong> = Tabellenplatz nach diesen
+        Spielen; <strong>Saison</strong> = was über alle Restspiele feststeht.
         Passiv, ohne Alerts.
       </p>
 
       {liveCount > 0 ? (
         <p className="decision-live-banner" role="status">
           <span className="live-dot" aria-hidden />
-          {liveCount} Spiel{liveCount === 1 ? '' : 'e'} live — Zwischenstand als
-          Auslöser, Folge gilt für die Saison
+          {liveCount} Spiel{liveCount === 1 ? '' : 'e'} live — Zwischenstand in
+          der Spieltags-Ebene, Saison-Folgen darunter
+        </p>
+      ) : radar.matchdayAtHand && radar.nextMatchday != null ? (
+        <p className="hint tight">
+          Spieltag {radar.nextMatchday} steht an — Positions-Hinweise für diesen
+          Spieltag.
         </p>
       ) : showMatchday && radar.nextMatchday != null ? (
         <p className="hint tight">
-          Spieltag {radar.nextMatchday} steht an — Hinweise für diesen Spieltag
-          sichtbar.
+          Nächster Spieltag: {radar.nextMatchday} — Spieltags-Ebene zeigt die
+          mögliche Tabelle danach.
         </p>
       ) : (
-        <p className="hint tight">
-          Kein laufender Spieltag — nur Saison-Status und Saison-Auslöser.
-        </p>
+        <p className="hint tight">Keine offenen Spiele — nur Saison-Ebene.</p>
       )}
 
-      {deltaRows.length > 0 && (
+      {showMatchday && (
         <div className="decision-block">
           <h3 className="decision-block-title">
-            Live → Saison-Folge
-          </h3>
-          <p className="hint tight">
-            Auslöser ist der laufende Zwischenstand; die Konsequenz gilt für die
-            restliche Saison.
-          </p>
-          <ul className="decision-list">
-            {deltaRows.map((row) => (
-              <TeamRow
-                key={`delta-${row.teamId}`}
-                row={row}
-                useLive={useLive}
-                highlightDelta
-                showMatchdayTriggers
-                showSeasonTriggers
-                selected={selectedTeamId === row.teamId}
-                onSelect={() => onSelectTeam(row.teamId)}
-              />
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {showMatchday && matchdayNear.length > 0 && (
-        <div className="decision-block">
-          <h3 className="decision-block-title">
-            Diesen Spieltag
+            Spieltag
             {radar.nextMatchday != null ? ` · ST ${radar.nextMatchday}` : ''}
           </h3>
           <p className="hint tight">
-            Was sich heute für die <strong>Saison</strong> entscheiden kann
-            {matchdayNear.some((r) => r.matchdayTriggersExact)
+            Tabellenplatz nach diesem Spieltag — keine Saison-Gewissheit
+            {matchdayRows.some((r) => r.matchdayTriggersExact)
               ? ' (exakte Enumeration)'
               : ' (ggf. Näherung)'}
-            — nur wenn die harte Spanne (wie Möglich) die Zone noch offen lässt
-            und dieser Spieltag sie kippen kann.
+            .
           </p>
-          <ul className="decision-list">
-            {matchdayNear.map((row) => (
-              <TeamRow
-                key={`md-${row.teamId}`}
-                row={row}
-                useLive={useLive}
-                highlightDelta={false}
-                showMatchdayTriggers
-                showSeasonTriggers={false}
-                selected={selectedTeamId === row.teamId}
-                onSelect={() => onSelectTeam(row.teamId)}
-              />
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {showMatchday && matchdayNear.length === 0 && (
-        <div className="decision-block">
-          <h3 className="decision-block-title">
-            Diesen Spieltag
-            {radar.nextMatchday != null ? ` · ST ${radar.nextMatchday}` : ''}
-          </h3>
-          <p className="hint tight">
-            Saison-Auslöser nur, wenn dieser Spieltag eine Zone an der harten
-            Spanne (wie Möglich) wirklich kippen kann. Aktuell für keinen Verein
-            der Fall.
-          </p>
+          {matchdayRows.length === 0 ? (
+            <p className="hint tight">
+              Keine spieltagsrelevante Positionsaussage für die Vereine.
+            </p>
+          ) : (
+            <ul className="decision-list">
+              {matchdayRows.map((row) => (
+                <TeamRow
+                  key={`md-${row.teamId}`}
+                  row={row}
+                  useLive={useLive}
+                  highlightDelta={false}
+                  showMatchdayTriggers
+                  showSeasonTriggers={false}
+                  selected={selectedTeamId === row.teamId}
+                  onSelect={() => onSelectTeam(row.teamId)}
+                />
+              ))}
+            </ul>
+          )}
         </div>
       )}
 
       <div className="decision-block">
-        <h3 className="decision-block-title">Saison steht fest</h3>
+        <h3 className="decision-block-title">Saison</h3>
         <p className="hint tight">
-          Garantiert aus harten Grenzen über alle Restspiele — nicht nur für
-          heute.
+          Nur echte Saison-Gewissheiten aus harten Grenzen (wie Möglich) über
+          alle Restspiele.
         </p>
-        {decided.length === 0 ? (
-          <p className="hint tight">Noch keine garantierten Saison-Statusse.</p>
-        ) : (
-          <ul className="decision-list">
-            {decided.map((row) => (
-              <TeamRow
-                key={`dec-${row.teamId}`}
-                row={row}
-                useLive={useLive}
-                highlightDelta={false}
-                showMatchdayTriggers={showMatchday}
-                showSeasonTriggers
-                selected={selectedTeamId === row.teamId}
-                onSelect={() => onSelectTeam(row.teamId)}
-              />
-            ))}
-          </ul>
+
+        {seasonDeltas.length > 0 && (
+          <div className="decision-subblock">
+            <h4 className="decision-sub-title">Live → Saison-Folge</h4>
+            <p className="hint tight">
+              Zwischenstand als Auslöser; die Konsequenz gilt für die restliche
+              Saison.
+            </p>
+            <ul className="decision-list">
+              {seasonDeltas.map((row) => (
+                <TeamRow
+                  key={`delta-${row.teamId}`}
+                  row={row}
+                  useLive={useLive}
+                  highlightDelta
+                  showMatchdayTriggers={false}
+                  showSeasonTriggers
+                  selected={selectedTeamId === row.teamId}
+                  onSelect={() => onSelectTeam(row.teamId)}
+                />
+              ))}
+            </ul>
+          </div>
+        )}
+
+        <div className="decision-subblock">
+          <h4 className="decision-sub-title">Steht fest</h4>
+          {decided.length === 0 ? (
+            <p className="hint tight">Noch keine garantierten Saison-Statusse.</p>
+          ) : (
+            <ul className="decision-list">
+              {decided.map((row) => (
+                <TeamRow
+                  key={`dec-${row.teamId}`}
+                  row={row}
+                  useLive={useLive}
+                  highlightDelta={false}
+                  showMatchdayTriggers={false}
+                  showSeasonTriggers
+                  selected={selectedTeamId === row.teamId}
+                  onSelect={() => onSelectTeam(row.teamId)}
+                />
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {(seasonNear.length > 0 || focusRow) && (
+          <div className="decision-subblock">
+            <h4 className="decision-sub-title">Noch offen</h4>
+            <p className="hint tight">
+              Clinch-Hinweise nur wenn die harte Spanne die Zone noch offen lässt
+              und sie (ggf. diesen Spieltag) kippbar ist — als Näherung
+              gekennzeichnet.
+            </p>
+            <ul className="decision-list">
+              {seasonNear.map((row) => (
+                <TeamRow
+                  key={`season-${row.teamId}`}
+                  row={row}
+                  useLive={useLive}
+                  highlightDelta={false}
+                  showMatchdayTriggers={false}
+                  showSeasonTriggers
+                  selected={selectedTeamId === row.teamId}
+                  onSelect={() => onSelectTeam(row.teamId)}
+                />
+              ))}
+              {focusRow && (
+                <TeamRow
+                  key={`focus-${focusRow.teamId}`}
+                  row={focusRow}
+                  useLive={useLive}
+                  highlightDelta={false}
+                  showMatchdayTriggers={showMatchday}
+                  showSeasonTriggers
+                  selected
+                  onSelect={() => onSelectTeam(focusRow.teamId)}
+                />
+              )}
+            </ul>
+          </div>
         )}
       </div>
-
-      {(seasonNear.length > 0 || focusRow) && (
-        <div className="decision-block">
-          <h3 className="decision-block-title">Saison noch offen</h3>
-          <p className="hint tight">
-            Auslöser über mehrere Spieltage — als Näherung gekennzeichnet.
-          </p>
-          <ul className="decision-list">
-            {seasonNear.map((row) => (
-              <TeamRow
-                key={`season-${row.teamId}`}
-                row={row}
-                useLive={useLive}
-                highlightDelta={false}
-                showMatchdayTriggers={false}
-                showSeasonTriggers
-                selected={selectedTeamId === row.teamId}
-                onSelect={() => onSelectTeam(row.teamId)}
-              />
-            ))}
-            {focusRow && (
-              <TeamRow
-                key={`focus-${focusRow.teamId}`}
-                row={focusRow}
-                useLive={useLive}
-                highlightDelta={false}
-                showMatchdayTriggers
-                showSeasonTriggers
-                selected
-                onSelect={() => onSelectTeam(focusRow.teamId)}
-              />
-            )}
-          </ul>
-        </div>
-      )}
     </section>
   )
 }
