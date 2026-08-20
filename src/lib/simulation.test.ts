@@ -8,7 +8,9 @@ import {
 } from './__fixtures__/miniLeague'
 import {
   HOME_ADVANTAGE,
+  MATCH_LEAN_LIKELY_THRESHOLD,
   createRng,
+  deriveMatchLean,
   deriveTeamStrengths,
   expectedGoals,
   forecastZoneBreakdown,
@@ -241,5 +243,114 @@ describe('predictMatch / predictFixture', () => {
     const p = predictMatch(strongHome, weakAway, 1.25)
     expect(p.likelyScore.home).toBe(Math.floor(p.expHome))
     expect(p.likelyScore.away).toBe(Math.floor(p.expAway))
+  })
+})
+
+describe('deriveMatchLean', () => {
+  const strongHome: TeamStrength = { teamId: 1, attack: 2.2, defense: 0.9 }
+  const weakAway: TeamStrength = { teamId: 2, attack: 0.9, defense: 1.8 }
+
+  it('nimmt den höchsten Ausgang aus Vereinssicht', () => {
+    const p = predictMatch(strongHome, weakAway, 1.25)
+    const lean = deriveMatchLean(p, 'home')
+    expect(lean.reliable).toBe(true)
+    expect(lean.locked).toBe(false)
+    expect(lean.outcome).toBe('win')
+    expect(lean.probability).toBe(p.pHome)
+    expect(lean.label).toMatch(/^Sieg /)
+  })
+
+  it('ab 50% → wahrscheinlich, darunter → möglich', () => {
+    expect(MATCH_LEAN_LIKELY_THRESHOLD).toBe(0.5)
+    const likely = deriveMatchLean(
+      {
+        pHome: 0.55,
+        pDraw: 0.25,
+        pAway: 0.2,
+        likelyScore: { home: 2, away: 1 },
+        expHome: 2,
+        expAway: 1,
+        reliable: true,
+        lockedScenario: null,
+      },
+      'home',
+    )
+    expect(likely.confidence).toBe('likely')
+    expect(likely.label).toBe('Sieg wahrscheinlich')
+
+    const possible = deriveMatchLean(
+      {
+        pHome: 0.4,
+        pDraw: 0.35,
+        pAway: 0.25,
+        likelyScore: { home: 1, away: 1 },
+        expHome: 1.2,
+        expAway: 1.1,
+        reliable: true,
+        lockedScenario: null,
+      },
+      'home',
+    )
+    expect(possible.outcome).toBe('win')
+    expect(possible.confidence).toBe('possible')
+    expect(possible.label).toBe('Sieg möglich')
+
+    const drawLean = deriveMatchLean(
+      {
+        pHome: 0.3,
+        pDraw: 0.42,
+        pAway: 0.28,
+        likelyScore: { home: 1, away: 1 },
+        expHome: 1,
+        expAway: 1,
+        reliable: true,
+        lockedScenario: null,
+      },
+      'home',
+    )
+    expect(drawLean.outcome).toBe('draw')
+    expect(drawLean.confidence).toBe('possible')
+    expect(drawLean.label).toBe('Unentschieden möglich')
+  })
+
+  it('Auswärtsperspektive dreht Sieg/Niederlage', () => {
+    const lean = deriveMatchLean(
+      {
+        pHome: 0.6,
+        pDraw: 0.2,
+        pAway: 0.2,
+        likelyScore: { home: 2, away: 0 },
+        expHome: 2,
+        expAway: 0.8,
+        reliable: true,
+        lockedScenario: null,
+      },
+      'away',
+    )
+    expect(lean.outcome).toBe('loss')
+    expect(lean.label).toMatch(/^Niederlage /)
+  })
+
+  it('gesetztes Szenario überschreibt das Modell', () => {
+    const lean = deriveMatchLean(
+      {
+        pHome: 0.7,
+        pDraw: 0.2,
+        pAway: 0.1,
+        likelyScore: { home: 2, away: 0 },
+        expHome: 2,
+        expAway: 0.8,
+        reliable: true,
+        lockedScenario: {
+          matchId: 1,
+          homeGoals: 0,
+          awayGoals: 1,
+        },
+      },
+      'home',
+    )
+    expect(lean.locked).toBe(true)
+    expect(lean.outcome).toBe('loss')
+    expect(lean.label).toBe('gesetzt · Niederlage')
   })
 })

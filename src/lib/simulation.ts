@@ -175,6 +175,122 @@ export interface MatchPrediction {
   lockedScenario: ScenarioResult | null
 }
 
+/** Ab diesem Anteil gilt der Favoriten-Ausgang als „wahrscheinlich“. */
+export const MATCH_LEAN_LIKELY_THRESHOLD = 0.5
+
+export type MatchLeanOutcome = 'win' | 'draw' | 'loss'
+export type MatchLeanConfidence = 'likely' | 'possible'
+
+/** Kompakte Favoriten-Zeile aus Vereinssicht (Restprogramm / Vergleich). */
+export interface MatchLean {
+  outcome: MatchLeanOutcome
+  confidence: MatchLeanConfidence
+  /** Anteil des angezeigten Ausgangs (0–1); bei gesetztem Szenario 1 */
+  probability: number
+  /** z. B. „Sieg wahrscheinlich“ / „Unentschieden möglich“ */
+  label: string
+  reliable: boolean
+  /** true = Anzeige folgt gesetztem Szenario, nicht dem Modell */
+  locked: boolean
+}
+
+/** Sieg / Remis / Niederlage aus Sicht von Heim- oder Auswärtsteam. */
+export function focusOutcomes(
+  prediction: MatchPrediction,
+  perspective: 'home' | 'away',
+): { win: number; draw: number; loss: number } {
+  if (perspective === 'away') {
+    return {
+      win: prediction.pAway,
+      draw: prediction.pDraw,
+      loss: prediction.pHome,
+    }
+  }
+  return {
+    win: prediction.pHome,
+    draw: prediction.pDraw,
+    loss: prediction.pAway,
+  }
+}
+
+function leanLabel(
+  outcome: MatchLeanOutcome,
+  confidence: MatchLeanConfidence,
+): string {
+  const base =
+    outcome === 'win'
+      ? 'Sieg'
+      : outcome === 'draw'
+        ? 'Unentschieden'
+        : 'Niederlage'
+  return `${base} ${confidence === 'likely' ? 'wahrscheinlich' : 'möglich'}`
+}
+
+/**
+ * Wahrscheinlichster Ausgang aus Vereinssicht.
+ * „Wahrscheinlich“ ab ≥50 %, sonst „möglich“ (wenn dieser Ausgang der höchste ist).
+ */
+export function deriveMatchLean(
+  prediction: MatchPrediction,
+  perspective: 'home' | 'away',
+): MatchLean {
+  if (prediction.lockedScenario) {
+    const { homeGoals, awayGoals } = prediction.lockedScenario
+    const focusGoals = perspective === 'home' ? homeGoals : awayGoals
+    const oppGoals = perspective === 'home' ? awayGoals : homeGoals
+    const outcome: MatchLeanOutcome =
+      focusGoals > oppGoals ? 'win' : focusGoals < oppGoals ? 'loss' : 'draw'
+    const base =
+      outcome === 'win'
+        ? 'Sieg'
+        : outcome === 'draw'
+          ? 'Unentschieden'
+          : 'Niederlage'
+    return {
+      outcome,
+      confidence: 'likely',
+      probability: 1,
+      label: `gesetzt · ${base}`,
+      reliable: true,
+      locked: true,
+    }
+  }
+
+  if (!prediction.reliable) {
+    return {
+      outcome: 'draw',
+      confidence: 'possible',
+      probability: 0,
+      label: 'noch keine Aussage',
+      reliable: false,
+      locked: false,
+    }
+  }
+
+  const o = focusOutcomes(prediction, perspective)
+  const ranked: [MatchLeanOutcome, number][] = [
+    ['win', o.win],
+    ['draw', o.draw],
+    ['loss', o.loss],
+  ]
+  let best = ranked[0]!
+  for (const entry of ranked) {
+    if (entry[1] > best[1]) best = entry
+  }
+  const [outcome, probability] = best
+  const confidence: MatchLeanConfidence =
+    probability >= MATCH_LEAN_LIKELY_THRESHOLD ? 'likely' : 'possible'
+
+  return {
+    outcome,
+    confidence,
+    probability,
+    label: leanLabel(outcome, confidence),
+    reliable: true,
+    locked: false,
+  }
+}
+
 /** Poisson-PMF P(X=k) für k = 0..maxK; Restmasse auf maxK (wie Cap in samplePoisson). */
 function truncatedPoissonPmfs(lambda: number, maxK: number): number[] {
   const lam = Math.max(MIN_LAMBDA, Math.min(lambda, maxK + 2))
