@@ -3,62 +3,99 @@ import { hasEnoughData } from './reliability'
 import {
   DEFAULT_ATTACK,
   DEFAULT_DEFENSE,
+  deriveMatchLean,
   deriveTeamStrengths,
   predictMatch,
 } from './simulation'
 
 /**
- * Restprogramm aus Vereinssicht (Poisson-1X2, gleiches Modell wie Spielschätzung).
+ * Restprogramm-Härte aus Vereinssicht (Poisson-1X2).
  *
- * Pro Restspiel: erwartete Punkte = P(Sieg)·3 + P(Remis)·1 (Heim/Auswärts über λ).
- * Summe → expectedRemainingPoints; Mittel → expectedPerGame.
- * Vergleich mit eigenem PPG (ownAverage): darüber „leicht“, darunter „schwer“,
- * nahe dran „durchschnittlich“ — nicht relativ zur Liga.
+ * Pro Restspiel: erwartete Punkte = P(Sieg)·3 + P(Remis)·1 (nur intern).
+ * expectedPerGame = Mittel über die Restspiele.
+ * Einstufung ABSOLUT an expectedPerGame (0…3) — nicht relativ zum eigenen PPG.
  *
- * `reliable` nur bei `hasEnoughData` (Median ≥ MIN_GAMES).
+ * Konsistenz: Mehrheit „Niederlage wahrscheinlich“ → Stufe mindestens „schwer“.
+ * `reliable` nur bei `hasEnoughData`.
  */
-
-/** |expectedPerGame − ownAverage| darunter → „durchschnittlich“. */
-export const DIFFICULTY_EPS = 0.2
-
-/** Neutrales PPG, wenn der Verein noch 0 Spiele hat (bei sonst genug Liga-Daten). */
-export const NEUTRAL_OWN_PPG = 1.0
 
 /** @deprecated Nutze MIN_GAMES / hasEnoughData aus `./reliability`. */
 export { MIN_GAMES as MIN_GAMES_FOR_HARDNESS } from './reliability'
 
-export type HardnessGrade = 'easy' | 'mid' | 'hard'
+/** expectedPerGame ≥ … → sehr leicht */
+export const HARDNESS_VERY_EASY_MIN = 1.9
+/** … → leicht */
+export const HARDNESS_EASY_MIN = 1.6
+/** … → mittel */
+export const HARDNESS_MID_MIN = 1.2
+/** … → schwer; darunter sehr schwer */
+export const HARDNESS_HARD_MIN = 0.9
+
+export type HardnessGrade =
+  | 'very-easy'
+  | 'easy'
+  | 'mid'
+  | 'hard'
+  | 'very-hard'
 
 export interface ScheduleHardness {
   teamId: number
   remainingGames: number
-  /** Summe erwarteter Punkte über alle Restspiele */
-  expectedRemainingPoints: number
-  /** expectedRemainingPoints / remainingGames (0 ohne Restspiele) */
+  /**
+   * Intern: Mittel der erwarteten Punkte/Spiel (0…3).
+   * Nicht in der UI anzeigen.
+   */
   expectedPerGame: number
-  /** Bisherige Punkte/Spiel; null bei 0 Spielen */
-  ownAverage: number | null
-  /** expectedPerGame − ownAverage (bzw. Neutral-PPG); null wenn !reliable */
-  difficultyDelta: number | null
+  /** Intern: Summe erwarteter Restpunkte. */
+  expectedRemainingPoints: number
+  /** Anteil Restspiele mit Lean „Niederlage wahrscheinlich“ (0…1). */
+  lossLikelyShare: number
   /** null wenn !reliable oder keine Restspiele */
   grade: HardnessGrade | null
   /**
-   * false, wenn noch zu wenige Spiele gespielt sind (`!hasEnoughData`)
-   * — dann keine Einstufung / keine Restpunkte-Aussage in der UI.
+   * false bei `!hasEnoughData` — keine Stufe in der UI.
    */
   reliable: boolean
 }
 
-function expectedPointsFromFocus(
-  pWin: number,
-  pDraw: number,
-): number {
+const GRADE_ORDER: HardnessGrade[] = [
+  'very-easy',
+  'easy',
+  'mid',
+  'hard',
+  'very-hard',
+]
+
+function expectedPointsFromFocus(pWin: number, pDraw: number): number {
   return pWin * 3 + pDraw * 1
 }
 
+/** Absolute Einstufung aus erwarteten Punkten pro Restspiel. */
+export function gradeFromExpectedPerGame(epg: number): HardnessGrade {
+  if (epg >= HARDNESS_VERY_EASY_MIN) return 'very-easy'
+  if (epg >= HARDNESS_EASY_MIN) return 'easy'
+  if (epg >= HARDNESS_MID_MIN) return 'mid'
+  if (epg >= HARDNESS_HARD_MIN) return 'hard'
+  return 'very-hard'
+}
+
 /**
- * Erwartete Restpunkte und Einstufung je Verein aus dem Poisson-Modell.
- * `matches` = Restfixtures, `standings` = aktuelle Tabelle (Stärken + eigenes PPG).
+ * Wenn die Mehrheit der Restspiele „Niederlage wahrscheinlich“ ist,
+ * darf die Stufe nicht leicht/sehr leicht/mittel sein → mindestens schwer.
+ */
+export function clampGradeForLossMajority(
+  grade: HardnessGrade,
+  lossLikelyShare: number,
+): HardnessGrade {
+  if (lossLikelyShare <= 0.5) return grade
+  const hardIdx = GRADE_ORDER.indexOf('hard')
+  const idx = GRADE_ORDER.indexOf(grade)
+  return idx < hardIdx ? 'hard' : grade
+}
+
+/**
+ * Einstufung je Verein aus dem Poisson-Modell (absolute Skala).
+ * `matches` = Restfixtures, `standings` = aktuelle Tabelle für Stärken.
  */
 export function computeScheduleHardness(
   matches: Match[],
@@ -67,9 +104,12 @@ export function computeScheduleHardness(
   const reliable = hasEnoughData(standings)
   const { strengths, avgDefense } = deriveTeamStrengths(standings)
 
-  const acc = new Map<number, { sum: number; n: number }>()
+  const acc = new Map<
+    number,
+    { sum: number; n: number; lossLikely: number }
+  >()
   for (const row of standings) {
-    acc.set(row.teamId, { sum: 0, n: 0 })
+    acc.set(row.teamId, { sum: 0, n: 0, lossLikely: 0 })
   }
 
   for (const m of matches) {
@@ -92,59 +132,69 @@ export function computeScheduleHardness(
         defense: DEFAULT_DEFENSE,
       }
 
-    const pred = predictMatch(homeStr, awayStr, avgDefense)
+    const pred = predictMatch(homeStr, awayStr, avgDefense, {
+      reliable: true,
+    })
 
     if (homeBucket) {
       homeBucket.sum += expectedPointsFromFocus(pred.pHome, pred.pDraw)
       homeBucket.n += 1
+      const lean = deriveMatchLean(pred, 'home')
+      if (lean.outcome === 'loss' && lean.confidence === 'likely') {
+        homeBucket.lossLikely += 1
+      }
     }
     if (awayBucket) {
       awayBucket.sum += expectedPointsFromFocus(pred.pAway, pred.pDraw)
       awayBucket.n += 1
+      const lean = deriveMatchLean(pred, 'away')
+      if (lean.outcome === 'loss' && lean.confidence === 'likely') {
+        awayBucket.lossLikely += 1
+      }
     }
   }
 
   return standings.map((row) => {
-    const bucket = acc.get(row.teamId) ?? { sum: 0, n: 0 }
+    const bucket = acc.get(row.teamId) ?? { sum: 0, n: 0, lossLikely: 0 }
     const remainingGames = bucket.n
     const expectedRemainingPoints = bucket.sum
     const expectedPerGame =
       remainingGames > 0 ? expectedRemainingPoints / remainingGames : 0
-    const ownAverage = row.played > 0 ? row.points / row.played : null
+    const lossLikelyShare =
+      remainingGames > 0 ? bucket.lossLikely / remainingGames : 0
 
     let grade: HardnessGrade | null = null
-    let difficultyDelta: number | null = null
-
     if (reliable && remainingGames > 0) {
-      const baseline = ownAverage ?? NEUTRAL_OWN_PPG
-      difficultyDelta = expectedPerGame - baseline
-      if (difficultyDelta > DIFFICULTY_EPS) grade = 'easy'
-      else if (difficultyDelta < -DIFFICULTY_EPS) grade = 'hard'
-      else grade = 'mid'
+      grade = clampGradeForLossMajority(
+        gradeFromExpectedPerGame(expectedPerGame),
+        lossLikelyShare,
+      )
     }
 
     return {
       teamId: row.teamId,
       remainingGames,
-      expectedRemainingPoints,
       expectedPerGame,
-      ownAverage,
-      difficultyDelta,
+      expectedRemainingPoints,
+      lossLikelyShare,
       grade,
       reliable,
     }
   })
 }
 
-/** Kurzlabel ohne Vereinsbezug. */
 export function hardnessGradeLabel(grade: HardnessGrade): string {
   switch (grade) {
+    case 'very-easy':
+      return 'sehr leicht'
     case 'easy':
       return 'leicht'
     case 'mid':
-      return 'durchschnittlich'
+      return 'mittel'
     case 'hard':
       return 'schwer'
+    case 'very-hard':
+      return 'sehr schwer'
   }
 }
 
@@ -154,16 +204,6 @@ export function hardnessGradeLabelForClub(
   clubName: string,
 ): string {
   return `${hardnessGradeLabel(grade)} für ${clubName}`
-}
-
-/** Anzeige „~12“ / „~12,5“ für erwartete Restpunkte. */
-export function formatExpectedRemainingPoints(points: number): string {
-  const rounded = Math.round(points * 10) / 10
-  if (Number.isInteger(rounded)) return `~${rounded}`
-  return `~${rounded.toLocaleString('de-DE', {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-  })}`
 }
 
 /** Median der `played`-Werte; leere Liga → 0. */

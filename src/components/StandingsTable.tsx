@@ -5,7 +5,6 @@ import {
   type TeamForecast,
 } from '../lib/simulation'
 import {
-  formatExpectedRemainingPoints,
   hardnessGradeLabel,
   type ScheduleHardness,
 } from '../lib/schedule'
@@ -72,7 +71,7 @@ export function StandingsTable({
             <th className="num pts">Pkt</th>
             <th
               className="col-hardness"
-              title="Erwartete Restpunkte aus dem Poisson-Modell (Vereinssicht)"
+              title="Wie schwer das Restprogramm für diesen Verein ist (Modellschätzung)"
             >
               Restprog.
               {onExplain && (
@@ -227,15 +226,13 @@ function HardnessCell({
       </span>
     )
   }
-  const pts = formatExpectedRemainingPoints(hardness.expectedRemainingPoints)
   const gradeLabel = hardnessGradeLabel(hardness.grade)
   return (
     <span
       className={`hardness-pill tone-${hardness.grade}`}
-      title={`Erwartete Restpunkte ${pts} · ${gradeLabel} für ${clubName} · Modellschätzung`}
+      title={`${gradeLabel} für ${clubName} · Modellschätzung`}
     >
-      <span className="hardness-pts">{pts}</span>
-      <span className="hardness-grade-short">{gradeLabel}</span>
+      {gradeLabel}
     </span>
   )
 }
