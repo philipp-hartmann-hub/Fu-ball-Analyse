@@ -211,11 +211,14 @@ function TeamColumn({
               <span className="md">ST {f.matchday}</span>
               <span className={`venue venue-${f.venue}`}>{f.venue}</span>
               <span className="opp">{f.opponentName}</span>
-              <MatchLeanChip
-                lean={fixtureLeans.get(f.matchId) ?? null}
-                compact
-              />
-              {f.isHeadToHead && <span className="h2h-tag">Direkt</span>}
+              <span className="compare-fixture-end">
+                {f.isHeadToHead && <span className="h2h-tag">Direkt</span>}
+                <MatchLeanChip
+                  lean={fixtureLeans.get(f.matchId) ?? null}
+                  compact
+                  variant="letter"
+                />
+              </span>
             </li>
           ))}
         </ul>

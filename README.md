@@ -23,7 +23,7 @@ Echtzeit-Analyse für die **1., 2. und 3. Liga**: Tabelle, Restprogramm und mög
 - **Ergebnisse**: Spieltag wählbar; Wappen; Live-Updates (laufende Spiele hervorgehoben als Zwischenstand); Tippen zeigt Torschützen und bei offenen/laufenden Spielen die Spielschätzung 1/X/2; Live-Zwischenstände standardmäßig in der Tabelle; 2 Tage nach letztem Spiel → nächster Spieltag als Default
 - Spalte **Möglich**: rechnerisch noch mögliche Plätze – **exakt** bei ≤12 relevanten Restspielen je Verein (nach Punkte-Pruning), sonst **harte Außengrenze** aus Punktemaxima (Badge pro Zeile); alternativ Monte-Carlo-**Prognose** (umschaltbar; unter `MIN_GAMES` Spielen ohne Prozentanzeige)
 - Spalte **Restprog.**: Einschätzung sehr leicht → sehr schwer (immer in der Tabelle; auf schmalen Breiten ausgeblendet)
-- Seitenleiste: **Verein** (Kern sofort inkl. Saison-Prognose; Restprogramm klappbar mit Favoriten-Ausgang je Gegner; Wunschplatz/Härte hinter Klappen) · **Ergebnisse** · **Entscheidungen** (alleiniger Ort für feststehenden Saison-Status, Live-Delta und Punktschwellen/Auslöser) · **Szenario** · **Vergleich** (Restprogramm je Gegner mit Favoriten-Ausgang)
+- Seitenleiste: **Verein** (Kern sofort inkl. Saison-Prognose; Restprogramm klappbar mit Favoriten-Ausgang je Gegner; Wunschplatz/Härte hinter Klappen) · **Ergebnisse** · **Entscheidungen** (alleiniger Ort für feststehenden Saison-Status, Live-Delta und Punktschwellen/Auslöser) · **Szenario** · **Vergleich** (Restprogramm: Gegner-Kürzel + S/U/N)
 - **Szenario-Simulator**: Partien mit Wappen; Grob (Sieg/Unentschieden) oder Fein-Tore
 - **Stand nach Spieltag**: Auswahl (Dropdown) für historischen Stand
 - Toolbar: **Zurücksetzen** (Szenarien + `?s=`)
@@ -56,6 +56,24 @@ src/
 ---
 
 ## Änderungsprotokoll
+
+### 2026-08-20 — Prompt 121
+
+**User:** Änderungen committen und nach `main` mergen.
+
+**Aktion:**
+- Feature-Branch, PR und Merge (Vergleich-Restprogramm: Gegner-Kürzel + S/U/N)
+
+**Status:** erledigt
+
+### 2026-08-20 — Prompt 120
+
+**User:** Vergleich-Restprogramm: Gegner-Kürzel sichtbar halten; nur S/U/N statt möglich/wahrscheinlich.
+
+**Aktion:**
+- `MatchLeanChip` Variante `letter` (S/U/N) im `TeamCompare`-Restprogramm; „Direkt“ wieder vor dem Buchstaben; Tooltip behält Details
+
+**Status:** erledigt
 
 ### 2026-08-20 — Prompt 119
 
