@@ -43,8 +43,10 @@ export function ForecastExplainBody() {
       </p>
       <p>
         Unter <strong>Verein</strong>: alle Zonen mit Wahrscheinlichkeit, dazu die Schätzung fürs
-        nächste eigene Spiel (Sieg / Unentschieden / Niederlage). Im{' '}
-        <strong>Vergleich</strong> dasselbe für Duell und nächste Spiele.
+        nächste eigene Spiel (Sieg / Unentschieden / Niederlage). Im Restprogramm erscheint je
+        Gegner nur der <strong>wahrscheinlichste</strong> Ausgang aus Vereinssicht — mit
+        „wahrscheinlich“ ab 50 %, sonst „möglich“, jeweils mit Prozent. Im{' '}
+        <strong>Vergleich</strong> dasselbe für Duell, nächste Spiele und die Restprogramm-Listen.
       </p>
       <p>
         Die Ansicht <strong>Möglich</strong> ist etwas anderes: dort geht es nur um „was ist

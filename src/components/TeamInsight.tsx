@@ -25,6 +25,7 @@ import {
   type ScheduleHardness,
 } from '../lib/schedule'
 import {
+  deriveMatchLean,
   forecastZoneBreakdown,
   predictFixture,
   type TeamForecast,
@@ -32,6 +33,7 @@ import {
 import { NOT_ENOUGH_DATA_LABEL } from '../lib/reliability'
 import type { ExplainTopic } from '../lib/modelExplanations'
 import { ExplainLink } from './ExplainLink'
+import { MatchLeanChip } from './MatchLeanChip'
 import { MatchPredictionCard } from './MatchPredictionCard'
 
 interface Props {
@@ -973,6 +975,32 @@ export function TeamInsight({
     return predictFixture(standings, ownNextMatch, { scenarios })
   }, [standings, ownNextMatch, scenarios])
 
+  const remainingFixtures = useMemo(() => {
+    if (!team) return []
+    return openMatches
+      .filter(
+        (m) =>
+          m.team1.teamId === team.teamId || m.team2.teamId === team.teamId,
+      )
+      .sort(
+        (a, b) =>
+          a.group.groupOrderID - b.group.groupOrderID || a.matchID - b.matchID,
+      )
+  }, [openMatches, team])
+
+  const remainingLeans = useMemo(() => {
+    const map = new Map<number, ReturnType<typeof deriveMatchLean>>()
+    if (!team || standings.length === 0) return map
+    for (const m of remainingFixtures) {
+      const pred = predictFixture(standings, m, { scenarios })
+      if (!pred) continue
+      const perspective =
+        m.team1.teamId === team.teamId ? ('home' as const) : ('away' as const)
+      map.set(m.matchID, deriveMatchLean(pred, perspective))
+    }
+    return map
+  }, [remainingFixtures, standings, scenarios, team])
+
   if (!team) {
     return (
       <div className="panel insight">
@@ -1008,15 +1036,6 @@ export function TeamInsight({
       : null
 
   const relegCutoff = relegationCutoffRank(league)
-  const remainingFixtures = openMatches
-    .filter(
-      (m) =>
-        m.team1.teamId === team.teamId || m.team2.teamId === team.teamId,
-    )
-    .sort(
-      (a, b) =>
-        a.group.groupOrderID - b.group.groupOrderID || a.matchID - b.matchID,
-    )
   const goalDiffLabel =
     team.goalDiff > 0 ? `+${team.goalDiff}` : String(team.goalDiff)
 
@@ -1124,10 +1143,27 @@ export function TeamInsight({
             }) anzeigen`}
             openLabel="Restprogramm ausblenden"
           >
+            <p className="hint tight insight-remaining-hint">
+              Je Gegner der wahrscheinlichste Ausgang (Vereinssicht)
+              {onExplain && (
+                <>
+                  {' '}
+                  <ExplainLink
+                    topic="forecast"
+                    onExplain={onExplain}
+                    className="explain-inline"
+                  >
+                    Modell erklären
+                  </ExplainLink>
+                </>
+              )}
+              .
+            </p>
             <ul className="insight-remaining">
               {remainingFixtures.map((m) => {
                 const home = m.team1.teamId === team.teamId
                 const opp = home ? m.team2 : m.team1
+                const lean = remainingLeans.get(m.matchID) ?? null
                 return (
                   <li key={m.matchID}>
                     <span className="md">ST {m.group.groupOrderID}</span>
@@ -1135,6 +1171,7 @@ export function TeamInsight({
                       {home ? 'H' : 'A'}
                     </span>
                     <span className="opp">{opp.shortName || opp.teamName}</span>
+                    <MatchLeanChip lean={lean} compact />
                   </li>
                 )
               })}

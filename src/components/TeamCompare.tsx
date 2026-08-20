@@ -5,9 +5,14 @@ import {
   hardnessGradeLabel,
   type ScheduleHardness,
 } from '../lib/schedule'
-import { predictFixture } from '../lib/simulation'
+import {
+  deriveMatchLean,
+  predictFixture,
+  type MatchLean,
+} from '../lib/simulation'
 import type { ExplainTopic } from '../lib/modelExplanations'
 import { ExplainLink } from './ExplainLink'
+import { MatchLeanChip } from './MatchLeanChip'
 import { MatchPredictionCard } from './MatchPredictionCard'
 
 export interface RemainingFixture {
@@ -95,6 +100,7 @@ function HardnessBadge({
 function TeamColumn({
   row,
   fixtures,
+  fixtureLeans,
   hardness,
   leagueSize,
   nextPrediction,
@@ -105,6 +111,7 @@ function TeamColumn({
 }: {
   row: StandingRow
   fixtures: RemainingFixture[]
+  fixtureLeans: Map<number, MatchLean>
   hardness: ScheduleHardness | undefined
   leagueSize: number
   nextPrediction: ReturnType<typeof predictFixture>
@@ -177,7 +184,21 @@ function TeamColumn({
         />
       )}
 
-      <h3 className="compare-list-title">Restprogramm</h3>
+      <h3 className="compare-list-title">
+        Restprogramm
+        {onExplain && fixtures.length > 0 && (
+          <>
+            {' '}
+            <ExplainLink
+              topic="forecast"
+              onExplain={onExplain}
+              className="explain-inline"
+            >
+              Modell erklären
+            </ExplainLink>
+          </>
+        )}
+      </h3>
       {fixtures.length === 0 ? (
         <p className="hint tight">Keine offenen Spiele.</p>
       ) : (
@@ -190,6 +211,10 @@ function TeamColumn({
               <span className="md">ST {f.matchday}</span>
               <span className={`venue venue-${f.venue}`}>{f.venue}</span>
               <span className="opp">{f.opponentName}</span>
+              <MatchLeanChip
+                lean={fixtureLeans.get(f.matchId) ?? null}
+                compact
+              />
               {f.isHeadToHead && <span className="h2h-tag">Direkt</span>}
             </li>
           ))}
@@ -256,6 +281,38 @@ export function TeamCompare({
     const m = findMatchById(remaining, nextB.matchId)
     return m ? predictFixture(standings, m, { scenarios }) : null
   }, [nextB, remaining, standings, scenarios])
+
+  const leansA = useMemo(() => {
+    const map = new Map<number, MatchLean>()
+    if (teamAId == null) return map
+    for (const f of fixturesA) {
+      const m = findMatchById(remaining, f.matchId)
+      if (!m) continue
+      const pred = predictFixture(standings, m, { scenarios })
+      if (!pred) continue
+      map.set(
+        f.matchId,
+        deriveMatchLean(pred, f.venue === 'H' ? 'home' : 'away'),
+      )
+    }
+    return map
+  }, [teamAId, fixturesA, remaining, standings, scenarios])
+
+  const leansB = useMemo(() => {
+    const map = new Map<number, MatchLean>()
+    if (teamBId == null) return map
+    for (const f of fixturesB) {
+      const m = findMatchById(remaining, f.matchId)
+      if (!m) continue
+      const pred = predictFixture(standings, m, { scenarios })
+      if (!pred) continue
+      map.set(
+        f.matchId,
+        deriveMatchLean(pred, f.venue === 'H' ? 'home' : 'away'),
+      )
+    }
+    return map
+  }, [teamBId, fixturesB, remaining, standings, scenarios])
 
   const h2hCount = fixturesA.filter((f) => f.isHeadToHead).length
   const pointsGap =
@@ -367,6 +424,7 @@ export function TeamCompare({
             <TeamColumn
               row={teamA}
               fixtures={fixturesA}
+              fixtureLeans={leansA}
               hardness={hardnessByTeam.get(teamA.teamId)}
               leagueSize={standings.length}
               nextPrediction={nextPredA}
@@ -398,6 +456,7 @@ export function TeamCompare({
             <TeamColumn
               row={teamB}
               fixtures={fixturesB}
+              fixtureLeans={leansB}
               hardness={hardnessByTeam.get(teamB.teamId)}
               leagueSize={standings.length}
               nextPrediction={nextPredB}
