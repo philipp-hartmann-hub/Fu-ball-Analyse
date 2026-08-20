@@ -1,7 +1,6 @@
 import { useMemo } from 'react'
 import type { Match, ScenarioResult, StandingRow } from '../types'
 import {
-  formatExpectedRemainingPoints,
   hardnessGradeLabelForClub,
   type ScheduleHardness,
 } from '../lib/schedule'
@@ -86,14 +85,9 @@ function HardnessBadge({
       </span>
     )
   }
-  const pts = formatExpectedRemainingPoints(hardness.expectedRemainingPoints)
   return (
     <span className={`compare-hardness tone-${hardness.grade}`}>
-      {pts} Pkt.
-      <span className="compare-hardness-meta">
-        {' '}
-        · {hardnessGradeLabelForClub(hardness.grade, clubName)}
-      </span>
+      {hardnessGradeLabelForClub(hardness.grade, clubName)}
     </span>
   )
 }

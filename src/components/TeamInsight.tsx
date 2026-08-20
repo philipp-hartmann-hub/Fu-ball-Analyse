@@ -20,7 +20,6 @@ import {
   zoneLabelFor,
 } from '../lib/table'
 import {
-  formatExpectedRemainingPoints,
   hardnessGradeLabelForClub,
   type ScheduleHardness,
 } from '../lib/schedule'
@@ -1101,13 +1100,11 @@ export function TeamInsight({
               {scheduleHardness.reliable && hardnessLabel ? (
                 <>
                   <strong className={`hardness-stat tone-${hardnessGradeValue}`}>
-                    Erwartete Restpunkte:{' '}
-                    {formatExpectedRemainingPoints(
-                      scheduleHardness.expectedRemainingPoints,
-                    )}
+                    {hardnessLabel}
                   </strong>
                   <span className="hardness-stat-meta">
-                    {hardnessLabel} · Modellschätzung
+                    Wie schwer das Restprogramm für diesen Verein ist ·
+                    Modellschätzung
                   </span>
                 </>
               ) : (

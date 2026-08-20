@@ -22,7 +22,7 @@ Echtzeit-Analyse für die **1., 2. und 3. Liga**: Tabelle, Restprogramm und mög
 - Live-Tabelle mit Zonen (BL1: CL/EL/Abstieg · BL2/3. Liga: Aufstieg/Abstieg); **Cache**: zuletzt geladene Daten sofort aus localStorage, Refresh im Hintergrund
 - **Ergebnisse**: Spieltag wählbar; Wappen; Live-Updates (laufende Spiele hervorgehoben als Zwischenstand); Tippen zeigt Torschützen und bei offenen/laufenden Spielen die Spielschätzung 1/X/2; Live-Zwischenstände standardmäßig in der Tabelle; 2 Tage nach letztem Spiel → nächster Spieltag als Default
 - Spalte **Möglich**: rechnerisch noch mögliche Plätze – **exakt** bei ≤12 relevanten Restspielen je Verein (nach Punkte-Pruning), sonst **harte Außengrenze** aus Punktemaxima (Badge pro Zeile); alternativ Monte-Carlo-**Prognose** (umschaltbar; unter `MIN_GAMES` Spielen ohne Prozentanzeige)
-- Spalte **Restprog.**: erwartete Restpunkte (Poisson, Vereinssicht) plus leicht/durchschnittlich/schwer für den Verein (immer in der Tabelle; auf schmalen Breiten ausgeblendet)
+- Spalte **Restprog.**: fünfstufige Einschätzung aus Vereinssicht (sehr leicht → sehr schwer, Poisson; immer in der Tabelle; auf schmalen Breiten ausgeblendet)
 - Seitenleiste: **Verein** (Kern sofort inkl. Saison-Prognose; Restprogramm klappbar mit Favoriten-Ausgang je Gegner; Wunschplatz/Härte hinter Klappen) · **Ergebnisse** · **Entscheidungen** (alleiniger Ort für feststehenden Saison-Status, Live-Delta und Punktschwellen/Auslöser) · **Szenario** · **Vergleich** (Restprogramm: Gegner-Kürzel + S/U/N)
 - **Szenario-Simulator**: Partien mit Wappen; Grob (Sieg/Unentschieden) oder Fein-Tore
 - **Stand nach Spieltag**: Auswahl (Dropdown) für historischen Stand
@@ -56,6 +56,25 @@ src/
 ---
 
 ## Änderungsprotokoll
+
+### 2026-08-20 — Prompt 126
+
+**User:** Änderungen committen und nach `main` mergen.
+
+**Aktion:**
+- Feature-Branch, PR und Merge (Restprogramm 5 Stufen absolut, ohne Zahlen, Loss-Konsistenz)
+
+**Status:** erledigt
+
+### 2026-08-20 — Prompt 125
+
+**User:** Restprogramm fünfstufig absolut (sehr leicht…sehr schwer), keine Zahlen; Konsistenz mit Niederlage-wahrscheinlich.
+
+**Aktion:**
+- `schedule.ts`: absolute `expectedPerGame`-Schwellen; Clamp bei Loss-Mehrheit; UI nur Stufe
+- Tests: Köln-Regression, starke Favoriten, identisches Restprogramm, Konsistenz, Verteilung
+
+**Status:** erledigt
 
 ### 2026-08-20 — Prompt 124
 

@@ -141,28 +141,33 @@ export function HardnessExplainBody() {
   return (
     <>
       <p className="modal-lead">
-        Das Restprogramm zeigt, wie viele Punkte der Verein laut Modell aus den
-        verbleibenden Spielen erwarten kann – und ob das{' '}
-        <strong>für diesen Verein</strong> eher leicht, durchschnittlich oder
-        schwer ist. Nicht relativ zur Liga.
+        Das Restprogramm zeigt als Stufe, wie schwer die verbleibenden Spiele{' '}
+        <strong>für diesen Verein</strong> sind — nicht relativ zur Liga, und
+        ohne Punktezahl in der Anzeige.
       </p>
-      <h3>Rechnung</h3>
+      <h3>Rechnung (intern)</h3>
       <p>
         Pro Restspiel dieselbe Poisson-Schätzung wie bei der Spielschätzung:
-        Wahrscheinlichkeiten für Sieg und Unentschieden. Erwartete Punkte je
-        Spiel = P(Sieg)×3 + P(Remis)×1 (Heimvorteil steckt in den Tor-λ). Summe
-        über alle Restspiele = <strong>erwartete Restpunkte</strong>.
+        erwartete Punkte = P(Sieg)×3 + P(Remis)×1. Der Mittelwert über die
+        Restspiele steckt die absolute Skala (0…3 Punkte/Spiel).
       </p>
-      <h3>Einstufung</h3>
+      <h3>Fünf Stufen</h3>
       <p>
-        Wir vergleichen die erwarteten Punkte pro Restspiel mit dem bisherigen
-        Punkte-Schnitt des Vereins. Deutlich darüber →{' '}
-        <strong>leicht für den Verein</strong>, darunter →{' '}
-        <strong>schwer</strong>, nahe dran → <strong>durchschnittlich</strong>.
-        Zwei Vereine mit demselben Restprogramm können also unterschiedlich
-        eingestuft werden.
+        Daraus:{' '}
+        <strong>sehr leicht</strong>, <strong>leicht</strong>,{' '}
+        <strong>mittel</strong>, <strong>schwer</strong>,{' '}
+        <strong>sehr schwer</strong>. Die Grenzen sind feste
+        Punkte-pro-Spiel-Schwellen — nicht der eigene Saisonschnitt. So wird ein
+        schwaches Team mit schweren Gegnern nicht fälschlich „leicht“, nur weil
+        es ohnehin wenig Punkte holt.
       </p>
-      <h3>Wann die Zahl fehlt</h3>
+      <h3>Konsistenz mit Einzelspielen</h3>
+      <p>
+        Sind die meisten Restspiele „Niederlage wahrscheinlich“, darf die
+        Gesamtstufe nicht leicht oder sehr leicht sein — beides kommt aus demselben
+        Modell.
+      </p>
+      <h3>Wann die Stufe fehlt</h3>
       <p>
         Am Saisonanfang (Median unter {MIN_GAMES} Spielen) sind die Stärken noch
         zu unsicher. Dann zeigt die App <strong>„noch keine Aussage“</strong>.
