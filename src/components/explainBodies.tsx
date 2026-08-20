@@ -46,7 +46,9 @@ export function ForecastExplainBody() {
         nächste eigene Spiel (Sieg / Unentschieden / Niederlage). Im Restprogramm erscheint je
         Gegner nur der <strong>wahrscheinlichste</strong> Ausgang aus Vereinssicht — mit
         „wahrscheinlich“ ab 50 %, sonst „möglich“, jeweils mit Prozent. Im{' '}
-        <strong>Vergleich</strong> dasselbe für Duell, nächste Spiele und die Restprogramm-Listen.
+        <strong>Vergleich</strong> dasselbe Modell, in der Restprogramm-Liste aber
+        nur als Kürzel <strong>S / U / N</strong> neben dem Gegner-Kürzel (Tooltip
+        mit Details). Duell und nächstes Spiel bleiben mit vollen Balken.
       </p>
       <p>
         Die Ansicht <strong>Möglich</strong> ist etwas anderes: dort geht es nur um „was ist
