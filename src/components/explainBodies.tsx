@@ -238,10 +238,10 @@ export function DecisionsExplainBody() {
       </p>
       <h3>Auslöser: Spieltag vs. Saison</h3>
       <p>
-        <strong>Spieltag</strong>: nur relevante Platzierungen aus der
-        Enumeration aller Partien dieses Spieltags — z. B. „kann Tabellenführer
-        werden“ oder „Aufstiegsplatz möglich“. Keine generischen Platzspannen;
-        Vereine ohne solche Chance fehlen in der Liste. Keine Saison-Gewissheit.{' '}
+        <strong>Spieltag</strong>: relevante Zonen aus der Enumeration aller
+        Partien — Tabellenführer, CL/EL/ECL bzw. Aufstieg/Relegation, Abstieg.
+        Auch wer dort schon steht, erscheint (z. B. „bleibt CL-Platz möglich“).
+        Ohne Chance fehlt der Verein in der Liste. Keine Saison-Gewissheit.{' '}
         <strong>Saison</strong>: nur was die harten Grenzen (wie „Möglich“) über
         alle Restspiele hergeben; Clinch-Zeilen nur wenn die Zone noch offen und
         kippbar ist.

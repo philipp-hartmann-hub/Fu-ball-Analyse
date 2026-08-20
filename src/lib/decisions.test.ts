@@ -403,7 +403,7 @@ describe('buildDecisionRadar / Live-Delta', () => {
       expect(mdBlob).not.toMatch(/kann auf Platz|Platz \d+–\d+|bleibt Platz/)
       if (row.matchdayTriggers.length > 0) {
         expect(mdBlob).toMatch(
-          /Tabellenführer|Aufstiegsplatz|Abstiegsplatz/,
+          /Tabellenführer|Aufstiegsplatz|Relegationsplatz|Abstiegsplatz|CL-Platz|EL-Platz|ECL-Platz/,
         )
       }
     }
@@ -465,7 +465,7 @@ describe('buildDecisionRadar / Live-Delta', () => {
     // Bereits Aufstiegsplatz: Spieltag nur bei Tabellenführer/Zone-Wechsel
     for (const t of row.matchdayTriggers) {
       expect(`${t.label} ${t.primary}`).toMatch(
-        /Tabellenführer|Aufstiegsplatz|Abstiegsplatz/,
+        /Tabellenführer|Aufstiegsplatz|Relegationsplatz|Abstiegsplatz|CL-Platz|EL-Platz|ECL-Platz/,
       )
       expect(t.primary).not.toMatch(/kann auf Platz|Platz \d+–\d+/)
     }
@@ -546,7 +546,7 @@ describe('buildDecisionRadar / Live-Delta', () => {
     expect(kept.map((l) => l.key)).toEqual(['target-secure-from'])
   })
 
-  it('deriveMatchdayPositionLines: nur relevante Platzierungen, keine Spanne', () => {
+  it('deriveMatchdayPositionLines: Zonen inkl. schon belegter Plätze, keine Spanne', () => {
     const mid = deriveMatchdayPositionLines(
       [
         { points: 4, rank: 8 },
@@ -570,8 +570,32 @@ describe('buildDecisionRadar / Live-Delta', () => {
     const blob = leader.map((l) => `${l.label} ${l.primary}`).join(' ')
     expect(blob).toMatch(/kann Tabellenführer werden/)
     expect(blob).toMatch(/Aufstiegsplatz möglich/)
-    expect(blob).not.toMatch(/kann auf Platz|Platz \d+–\d+|bleibt Platz/)
-    expect(blob).not.toMatch(/nicht mehr erreichbar|Klassenerhalt|Aufstieg sicher/)
+    expect(blob).not.toMatch(/kann auf Platz|Platz \d+–\d+|bleibt Platz \d/)
+
+    const onCl = deriveMatchdayPositionLines(
+      [
+        { points: 50, rank: 3 },
+        { points: 48, rank: 4 },
+        { points: 47, rank: 5 },
+      ],
+      3,
+      'bl1',
+    )
+    const clBlob = onCl.map((l) => l.primary).join(' ')
+    expect(clBlob).toMatch(/CL-Platz/)
+    expect(clBlob).toMatch(/bleibt CL-Platz möglich|CL-Platz möglich|CL-Platz sicher/)
+
+    const bl1Zones = deriveMatchdayPositionLines(
+      [
+        { points: 40, rank: 5 },
+        { points: 38, rank: 6 },
+        { points: 36, rank: 8 },
+      ],
+      7,
+      'bl1',
+    )
+    const zBlob = bl1Zones.map((l) => l.primary).join(' ')
+    expect(zBlob).toMatch(/EL-Platz|ECL-Platz/)
   })
 
   it('Fixture abgestiegen → Status', () => {
