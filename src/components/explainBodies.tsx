@@ -1,9 +1,9 @@
 import {
   DEFAULT_SIMULATIONS,
   HOME_ADVANTAGE,
+  MATCH_LEAN_LIKELY_THRESHOLD,
 } from '../lib/simulation'
 import { FOCUS_EXTREME_MARGIN } from '../lib/scenarios'
-import { AWAY_WEIGHT, HOME_WEIGHT } from '../lib/schedule'
 import { MIN_GAMES } from '../lib/reliability'
 
 export function ForecastExplainBody() {
@@ -44,11 +44,10 @@ export function ForecastExplainBody() {
       <p>
         Unter <strong>Verein</strong>: alle Zonen mit Wahrscheinlichkeit, dazu die Schätzung fürs
         nächste eigene Spiel (Sieg / Unentschieden / Niederlage). Im Restprogramm erscheint je
-        Gegner nur der <strong>wahrscheinlichste</strong> Ausgang aus Vereinssicht — mit
-        „wahrscheinlich“ ab 50 %, sonst „möglich“, jeweils mit Prozent. Im{' '}
-        <strong>Vergleich</strong> dasselbe Modell, in der Restprogramm-Liste aber
-        nur als Kürzel <strong>S / U / N</strong> neben dem Gegner-Kürzel (Tooltip
-        mit Details). Duell und nächstes Spiel bleiben mit vollen Balken.
+        Gegner nur der <strong>wahrscheinlichste</strong> Ausgang als Text (z. B. „Sieg
+        möglich“) — Details zur Einstufung im eigenen Erklär-Popup. Im{' '}
+        <strong>Vergleich</strong> dasselbe Modell als Kürzel <strong>S / U / N</strong>. Duell
+        und nächstes Spiel bleiben mit vollen Balken.
       </p>
       <p>
         Die Ansicht <strong>Möglich</strong> ist etwas anderes: dort geht es nur um „was ist
@@ -139,42 +138,77 @@ export function ThresholdsExplainBody() {
 }
 
 export function HardnessExplainBody() {
-  const home = HOME_WEIGHT.toLocaleString('de-DE', {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-  })
-  const away = AWAY_WEIGHT.toLocaleString('de-DE', {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-  })
   return (
     <>
       <p className="modal-lead">
-        Die Restprogramm-Härte sagt, wie <strong>stark die verbleibenden Gegner</strong> im Schnitt
-        sind – im Vergleich zur Liga, nicht absolut.
+        Das Restprogramm zeigt, wie viele Punkte der Verein laut Modell aus den
+        verbleibenden Spielen erwarten kann – und ob das{' '}
+        <strong>für diesen Verein</strong> eher leicht, durchschnittlich oder
+        schwer ist. Nicht relativ zur Liga.
       </p>
       <h3>Rechnung</h3>
       <p>
-        Pro Restspiel nehmen wir die aktuelle Stärke des Gegners (Punkte pro Spiel). Heimspiele
-        zählen den Gegner etwas leichter ({home}), Auswärtsspiele etwas schwerer ({away}). Der
-        Mittelwert über alle Restspiele ist der Rohwert.
+        Pro Restspiel dieselbe Poisson-Schätzung wie bei der Spielschätzung:
+        Wahrscheinlichkeiten für Sieg und Unentschieden. Erwartete Punkte je
+        Spiel = P(Sieg)×3 + P(Remis)×1 (Heimvorteil steckt in den Tor-λ). Summe
+        über alle Restspiele = <strong>erwartete Restpunkte</strong>.
       </p>
-      <h3>Stufen und Rang</h3>
+      <h3>Einstufung</h3>
       <p>
-        Innerhalb der Liga wird daraus eine Skala von 0 (leichtestes Programm) bis 100
-        (schwerstes). Daraus fünf Stufen:{' '}
-        <strong>sehr leicht</strong>, <strong>leicht</strong>, <strong>mittel</strong>,{' '}
-        <strong>schwer</strong>, <strong>sehr schwer</strong>. In der Tabelle steht die Stufe; im
-        Tooltip Index und Liga-Rang (1 = schwerstes Programm). Sind alle Programme praktisch
-        gleich, liegen alle bei 50 – ohne künstliches Ranking.
+        Wir vergleichen die erwarteten Punkte pro Restspiel mit dem bisherigen
+        Punkte-Schnitt des Vereins. Deutlich darüber →{' '}
+        <strong>leicht für den Verein</strong>, darunter →{' '}
+        <strong>schwer</strong>, nahe dran → <strong>durchschnittlich</strong>.
+        Zwei Vereine mit demselben Restprogramm können also unterschiedlich
+        eingestuft werden.
       </p>
       <h3>Wann die Zahl fehlt</h3>
       <p>
-        Am Saisonanfang (Median unter {MIN_GAMES} Spielen) sind die Gegnerstärken noch zu
-        unsicher. Dann zeigt die App <strong>„noch keine Aussage“</strong>.
+        Am Saisonanfang (Median unter {MIN_GAMES} Spielen) sind die Stärken noch
+        zu unsicher. Dann zeigt die App <strong>„noch keine Aussage“</strong>.
       </p>
       <p className="modal-footnote">
-        Die Härte sagt nichts über die eigene Form oder das Saisonziel – nur über die Gegner.
+        Modellschätzung wie Prognose und Spielschätzung – keine Vorhersage und
+        kein Tipp.
+      </p>
+    </>
+  )
+}
+
+export function MatchLeanExplainBody() {
+  const pct = Math.round(MATCH_LEAN_LIKELY_THRESHOLD * 100)
+  return (
+    <>
+      <p className="modal-lead">
+        Im Restprogramm steht je Gegner nur der <strong>Favoriten-Ausgang</strong>{' '}
+        aus Vereinssicht — ohne Prozentzahl, damit die Liste lesbar bleibt.
+      </p>
+      <h3>Was die Labels bedeuten</h3>
+      <ul>
+        <li>
+          <strong>… wahrscheinlich</strong> — dieser Ausgang (Sieg, Unentschieden
+          oder Niederlage) hat im Modell mindestens {pct}&nbsp;% und ist zugleich der
+          höchste der drei.
+        </li>
+        <li>
+          <strong>… möglich</strong> — derselbe Ausgang ist der höchste, liegt aber
+          unter {pct}&nbsp;% (knappe Favoritenrolle).
+        </li>
+      </ul>
+      <h3>Woher die Einschätzung kommt</h3>
+      <p>
+        Dieselbe Poisson-1X2-Schätzung wie bei der Spielschätzung fürs nächste
+        Spiel — nur dass wir hier den stärksten der drei Ausgänge zeigen, nicht
+        alle drei Balken. Heim- und Auswärtsspiele stecken in den Tor-Erwartungen.
+      </p>
+      <h3>Vergleich</h3>
+      <p>
+        Dort erscheint dasselbe Modell nur als <strong>S / U / N</strong> neben dem
+        Gegner-Kürzel. Die ausführliche Spielschätzung mit Balken bleibt beim
+        direkten Duell und beim nächsten Spiel.
+      </p>
+      <p className="modal-footnote">
+        Modellschätzung, keine Vorhersage · kein Tipp / keine Quote.
       </p>
     </>
   )

@@ -9,6 +9,7 @@ import {
   DecisionsExplainBody,
   ForecastExplainBody,
   HardnessExplainBody,
+  MatchLeanExplainBody,
   SpanExplainBody,
   ThresholdsExplainBody,
 } from './explainBodies'
@@ -28,6 +29,8 @@ function ExplainContent({ topic }: { topic: ExplainTopic }) {
       return <ThresholdsExplainBody />
     case 'hardness':
       return <HardnessExplainBody />
+    case 'matchLean':
+      return <MatchLeanExplainBody />
     case 'conditions':
       return <ConditionsExplainBody />
     case 'decisions':

@@ -1,9 +1,5 @@
 import type { MatchLean, MatchLeanOutcome } from '../lib/simulation'
 
-function pct(p: number): number {
-  return Math.round(p * 100)
-}
-
 function letterFor(outcome: MatchLeanOutcome): string {
   if (outcome === 'win') return 'S'
   if (outcome === 'draw') return 'U'
@@ -15,13 +11,13 @@ interface Props {
   /** Kurz für enge Listen */
   compact?: boolean
   /**
-   * `full` = „Sieg wahrscheinlich · 62%“
+   * `full` = „Sieg wahrscheinlich“ / „Niederlage möglich“
    * `letter` = nur S / U / N (Vergleich-Restprogramm)
    */
   variant?: 'full' | 'letter'
 }
 
-/** Favoriten-Ausgang: ausführlich oder nur S/U/N. */
+/** Favoriten-Ausgang: Label oder nur S/U/N — ohne Prozentzahl. */
 export function MatchLeanChip({
   lean,
   compact = false,
@@ -44,16 +40,12 @@ export function MatchLeanChip({
 
   const tone =
     lean.outcome === 'win' ? 'win' : lean.outcome === 'loss' ? 'loss' : 'draw'
-  const pctLabel = lean.locked ? null : `${pct(lean.probability)}%`
-  const title = lean.locked
-    ? lean.label
-    : `${lean.label}${pctLabel ? ` (${pctLabel})` : ''} · Modellschätzung`
 
   if (variant === 'letter') {
     return (
       <span
         className={`match-lean is-letter tone-${tone}${compact ? ' is-compact' : ''}`}
-        title={title}
+        title={lean.label}
       >
         {letterFor(lean.outcome)}
       </span>
@@ -63,12 +55,9 @@ export function MatchLeanChip({
   return (
     <span
       className={`match-lean tone-${tone}${compact ? ' is-compact' : ''}`}
-      title={title}
+      title={lean.label}
     >
       <span className="match-lean-label">{lean.label}</span>
-      {pctLabel != null && (
-        <span className="match-lean-pct">{pctLabel}</span>
-      )}
     </span>
   )
 }

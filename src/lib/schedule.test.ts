@@ -1,184 +1,244 @@
 import { describe, expect, it } from 'vitest'
 import {
-  MINI_LEAGUE_MATCHES,
-  MINI_LEAGUE_OPEN,
   TEAM_ALPHA,
   TEAM_BETA,
   TEAM_DELTA,
   TEAM_GAMMA,
 } from './__fixtures__/miniLeague'
-import { buildStandings, remainingMatches } from './table'
-import type { StandingRow } from '../types'
+import type { Match, StandingRow } from '../types'
+import { MIN_GAMES } from './reliability'
 import {
-  AWAY_WEIGHT,
-  DEFAULT_PPG,
-  HOME_WEIGHT,
   MIN_GAMES_FOR_HARDNESS,
   computeScheduleHardness,
-  hardnessGrade,
+  formatExpectedRemainingPoints,
   hardnessGradeLabel,
-  remainingStrength,
-  remainingStrengthRaw,
-  scaleHardnessIndex,
-  type StrengthBucket,
+  hardnessGradeLabelForClub,
 } from './schedule'
 
-describe('remainingStrengthRaw', () => {
-  it('mittelt gewichtetes Gegner-PPG über Restspiele (Mini-Liga ST2)', () => {
-    const standings = buildStandings(MINI_LEAGUE_MATCHES)
-    const raw = remainingStrengthRaw(MINI_LEAGUE_OPEN, standings)
+function row(
+  team: { teamId: number; teamName: string; shortName: string },
+  partial: Partial<StandingRow> & Pick<StandingRow, 'played' | 'points'>,
+): StandingRow {
+  const played = partial.played
+  const points = partial.points
+  const gf = partial.goalsFor ?? Math.max(1, Math.round((points / 3) * played))
+  const ga = partial.goalsAgainst ?? Math.max(1, played)
+  return {
+    teamId: team.teamId,
+    teamName: team.teamName,
+    shortName: team.shortName,
+    teamIconUrl: '',
+    played,
+    won: partial.won ?? 0,
+    draw: partial.draw ?? 0,
+    lost: partial.lost ?? 0,
+    goalsFor: gf,
+    goalsAgainst: ga,
+    goalDiff: gf - ga,
+    points,
+    rank: partial.rank ?? 1,
+  }
+}
 
-    expect(raw.get(TEAM_ALPHA.teamId)?.raw).toBeCloseTo(1 * HOME_WEIGHT)
-    expect(raw.get(TEAM_ALPHA.teamId)?.remainingGames).toBe(1)
-    expect(raw.get(TEAM_GAMMA.teamId)?.raw).toBeCloseTo(3 * AWAY_WEIGHT)
-    expect(raw.get(TEAM_BETA.teamId)?.raw).toBeCloseTo(1 * HOME_WEIGHT)
-    expect(raw.get(TEAM_DELTA.teamId)?.raw).toBeCloseTo(0)
-    expect(raw.get(TEAM_DELTA.teamId)?.remainingGames).toBe(1)
-  })
+function openMatch(
+  matchID: number,
+  home: { teamId: number; teamName: string; shortName: string },
+  away: { teamId: number; teamName: string; shortName: string },
+): Match {
+  return {
+    matchID,
+    matchDateTime: '2025-08-01T15:30:00',
+    matchDateTimeUTC: '2025-08-01T13:30:00Z',
+    leagueName: 'Test',
+    leagueSeason: 2025,
+    leagueShortcut: 'test',
+    lastUpdateDateTime: '2025-08-01T17:00:00',
+    group: { groupName: '2. Spieltag', groupOrderID: 2, groupID: 2 },
+    team1: { ...home, teamIconUrl: '' },
+    team2: { ...away, teamIconUrl: '' },
+    matchIsFinished: false,
+    matchResults: [],
+    goals: [],
+  }
+}
 
-  it('nutzt DEFAULT_PPG wenn Gegner 0 Spiele hat', () => {
-    const standings = buildStandings(MINI_LEAGUE_MATCHES).map((r) => ({
-      ...r,
-      played: 0,
-      points: 0,
-    }))
-    const raw = remainingStrengthRaw(MINI_LEAGUE_OPEN, standings)
-    expect(raw.get(TEAM_ALPHA.teamId)?.raw).toBeCloseTo(DEFAULT_PPG * HOME_WEIGHT)
-    expect(raw.get(TEAM_GAMMA.teamId)?.raw).toBeCloseTo(DEFAULT_PPG * AWAY_WEIGHT)
-  })
-
-  it('respektiert remainingMatches-Cutoff', () => {
-    const standings = buildStandings(MINI_LEAGUE_MATCHES, { maxMatchday: 1 })
-    const open = remainingMatches(MINI_LEAGUE_MATCHES, 1)
-    expect(open).toHaveLength(2)
-    const raw = remainingStrengthRaw(open, standings)
-    expect(raw.get(TEAM_ALPHA.teamId)?.remainingGames).toBe(1)
-    expect([...raw.values()].every((b) => Number.isFinite(b.raw))).toBe(true)
-  })
-})
-
-describe('scaleHardnessIndex', () => {
-  it('Saisonstart / identische Rohwerte → Index 50 für alle aktiven Teams', () => {
-    const base = DEFAULT_PPG // typischer Mittelwert bei balanced H/A
-    const buckets = new Map<number, StrengthBucket>([
-      [1, { raw: base, remainingGames: 34 }],
-      [2, { raw: base, remainingGames: 34 }],
-      [3, { raw: base, remainingGames: 34 }],
-      [4, { raw: base, remainingGames: 34 }],
-    ])
-    const index = scaleHardnessIndex(buckets)
-    expect([...index.values()].every((v) => v === 50)).toBe(true)
-  })
-
-  it('Fließkomma-Rauschen bläst nicht auf 0–100 auf', () => {
-    // Gleiche Summe, andere Additionsreihenfolge → mikroskopische Differenzen
-    const a = 0.1 + 0.2 + 0.3
-    const b = 0.3 + 0.2 + 0.1
-    const c = 0.2 + 0.1 + 0.3
-    expect(a).not.toBe(b) // oft true bei IEEE-754; egal wenn doch gleich
-    const buckets = new Map<number, StrengthBucket>([
-      [1, { raw: a, remainingGames: 10 }],
-      [2, { raw: b, remainingGames: 10 }],
-      [3, { raw: c, remainingGames: 10 }],
-    ])
-    const index = scaleHardnessIndex(buckets)
-    expect([...index.values()].every((v) => v === 50)).toBe(true)
-    expect(Math.max(...index.values()) - Math.min(...index.values())).toBe(0)
-  })
-})
-
-describe('remainingStrength', () => {
-  it('skaliert auf 0–100: schwerstes Restprogramm → 100', () => {
-    const standings = buildStandings(MINI_LEAGUE_MATCHES)
-    const index = remainingStrength(MINI_LEAGUE_OPEN, standings)
-
-    expect(index.get(TEAM_GAMMA.teamId)).toBe(100)
-    expect(index.get(TEAM_DELTA.teamId)).toBe(0)
-    expect(index.get(TEAM_ALPHA.teamId)!).toBeGreaterThan(0)
-    expect(index.get(TEAM_ALPHA.teamId)!).toBeLessThan(100)
-  })
-
-  it('gibt 0 für Teams ohne Restspiele', () => {
-    const standings = buildStandings(MINI_LEAGUE_MATCHES)
-    const index = remainingStrength([], standings)
-    expect([...index.values()].every((v) => v === 0)).toBe(true)
-  })
-})
-
-describe('computeScheduleHardness', () => {
-  it('Saisonstart (0 Spiele): reliable:false und Index 50 bei gleichen Rohwerten', () => {
-    const standings = buildStandings(MINI_LEAGUE_MATCHES).map((r) => ({
-      ...r,
-      played: 0,
-      points: 0,
-      won: 0,
-      draw: 0,
-      lost: 0,
-    }))
-    const rows = computeScheduleHardness(MINI_LEAGUE_OPEN, standings)
+describe('computeScheduleHardness (Poisson / Vereinssicht)', () => {
+  it('0 Spiele / zu wenige Daten → reliable:false, keine Einstufung', () => {
+    const standings: StandingRow[] = [
+      row(TEAM_ALPHA, { played: 0, points: 0 }),
+      row(TEAM_BETA, { played: 0, points: 0 }),
+      row(TEAM_GAMMA, { played: 0, points: 0 }),
+      row(TEAM_DELTA, { played: 0, points: 0 }),
+    ]
+    const matches = [openMatch(1, TEAM_ALPHA, TEAM_BETA)]
+    const rows = computeScheduleHardness(matches, standings)
     expect(rows.every((r) => r.reliable === false)).toBe(true)
+    expect(rows.every((r) => r.grade === null)).toBe(true)
+    expect(MIN_GAMES_FOR_HARDNESS).toBe(MIN_GAMES)
+  })
 
-    // Identische Restprogramm-Rohwerte (balanced) → alle Index 50, kein 0/100
-    const equalBuckets = new Map(
-      standings.map((s) => [
-        s.teamId,
-        { raw: DEFAULT_PPG, remainingGames: 34 },
-      ]),
+  it('starkes Team vs. schwache Gegner → hohe Restpunkte, leicht für den Verein', () => {
+    const played = 10
+    const standings: StandingRow[] = [
+      row(TEAM_ALPHA, {
+        played,
+        points: 25,
+        goalsFor: 28,
+        goalsAgainst: 8,
+        rank: 1,
+      }),
+      row(TEAM_BETA, {
+        played,
+        points: 5,
+        goalsFor: 6,
+        goalsAgainst: 22,
+        rank: 4,
+      }),
+      row(TEAM_GAMMA, {
+        played,
+        points: 6,
+        goalsFor: 7,
+        goalsAgainst: 20,
+        rank: 3,
+      }),
+      row(TEAM_DELTA, {
+        played,
+        points: 8,
+        goalsFor: 9,
+        goalsAgainst: 18,
+        rank: 2,
+      }),
+    ]
+    // Alpha (stark) spielt noch gegen zwei schwache Teams
+    const matches = [
+      openMatch(1, TEAM_ALPHA, TEAM_BETA),
+      openMatch(2, TEAM_GAMMA, TEAM_ALPHA),
+    ]
+    const alpha = computeScheduleHardness(matches, standings).find(
+      (r) => r.teamId === TEAM_ALPHA.teamId,
+    )!
+    expect(alpha.reliable).toBe(true)
+    expect(alpha.remainingGames).toBe(2)
+    expect(alpha.expectedRemainingPoints).toBeGreaterThan(3)
+    expect(alpha.expectedPerGame).toBeGreaterThan(1.5)
+    // Starkes Team bleibt oft nahe/über eigenem PPG gegen Schwache → nicht „schwer“
+    expect(alpha.grade).not.toBe('hard')
+    expect(['easy', 'mid']).toContain(alpha.grade)
+  })
+
+  it('schwaches Team vs. starke Gegner → niedrige Restpunkte, schwer für den Verein', () => {
+    const played = 10
+    const standings: StandingRow[] = [
+      row(TEAM_ALPHA, {
+        played,
+        points: 26,
+        goalsFor: 30,
+        goalsAgainst: 6,
+        rank: 1,
+      }),
+      row(TEAM_BETA, {
+        played,
+        points: 24,
+        goalsFor: 28,
+        goalsAgainst: 8,
+        rank: 2,
+      }),
+      row(TEAM_GAMMA, {
+        played,
+        points: 4,
+        goalsFor: 5,
+        goalsAgainst: 25,
+        rank: 4,
+      }),
+      row(TEAM_DELTA, {
+        played,
+        points: 22,
+        goalsFor: 26,
+        goalsAgainst: 10,
+        rank: 3,
+      }),
+    ]
+    const matches = [
+      openMatch(1, TEAM_GAMMA, TEAM_ALPHA),
+      openMatch(2, TEAM_BETA, TEAM_GAMMA),
+    ]
+    const gamma = computeScheduleHardness(matches, standings).find(
+      (r) => r.teamId === TEAM_GAMMA.teamId,
+    )!
+    expect(gamma.reliable).toBe(true)
+    expect(gamma.remainingGames).toBe(2)
+    expect(gamma.expectedRemainingPoints).toBeLessThan(2)
+    expect(gamma.grade).toBe('hard')
+  })
+
+  it('identisches Restprogramm, unterschiedlich starke Vereine → unterschiedliche Einstufung', () => {
+    const played = 10
+    // Alpha Top, Beta Keller — beide noch gegen denselben Top-Gegner (Gamma)
+    const standings: StandingRow[] = [
+      row(TEAM_ALPHA, {
+        played,
+        points: 28,
+        goalsFor: 36,
+        goalsAgainst: 5,
+        rank: 1,
+      }),
+      row(TEAM_BETA, {
+        played,
+        points: 3,
+        goalsFor: 4,
+        goalsAgainst: 30,
+        rank: 4,
+      }),
+      row(TEAM_GAMMA, {
+        played,
+        points: 25,
+        goalsFor: 32,
+        goalsAgainst: 7,
+        rank: 2,
+      }),
+      row(TEAM_DELTA, {
+        played,
+        points: 10,
+        goalsFor: 12,
+        goalsAgainst: 16,
+        rank: 3,
+      }),
+    ]
+    const matches = [
+      openMatch(1, TEAM_ALPHA, TEAM_GAMMA),
+      openMatch(2, TEAM_BETA, TEAM_GAMMA),
+    ]
+    const rows = computeScheduleHardness(matches, standings)
+    const alpha = rows.find((r) => r.teamId === TEAM_ALPHA.teamId)!
+    const beta = rows.find((r) => r.teamId === TEAM_BETA.teamId)!
+
+    expect(alpha.remainingGames).toBe(1)
+    expect(beta.remainingGames).toBe(1)
+    expect(alpha.expectedRemainingPoints).toBeGreaterThan(
+      beta.expectedRemainingPoints,
     )
-    const index = scaleHardnessIndex(equalBuckets)
-    expect([...index.values()].every((v) => v === 50)).toBe(true)
-    expect(Math.min(...index.values())).not.toBe(0)
-    expect(Math.max(...index.values())).not.toBe(100)
-  })
-
-  it('zu wenige Spiele (unter Median-Schwelle): reliable:false', () => {
-    const standings = buildStandings(MINI_LEAGUE_MATCHES)
-    expect(standings.every((s) => s.played < MIN_GAMES_FOR_HARDNESS)).toBe(true)
-    const rows = computeScheduleHardness(MINI_LEAGUE_OPEN, standings)
-    expect(rows.every((r) => !r.reliable)).toBe(true)
-    // Ranking-Zahlen existieren weiter, sollen UI aber nicht als Aussage nutzen
-    expect(rows[0].teamId).toBe(TEAM_GAMMA.teamId)
-  })
-
-  it('genug Spiele, unterschiedliche Stärken: reliable:true, plausible Rangfolge', () => {
-    const standings: StandingRow[] = buildStandings(MINI_LEAGUE_MATCHES).map((r) => {
-      // Median ≥ 5: alle auf 5+ Spiele setzen, PPG-Verhältnisse beibehalten
-      const played = 10
-      const ppg =
-        r.teamId === TEAM_ALPHA.teamId
-          ? 2.2
-          : r.teamId === TEAM_DELTA.teamId
-            ? 1.5
-            : r.teamId === TEAM_GAMMA.teamId
-              ? 1.2
-              : 0.8
-      const points = Math.round(ppg * played)
-      return { ...r, played, points }
-    })
-    const rows = computeScheduleHardness(MINI_LEAGUE_OPEN, standings)
-    expect(rows.every((r) => r.reliable)).toBe(true)
-    // Gamma trifft Alpha (hohe PPG) auswärts → Rang 1
-    expect(rows[0].teamId).toBe(TEAM_GAMMA.teamId)
-    expect(rows[0].rank).toBe(1)
-    expect(rows[0].index).toBe(100)
-    expect(rows.find((r) => r.teamId === TEAM_DELTA.teamId)?.rank).toBe(4)
+    // Gleicher Gegner: Club-relative Deltas unterscheiden sich klar
+    // (Liga-Index aus Gegner-PPG wäre für beide identisch gewesen)
+    expect(alpha.difficultyDelta!).toBeLessThan(beta.difficultyDelta!)
+    expect(
+      Math.abs(alpha.difficultyDelta! - beta.difficultyDelta!),
+    ).toBeGreaterThan(0.5)
+    expect(alpha.grade).not.toBeNull()
+    expect(beta.grade).not.toBeNull()
   })
 })
 
-describe('hardnessGrade', () => {
-  it('ordnet Index in fünf Stufen', () => {
-    expect(hardnessGrade(10)).toBe('very-easy')
-    expect(hardnessGrade(30)).toBe('easy')
-    expect(hardnessGrade(50)).toBe('mid')
-    expect(hardnessGrade(70)).toBe('hard')
-    expect(hardnessGrade(90)).toBe('very-hard')
+describe('hardness labels / format', () => {
+  it('deutsche Labels mit Vereinsbezug', () => {
+    expect(hardnessGradeLabel('easy')).toBe('leicht')
+    expect(hardnessGradeLabel('mid')).toBe('durchschnittlich')
+    expect(hardnessGradeLabel('hard')).toBe('schwer')
+    expect(hardnessGradeLabelForClub('hard', 'Köln')).toBe('schwer für Köln')
   })
 
-  it('liefert deutsche Labels', () => {
-    expect(hardnessGradeLabel('very-easy')).toBe('sehr leicht')
-    expect(hardnessGradeLabel('easy')).toBe('leicht')
-    expect(hardnessGradeLabel('mid')).toBe('mittel')
-    expect(hardnessGradeLabel('hard')).toBe('schwer')
-    expect(hardnessGradeLabel('very-hard')).toBe('sehr schwer')
+  it('formatiert erwartete Restpunkte', () => {
+    expect(formatExpectedRemainingPoints(12)).toBe('~12')
+    expect(formatExpectedRemainingPoints(12.04)).toBe('~12')
+    expect(formatExpectedRemainingPoints(12.55)).toMatch(/^~12/)
   })
 })

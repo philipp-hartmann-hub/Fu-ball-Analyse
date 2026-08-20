@@ -1,238 +1,170 @@
 import type { Match, StandingRow } from '../types'
 import { hasEnoughData } from './reliability'
+import {
+  DEFAULT_ATTACK,
+  DEFAULT_DEFENSE,
+  deriveTeamStrengths,
+  predictMatch,
+} from './simulation'
 
 /**
- * Restprogramm-Härte
+ * Restprogramm aus Vereinssicht (Poisson-1X2, gleiches Modell wie Spielschätzung).
  *
- * Definition: Durchschnittliche Stärke der verbleibenden Gegner.
- * Gegner-Stärke = aktuelle Punkte pro Spiel (PPG) aus `standings`.
- * Gewichtung Heim/Auswärts (Heim etwas leichter, Auswärts etwas schwerer):
- *   - Heimspiel:  Gegner-PPG × HOME_WEIGHT
- *   - Auswärts:   Gegner-PPG × AWAY_WEIGHT
- * Rohwert = Mittel der gewichteten Gegner-PPG über alle Restspiele des Vereins
- * (nur Spiele, in denen der Verein vorkommt; `matches` = offene/Rest-Fixtures).
+ * Pro Restspiel: erwartete Punkte = P(Sieg)·3 + P(Remis)·1 (Heim/Auswärts über λ).
+ * Summe → expectedRemainingPoints; Mittel → expectedPerGame.
+ * Vergleich mit eigenem PPG (ownAverage): darüber „leicht“, darunter „schwer“,
+ * nahe dran „durchschnittlich“ — nicht relativ zur Liga.
  *
- * Index 0–100: lineare Skalierung innerhalb der Liga (Min → 0, Max → 100).
- * Höher = schwereres Restprogramm. Ohne Restspiele → 0.
- * Rohwerte praktisch gleich ((max−min) < EQUALITY_EPS) → alle aktiven Teams 50.
- *
- * Aussagekraft: `hasEnoughData` (Median gespielter Spiele ≥ MIN_GAMES).
- * Sonst Index/Rang ohne Einstufung in der UI.
+ * `reliable` nur bei `hasEnoughData` (Median ≥ MIN_GAMES).
  */
 
-/** Faktor auf Gegner-PPG bei Heimspiel (leichter). */
-export const HOME_WEIGHT = 0.9
+/** |expectedPerGame − ownAverage| darunter → „durchschnittlich“. */
+export const DIFFICULTY_EPS = 0.2
 
-/** Faktor auf Gegner-PPG bei Auswärtsspiel (schwerer). */
-export const AWAY_WEIGHT = 1.1
-
-/** Fallback-PPG, wenn ein Gegner noch 0 Spiele hat. */
-export const DEFAULT_PPG = 1.0
-
-/**
- * Unter dieser Spread-Schwelle gelten Rohwerte als gleich → Index 50
- * (verhindert 0–100-Aufblasen von Fließkomma-Rauschen).
- */
-export const EQUALITY_EPS = 1e-9
+/** Neutrales PPG, wenn der Verein noch 0 Spiele hat (bei sonst genug Liga-Daten). */
+export const NEUTRAL_OWN_PPG = 1.0
 
 /** @deprecated Nutze MIN_GAMES / hasEnoughData aus `./reliability`. */
 export { MIN_GAMES as MIN_GAMES_FOR_HARDNESS } from './reliability'
 
+export type HardnessGrade = 'easy' | 'mid' | 'hard'
+
 export interface ScheduleHardness {
   teamId: number
-  /** 0–100, höher = schwerer; bei gleichen Rohwerten 50 */
-  index: number
-  /** 1 = schwerstes Restprogramm der Liga (bei Index-Gleichstand: niedrigere teamId zuerst) */
-  rank: number
-  /** Mittleres gewichtetes Gegner-PPG */
-  raw: number
   remainingGames: number
+  /** Summe erwarteter Punkte über alle Restspiele */
+  expectedRemainingPoints: number
+  /** expectedRemainingPoints / remainingGames (0 ohne Restspiele) */
+  expectedPerGame: number
+  /** Bisherige Punkte/Spiel; null bei 0 Spielen */
+  ownAverage: number | null
+  /** expectedPerGame − ownAverage (bzw. Neutral-PPG); null wenn !reliable */
+  difficultyDelta: number | null
+  /** null wenn !reliable oder keine Restspiele */
+  grade: HardnessGrade | null
   /**
    * false, wenn noch zu wenige Spiele gespielt sind (`!hasEnoughData`)
-   * — Index/Rang dann nicht als Ranking interpretieren.
+   * — dann keine Einstufung / keine Restpunkte-Aussage in der UI.
    */
   reliable: boolean
 }
 
-function opponentPpg(
-  opponentId: number,
-  ppgByTeam: Map<number, number>,
+function expectedPointsFromFocus(
+  pWin: number,
+  pDraw: number,
 ): number {
-  return ppgByTeam.get(opponentId) ?? DEFAULT_PPG
-}
-
-export interface StrengthBucket {
-  /** Mittleres gewichtetes Gegner-PPG (0 wenn keine Restspiele). */
-  raw: number
-  remainingGames: number
+  return pWin * 3 + pDraw * 1
 }
 
 /**
- * Rohwerte inkl. Restspiel-Anzahl je Verein.
- */
-export function remainingStrengthRaw(
-  matches: Match[],
-  standings: StandingRow[],
-): Map<number, StrengthBucket> {
-  const ppgByTeam = new Map<number, number>()
-  for (const row of standings) {
-    ppgByTeam.set(
-      row.teamId,
-      row.played > 0 ? row.points / row.played : DEFAULT_PPG,
-    )
-  }
-
-  const sums = new Map<number, { sum: number; n: number }>()
-  for (const row of standings) {
-    sums.set(row.teamId, { sum: 0, n: 0 })
-  }
-
-  for (const m of matches) {
-    const homeId = m.team1.teamId
-    const awayId = m.team2.teamId
-
-    const homeBucket = sums.get(homeId)
-    if (homeBucket) {
-      homeBucket.sum += opponentPpg(awayId, ppgByTeam) * HOME_WEIGHT
-      homeBucket.n += 1
-    }
-
-    const awayBucket = sums.get(awayId)
-    if (awayBucket) {
-      awayBucket.sum += opponentPpg(homeId, ppgByTeam) * AWAY_WEIGHT
-      awayBucket.n += 1
-    }
-  }
-
-  const out = new Map<number, StrengthBucket>()
-  for (const [teamId, { sum, n }] of sums) {
-    out.set(teamId, {
-      raw: n > 0 ? sum / n : 0,
-      remainingGames: n,
-    })
-  }
-  return out
-}
-
-/**
- * Skaliert Rohwerte linear auf 0–100 innerhalb der Liga.
- * Nur Teams mit Restspielen fließen in Min/Max ein (auch bei Rohwert 0);
- * ohne Restspiele → Index 0.
- * Bei (max − min) &lt; EQUALITY_EPS → alle aktiven Teams auf 50 (kein Rauschen-Ranking).
- */
-export function scaleHardnessIndex(
-  buckets: Map<number, StrengthBucket>,
-): Map<number, number> {
-  const active = [...buckets.entries()].filter(([, b]) => b.remainingGames > 0)
-  const index = new Map<number, number>()
-
-  if (active.length === 0) {
-    for (const teamId of buckets.keys()) index.set(teamId, 0)
-    return index
-  }
-
-  let min = Infinity
-  let max = -Infinity
-  for (const [, b] of active) {
-    if (b.raw < min) min = b.raw
-    if (b.raw > max) max = b.raw
-  }
-
-  const spread = max - min
-  const allEqual = spread < EQUALITY_EPS
-
-  for (const [teamId, b] of buckets) {
-    if (b.remainingGames === 0) {
-      index.set(teamId, 0)
-    } else if (allEqual) {
-      index.set(teamId, 50)
-    } else {
-      index.set(teamId, ((b.raw - min) / spread) * 100)
-    }
-  }
-  return index
-}
-
-/**
- * Restprogramm-Härte als Index 0–100 (höher = schwerer).
- * `matches` = Restfixtures, `standings` = aktuelle Tabelle für PPG.
- */
-export function remainingStrength(
-  matches: Match[],
-  standings: StandingRow[],
-): Map<number, number> {
-  return scaleHardnessIndex(remainingStrengthRaw(matches, standings))
-}
-
-/** Median der `played`-Werte; leere Liga → 0. */
-export { medianGamesPlayed } from './reliability'
-
-/**
- * Volle Kennzahlen inkl. Liga-Rang (1 = schwerstes Restprogramm).
- * `reliable` nur wenn `hasEnoughData(standings)`.
+ * Erwartete Restpunkte und Einstufung je Verein aus dem Poisson-Modell.
+ * `matches` = Restfixtures, `standings` = aktuelle Tabelle (Stärken + eigenes PPG).
  */
 export function computeScheduleHardness(
   matches: Match[],
   standings: StandingRow[],
 ): ScheduleHardness[] {
-  const buckets = remainingStrengthRaw(matches, standings)
-  const index = scaleHardnessIndex(buckets)
   const reliable = hasEnoughData(standings)
+  const { strengths, avgDefense } = deriveTeamStrengths(standings)
 
-  const ordered = [...standings]
-    .map((row) => {
-      const b = buckets.get(row.teamId)
-      return {
-        teamId: row.teamId,
-        index: index.get(row.teamId) ?? 0,
-        raw: b?.raw ?? 0,
-        remainingGames: b?.remainingGames ?? 0,
-        reliable,
+  const acc = new Map<number, { sum: number; n: number }>()
+  for (const row of standings) {
+    acc.set(row.teamId, { sum: 0, n: 0 })
+  }
+
+  for (const m of matches) {
+    const homeId = m.team1.teamId
+    const awayId = m.team2.teamId
+    const homeBucket = acc.get(homeId)
+    const awayBucket = acc.get(awayId)
+    if (!homeBucket && !awayBucket) continue
+
+    const homeStr =
+      strengths.get(homeId) ?? {
+        teamId: homeId,
+        attack: DEFAULT_ATTACK,
+        defense: DEFAULT_DEFENSE,
       }
-    })
-    .sort((a, b) => {
-      // Ohne Restspiele ans Ende
-      if (a.remainingGames === 0 && b.remainingGames > 0) return 1
-      if (b.remainingGames === 0 && a.remainingGames > 0) return -1
-      if (b.index !== a.index) return b.index - a.index
-      return a.teamId - b.teamId
-    })
+    const awayStr =
+      strengths.get(awayId) ?? {
+        teamId: awayId,
+        attack: DEFAULT_ATTACK,
+        defense: DEFAULT_DEFENSE,
+      }
 
-  return ordered.map((row, i) => ({
-    ...row,
-    rank: i + 1,
-  }))
+    const pred = predictMatch(homeStr, awayStr, avgDefense)
+
+    if (homeBucket) {
+      homeBucket.sum += expectedPointsFromFocus(pred.pHome, pred.pDraw)
+      homeBucket.n += 1
+    }
+    if (awayBucket) {
+      awayBucket.sum += expectedPointsFromFocus(pred.pAway, pred.pDraw)
+      awayBucket.n += 1
+    }
+  }
+
+  return standings.map((row) => {
+    const bucket = acc.get(row.teamId) ?? { sum: 0, n: 0 }
+    const remainingGames = bucket.n
+    const expectedRemainingPoints = bucket.sum
+    const expectedPerGame =
+      remainingGames > 0 ? expectedRemainingPoints / remainingGames : 0
+    const ownAverage = row.played > 0 ? row.points / row.played : null
+
+    let grade: HardnessGrade | null = null
+    let difficultyDelta: number | null = null
+
+    if (reliable && remainingGames > 0) {
+      const baseline = ownAverage ?? NEUTRAL_OWN_PPG
+      difficultyDelta = expectedPerGame - baseline
+      if (difficultyDelta > DIFFICULTY_EPS) grade = 'easy'
+      else if (difficultyDelta < -DIFFICULTY_EPS) grade = 'hard'
+      else grade = 'mid'
+    }
+
+    return {
+      teamId: row.teamId,
+      remainingGames,
+      expectedRemainingPoints,
+      expectedPerGame,
+      ownAverage,
+      difficultyDelta,
+      grade,
+      reliable,
+    }
+  })
 }
 
-/** Fünf Stufen für UI (nur bei reliable verwenden). */
-export type HardnessGrade =
-  | 'very-easy'
-  | 'easy'
-  | 'mid'
-  | 'hard'
-  | 'very-hard'
-
-/** Abgestufte Einschätzung anhand Index 0–100. */
-export function hardnessGrade(index: number): HardnessGrade {
-  if (index < 20) return 'very-easy'
-  if (index < 40) return 'easy'
-  if (index < 60) return 'mid'
-  if (index < 80) return 'hard'
-  return 'very-hard'
-}
-
-/** Deutsche Kurzlabels für die Tabelle / UI. */
+/** Kurzlabel ohne Vereinsbezug. */
 export function hardnessGradeLabel(grade: HardnessGrade): string {
   switch (grade) {
-    case 'very-easy':
-      return 'sehr leicht'
     case 'easy':
       return 'leicht'
     case 'mid':
-      return 'mittel'
+      return 'durchschnittlich'
     case 'hard':
       return 'schwer'
-    case 'very-hard':
-      return 'sehr schwer'
   }
 }
+
+/** „leicht für Köln“ usw. */
+export function hardnessGradeLabelForClub(
+  grade: HardnessGrade,
+  clubName: string,
+): string {
+  return `${hardnessGradeLabel(grade)} für ${clubName}`
+}
+
+/** Anzeige „~12“ / „~12,5“ für erwartete Restpunkte. */
+export function formatExpectedRemainingPoints(points: number): string {
+  const rounded = Math.round(points * 10) / 10
+  if (Number.isInteger(rounded)) return `~${rounded}`
+  return `~${rounded.toLocaleString('de-DE', {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  })}`
+}
+
+/** Median der `played`-Werte; leere Liga → 0. */
+export { medianGamesPlayed } from './reliability'

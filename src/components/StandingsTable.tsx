@@ -5,7 +5,7 @@ import {
   type TeamForecast,
 } from '../lib/simulation'
 import {
-  hardnessGrade,
+  formatExpectedRemainingPoints,
   hardnessGradeLabel,
   type ScheduleHardness,
 } from '../lib/schedule'
@@ -52,7 +52,6 @@ export function StandingsTable({
   const rangeMap = new Map(ranges.map((r) => [r.teamId, r]))
   const forecastMap = new Map((forecasts ?? []).map((f) => [f.teamId, f]))
   const baseRank = new Map((baseline ?? []).map((r) => [r.teamId, r.rank]))
-  const teamCount = standings.length
 
   return (
     <div className="table-wrap">
@@ -73,7 +72,7 @@ export function StandingsTable({
             <th className="num pts">Pkt</th>
             <th
               className="col-hardness"
-              title="Restprogramm: sehr leicht bis sehr schwer (relativ zur Liga)"
+              title="Erwartete Restpunkte aus dem Poisson-Modell (Vereinssicht)"
             >
               Restprog.
               {onExplain && (
@@ -161,7 +160,7 @@ export function StandingsTable({
                 <td className="num pts">{row.points}</td>
                 <td className="col-hardness">
                   {hardness && hardness.remainingGames > 0 ? (
-                    <HardnessCell hardness={hardness} teamCount={teamCount} />
+                    <HardnessCell hardness={hardness} clubName={row.shortName || row.teamName} />
                   ) : (
                     <span className="hardness-empty">–</span>
                   )}
@@ -213,12 +212,12 @@ export function StandingsTable({
 
 function HardnessCell({
   hardness,
-  teamCount,
+  clubName,
 }: {
   hardness: ScheduleHardness
-  teamCount: number
+  clubName: string
 }) {
-  if (!hardness.reliable) {
+  if (!hardness.reliable || !hardness.grade) {
     return (
       <span
         className="hardness-pill tone-pending"
@@ -228,14 +227,15 @@ function HardnessCell({
       </span>
     )
   }
-  const grade = hardnessGrade(hardness.index)
-  const rounded = Math.round(hardness.index)
+  const pts = formatExpectedRemainingPoints(hardness.expectedRemainingPoints)
+  const gradeLabel = hardnessGradeLabel(hardness.grade)
   return (
     <span
-      className={`hardness-pill tone-${grade}`}
-      title={`Index ${rounded}/100 · Rang ${hardness.rank}/${teamCount} (1 = schwerstes Restprogramm)`}
+      className={`hardness-pill tone-${hardness.grade}`}
+      title={`Erwartete Restpunkte ${pts} · ${gradeLabel} für ${clubName} · Modellschätzung`}
     >
-      {hardnessGradeLabel(grade)}
+      <span className="hardness-pts">{pts}</span>
+      <span className="hardness-grade-short">{gradeLabel}</span>
     </span>
   )
 }

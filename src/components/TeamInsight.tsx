@@ -20,8 +20,8 @@ import {
   zoneLabelFor,
 } from '../lib/table'
 import {
-  hardnessGrade,
-  hardnessGradeLabel,
+  formatExpectedRemainingPoints,
+  hardnessGradeLabelForClub,
   type ScheduleHardness,
 } from '../lib/schedule'
 import {
@@ -1017,11 +1017,13 @@ export function TeamInsight({
     scheduleHardness &&
     scheduleHardness.remainingGames > 0 &&
     scheduleHardness.reliable
-      ? hardnessGrade(scheduleHardness.index)
+      ? scheduleHardness.grade
       : null
-  const hardnessLabel = hardnessGradeValue
-    ? hardnessGradeLabel(hardnessGradeValue)
-    : null
+  const clubShort = team.shortName || team.teamName
+  const hardnessLabel =
+    hardnessGradeValue != null
+      ? hardnessGradeLabelForClub(hardnessGradeValue, clubShort)
+      : null
 
   const matchup =
     nextMatchday?.plays &&
@@ -1096,15 +1098,18 @@ export function TeamInsight({
                   </>
                 )}
               </span>
-              {scheduleHardness.reliable ? (
-                <strong className={`hardness-stat tone-${hardnessGradeValue}`}>
-                  {hardnessLabel}
+              {scheduleHardness.reliable && hardnessLabel ? (
+                <>
+                  <strong className={`hardness-stat tone-${hardnessGradeValue}`}>
+                    Erwartete Restpunkte:{' '}
+                    {formatExpectedRemainingPoints(
+                      scheduleHardness.expectedRemainingPoints,
+                    )}
+                  </strong>
                   <span className="hardness-stat-meta">
-                    {' '}
-                    · {Math.round(scheduleHardness.index)} · {scheduleHardness.rank}/
-                    {leagueTeamCount}
+                    {hardnessLabel} · Modellschätzung
                   </span>
-                </strong>
+                </>
               ) : (
                 <strong className="hardness-stat tone-pending">
                   noch keine Aussage
@@ -1114,19 +1119,6 @@ export function TeamInsight({
             </div>
           )}
         </div>
-        {scheduleHardness &&
-          scheduleHardness.remainingGames > 0 &&
-          scheduleHardness.reliable && (
-            <Disclosure
-              closedLabel="Härte-Erklärung anzeigen"
-              openLabel="Härte-Erklärung ausblenden"
-            >
-              <p className="hint tight">
-                Härte relativ zur Liga: sehr leicht → sehr schwer. Rang 1 =
-                schwerstes Restprogramm.
-              </p>
-            </Disclosure>
-          )}
 
         <ForecastZoneBreakdown
           forecast={forecast}
@@ -1149,11 +1141,11 @@ export function TeamInsight({
                 <>
                   {' '}
                   <ExplainLink
-                    topic="forecast"
+                    topic="matchLean"
                     onExplain={onExplain}
                     className="explain-inline"
                   >
-                    Modell erklären
+                    Einschätzung erklären
                   </ExplainLink>
                 </>
               )}
