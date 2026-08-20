@@ -239,11 +239,12 @@ export function DecisionsExplainBody() {
       <h3>Auslöser: Spieltag vs. Saison</h3>
       <p>
         <strong>Diesen Spieltag</strong> (wenn Spiele laufen oder der Spieltag
-        ansteht): welcher <em>Tabellenplatz nach den heutigen Spielen</em>{' '}
-        möglich ist — nicht, ob Aufstieg oder Klassenerhalt für die Saison schon
-        feststehen. Formulierungen wie „kein Aufstiegsplatz“ gelten nur für
-        diesen Spieltag. <strong>Saison</strong>: was über alle Restspiele
-        feststeht, oft Näherung und so gekennzeichnet.
+        ansteht): nur was sich <em>heute für die Saison</em> entscheiden kann.
+        Eine Zeile erscheint nur, wenn die harte Saison-Spanne (dieselbe wie
+        „Möglich“) die Zone noch offen lässt und ein Extremausgang dieses
+        Spieltags die Grenze kippen würde. Am Saisonanfang (Spanne 1.–18.) gibt
+        es deshalb keine Clinch-Zeilen. <strong>Saison</strong>: Hinweise über
+        mehrere Spieltage, oft Näherung und so gekennzeichnet.
       </p>
     </>
   )

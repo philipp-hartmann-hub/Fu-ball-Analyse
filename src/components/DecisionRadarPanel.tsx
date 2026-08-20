@@ -284,11 +284,12 @@ export function DecisionRadarPanel({
             {radar.nextMatchday != null ? ` · ST ${radar.nextMatchday}` : ''}
           </h3>
           <p className="hint tight">
-            Tabellenplatz nach diesem Spieltag — nicht das Saison-Ziel
+            Was sich heute für die <strong>Saison</strong> entscheiden kann
             {matchdayNear.some((r) => r.matchdayTriggersExact)
               ? ' (exakte Enumeration)'
               : ' (ggf. Näherung)'}
-            .
+            — nur wenn die harte Spanne (wie Möglich) die Zone noch offen lässt
+            und dieser Spieltag sie kippen kann.
           </p>
           <ul className="decision-list">
             {matchdayNear.map((row) => (
@@ -314,9 +315,9 @@ export function DecisionRadarPanel({
             {radar.nextMatchday != null ? ` · ST ${radar.nextMatchday}` : ''}
           </h3>
           <p className="hint tight">
-            Tabellenplatz nach diesem Spieltag — nicht das Saison-Ziel.
-            Für keinen Verein eine Schwelle: Zielplatz und Abstiegsplatz sind
-            nach den heutigen Spielen beide noch möglich.
+            Saison-Auslöser nur, wenn dieser Spieltag eine Zone an der harten
+            Spanne (wie Möglich) wirklich kippen kann. Aktuell für keinen Verein
+            der Fall.
           </p>
         </div>
       )}
