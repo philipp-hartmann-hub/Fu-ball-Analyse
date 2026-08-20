@@ -602,7 +602,8 @@ export default function App() {
               </p>
             )}
             <p className="forecast-disclaimer">
-              Restprogramm relativ zur Liga: sehr leicht bis sehr schwer.{' '}
+              Restprogramm aus Vereinssicht: erwartete Restpunkte (Poisson) und
+              leicht/durchschnittlich/schwer für den Verein.{' '}
               <ExplainLink topic="hardness" onExplain={openExplain} />
             </p>
             <StandingsTable

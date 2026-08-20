@@ -6,12 +6,14 @@ export type ExplainTopic =
   | 'hardness'
   | 'conditions'
   | 'decisions'
+  | 'matchLean'
 
 export const EXPLAIN_TITLES: Record<ExplainTopic, string> = {
   forecast: 'So funktioniert die Prognose',
   span: 'So funktioniert „Möglich“',
   thresholds: 'So entstehen Punktschwellen',
-  hardness: 'So entsteht die Restprogramm-Härte',
+  hardness: 'So entsteht das Restprogramm (Vereinssicht)',
   conditions: 'Was muss passieren?',
   decisions: 'So funktioniert das Entscheidungs-Radar',
+  matchLean: 'Sieg möglich / wahrscheinlich – was heißt das?',
 }

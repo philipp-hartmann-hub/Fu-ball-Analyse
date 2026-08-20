@@ -1,8 +1,8 @@
 import { useMemo } from 'react'
 import type { Match, ScenarioResult, StandingRow } from '../types'
 import {
-  hardnessGrade,
-  hardnessGradeLabel,
+  formatExpectedRemainingPoints,
+  hardnessGradeLabelForClub,
   type ScheduleHardness,
 } from '../lib/schedule'
 import {
@@ -11,6 +11,7 @@ import {
   type MatchLean,
 } from '../lib/simulation'
 import type { ExplainTopic } from '../lib/modelExplanations'
+import { NOT_ENOUGH_DATA_LABEL } from '../lib/reliability'
 import { ExplainLink } from './ExplainLink'
 import { MatchLeanChip } from './MatchLeanChip'
 import { MatchPredictionCard } from './MatchPredictionCard'
@@ -70,28 +71,28 @@ function findMatchById(remaining: Match[], matchId: number): Match | null {
 
 function HardnessBadge({
   hardness,
-  leagueSize,
+  clubName,
 }: {
   hardness: ScheduleHardness | undefined
-  leagueSize: number
+  clubName: string
 }) {
   if (!hardness || hardness.remainingGames === 0) {
     return <span className="compare-hardness muted">–</span>
   }
-  if (!hardness.reliable) {
+  if (!hardness.reliable || !hardness.grade) {
     return (
-      <span className="compare-hardness muted" title="Zu wenige Spiele für stabile Härte">
+      <span className="compare-hardness muted" title={NOT_ENOUGH_DATA_LABEL}>
         keine Aussage
       </span>
     )
   }
-  const grade = hardnessGrade(hardness.index)
+  const pts = formatExpectedRemainingPoints(hardness.expectedRemainingPoints)
   return (
-    <span className={`compare-hardness tone-${grade}`}>
-      {hardnessGradeLabel(grade)}
+    <span className={`compare-hardness tone-${hardness.grade}`}>
+      {pts} Pkt.
       <span className="compare-hardness-meta">
         {' '}
-        · {Math.round(hardness.index)} · {hardness.rank}/{leagueSize}
+        · {hardnessGradeLabelForClub(hardness.grade, clubName)}
       </span>
     </span>
   )
@@ -102,7 +103,6 @@ function TeamColumn({
   fixtures,
   fixtureLeans,
   hardness,
-  leagueSize,
   nextPrediction,
   nextTitle,
   nextHomeName,
@@ -113,7 +113,6 @@ function TeamColumn({
   fixtures: RemainingFixture[]
   fixtureLeans: Map<number, MatchLean>
   hardness: ScheduleHardness | undefined
-  leagueSize: number
   nextPrediction: ReturnType<typeof predictFixture>
   nextTitle: string
   nextHomeName?: string
@@ -169,7 +168,10 @@ function TeamColumn({
             </>
           )}
         </span>
-        <HardnessBadge hardness={hardness} leagueSize={leagueSize} />
+        <HardnessBadge
+          hardness={hardness}
+          clubName={teamLabel(row)}
+        />
       </div>
 
       {nextPrediction && (
@@ -190,11 +192,11 @@ function TeamColumn({
           <>
             {' '}
             <ExplainLink
-              topic="forecast"
+              topic="matchLean"
               onExplain={onExplain}
               className="explain-inline"
             >
-              Modell erklären
+              Einschätzung erklären
             </ExplainLink>
           </>
         )}
@@ -429,7 +431,6 @@ export function TeamCompare({
               fixtures={fixturesA}
               fixtureLeans={leansA}
               hardness={hardnessByTeam.get(teamA.teamId)}
-              leagueSize={standings.length}
               nextPrediction={nextPredA}
               nextTitle={
                 nextA
@@ -461,7 +462,6 @@ export function TeamCompare({
               fixtures={fixturesB}
               fixtureLeans={leansB}
               hardness={hardnessByTeam.get(teamB.teamId)}
-              leagueSize={standings.length}
               nextPrediction={nextPredB}
               nextTitle={
                 nextB

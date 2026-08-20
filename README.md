@@ -22,7 +22,7 @@ Echtzeit-Analyse für die **1., 2. und 3. Liga**: Tabelle, Restprogramm und mög
 - Live-Tabelle mit Zonen (BL1: CL/EL/Abstieg · BL2/3. Liga: Aufstieg/Abstieg); **Cache**: zuletzt geladene Daten sofort aus localStorage, Refresh im Hintergrund
 - **Ergebnisse**: Spieltag wählbar; Wappen; Live-Updates (laufende Spiele hervorgehoben als Zwischenstand); Tippen zeigt Torschützen und bei offenen/laufenden Spielen die Spielschätzung 1/X/2; Live-Zwischenstände standardmäßig in der Tabelle; 2 Tage nach letztem Spiel → nächster Spieltag als Default
 - Spalte **Möglich**: rechnerisch noch mögliche Plätze – **exakt** bei ≤12 relevanten Restspielen je Verein (nach Punkte-Pruning), sonst **harte Außengrenze** aus Punktemaxima (Badge pro Zeile); alternativ Monte-Carlo-**Prognose** (umschaltbar; unter `MIN_GAMES` Spielen ohne Prozentanzeige)
-- Spalte **Restprog.**: Einschätzung sehr leicht → sehr schwer (immer in der Tabelle; auf schmalen Breiten ausgeblendet)
+- Spalte **Restprog.**: erwartete Restpunkte (Poisson, Vereinssicht) plus leicht/durchschnittlich/schwer für den Verein (immer in der Tabelle; auf schmalen Breiten ausgeblendet)
 - Seitenleiste: **Verein** (Kern sofort inkl. Saison-Prognose; Restprogramm klappbar mit Favoriten-Ausgang je Gegner; Wunschplatz/Härte hinter Klappen) · **Ergebnisse** · **Entscheidungen** (alleiniger Ort für feststehenden Saison-Status, Live-Delta und Punktschwellen/Auslöser) · **Szenario** · **Vergleich** (Restprogramm: Gegner-Kürzel + S/U/N)
 - **Szenario-Simulator**: Partien mit Wappen; Grob (Sieg/Unentschieden) oder Fein-Tore
 - **Stand nach Spieltag**: Auswahl (Dropdown) für historischen Stand
@@ -56,6 +56,35 @@ src/
 ---
 
 ## Änderungsprotokoll
+
+### 2026-08-20 — Prompt 124
+
+**User:** Änderungen committen und nach `main` mergen.
+
+**Aktion:**
+- Feature-Branch, PR und Merge (Restprogramm Poisson/Vereinssicht + Lean ohne Prozent / matchLean-Popup)
+
+**Status:** erledigt
+
+### 2026-08-20 — Prompt 123
+
+**User:** Bei Sieg möglich/wahrscheinlich die Prozentzahl weglassen; Einschätzung im Popup erklären.
+
+**Aktion:**
+- `MatchLeanChip`: keine %-Anzeige mehr (nur Label bzw. S/U/N)
+- Neues Explain-Topic `matchLean` + Popup-Text; Links in Verein- und Vergleich-Restprogramm
+
+**Status:** erledigt
+
+### 2026-08-20 — Prompt 122
+
+**User:** Restprogramm-Härte aus Vereinssicht über Poisson (erwartete Restpunkte), nicht relativ zur Liga.
+
+**Aktion:**
+- `schedule.ts`: `computeScheduleHardness` über `predictMatch` (P(S)·3+P(U)); Einstufung vs. eigenem PPG; `hasEnoughData`
+- UI Tabelle/Verein/Vergleich: „Erwartete Restpunkte: ~X“ + leicht/durchschnittlich/schwer für den Verein; Erklärtext + Tests
+
+**Status:** erledigt
 
 ### 2026-08-20 — Prompt 121
 
