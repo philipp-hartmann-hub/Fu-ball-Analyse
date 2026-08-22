@@ -57,6 +57,15 @@ src/
 
 ## Änderungsprotokoll
 
+### 2026-08-22 — Prompt 128
+
+**User:** Comitten und mergen.
+
+**Aktion:**
+- Branch `cursor/entscheidungen-el-ecl-vereinsansicht`, Commit `cb0ae3a`, Fast-Forward-Merge nach `main`, Push auf `origin/main`
+
+**Status:** erledigt
+
 ### 2026-08-22 — Prompt 127
 
 **User:** Bundesliga: Europa League und Conference League in Entscheidungen berücksichtigen; Entscheidungs-Werte auch in der Vereinsansicht anzeigen.
