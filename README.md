@@ -65,7 +65,7 @@ src/
 **User:** Ja bitte (committen und mergen — Ladezeit-Optimierung).
 
 **Aktion:**
-- Branch `cursor/ladezeit-radar-haerte-deferred`, Commit, Fast-Forward-Merge nach `main`, Push auf `origin/main`
+- Branch `cursor/ladezeit-radar-haerte-deferred`, Commit `aa9ec7e`, Fast-Forward-Merge nach `main`, Push auf `origin/main`
 
 **Status:** erledigt
 
