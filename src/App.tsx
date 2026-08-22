@@ -15,17 +15,17 @@ import {
   liveMatchesToScenarios,
   mergeScenarios,
 } from './lib/live'
-import { buildDecisionRadar } from './lib/decisions'
 import { getLeague, type LeagueId } from './leagues'
 import { useLeagueData } from './hooks/useLeagueData'
 import { useMatchdayOutlooks } from './hooks/useMatchdayOutlooks'
 import { useSeasonForecast } from './hooks/useSeasonForecast'
+import { useScheduleHardness } from './hooks/useScheduleHardness'
+import { useDecisionRadar } from './hooks/useDecisionRadar'
 import {
   computePositionRanges,
   computeSeasonOutlook,
   scenariosFromConditions,
 } from './lib/scenarios'
-import { computeScheduleHardness } from './lib/schedule'
 import { hasEnoughData, NOT_ENOUGH_DATA_LABEL } from './lib/reliability'
 import { matchesDataVersion } from './lib/matchSignature'
 import {
@@ -167,6 +167,19 @@ export default function App() {
 
   const matchesVersion = useMemo(() => matchesDataVersion(matches), [matches])
 
+  const dataVersion = useMemo(
+    () =>
+      JSON.stringify({
+        matches: matchesVersion,
+        cutoff,
+        live: liveScenarios
+          .map((s) => `${s.matchId}:${s.homeGoals}:${s.awayGoals}`)
+          .join(','),
+        includeLive: includeLiveInTable,
+      }),
+    [matchesVersion, cutoff, liveScenarios, includeLiveInTable],
+  )
+
   const baseStandings = useMemo(
     () =>
       buildStandings(matches, {
@@ -207,29 +220,38 @@ export default function App() {
     [matchesVersion, cutoff],
   )
 
-  const decisionRadar = useMemo(
-    () =>
-      buildDecisionRadar({
-        league: leagueId,
-        confirmedStandings,
-        liveStandings: baseStandings,
-        remainingConfirmed,
-        remainingLive: openMatches,
-        hasLive: liveMatches.length > 0 && includeLiveInTable,
-        includeTriggers: true,
-        priorScores: playedScores,
-      }),
-    [
-      leagueId,
-      confirmedStandings,
-      baseStandings,
-      remainingConfirmed,
-      openMatches,
-      liveMatches.length,
-      includeLiveInTable,
-      playedScores,
-    ],
-  )
+  const {
+    radar: decisionRadar,
+    loading: decisionRadarLoading,
+    error: decisionRadarError,
+  } = useDecisionRadar({
+    enabled: sideTab === 'decisions',
+    league: leagueId,
+    dataVersion,
+    confirmedStandings,
+    liveStandings: baseStandings,
+    remainingConfirmed,
+    remainingLive: openMatches,
+    hasLive: liveMatches.length > 0 && includeLiveInTable,
+    includeLiveInTable,
+    playedScores,
+  })
+
+  const hardnessPriorityTeamIds = useMemo(() => {
+    if (sideTab === 'club' && selectedTeamId != null) return [selectedTeamId]
+    if (sideTab === 'compare') {
+      return [compareA, compareB].filter((id): id is number => id != null)
+    }
+    return []
+  }, [sideTab, selectedTeamId, compareA, compareB])
+
+  const { hardnessByTeam, loading: hardnessLoading } = useScheduleHardness({
+    enabled: baseStandings.length > 0,
+    dataVersion,
+    openMatches,
+    baseStandings,
+    priorityTeamIds: hardnessPriorityTeamIds,
+  })
 
   const selectedDecisionRow = useMemo(() => {
     if (selectedTeamId == null || !decisionRadar) return null
@@ -252,14 +274,6 @@ export default function App() {
     [baseStandings, openMatches, playedScores],
   )
 
-  const scheduleHardness = useMemo(
-    () => computeScheduleHardness(openMatches, baseStandings),
-    [openMatches, baseStandings],
-  )
-  const hardnessByTeam = useMemo(
-    () => new Map(scheduleHardness.map((h) => [h.teamId, h])),
-    [scheduleHardness],
-  )
   const forecastReliable = useMemo(
     () => hasEnoughData(baseStandings),
     [baseStandings],
@@ -623,6 +637,7 @@ export default function App() {
               highlightScenarios={scenarios.length > 0}
               league={leagueId}
               hardnessByTeam={hardnessByTeam}
+              hardnessLoading={hardnessLoading}
               onExplain={openExplain}
             />
           </div>
@@ -677,8 +692,12 @@ export default function App() {
                 }}
                 onExplain={openExplain}
               />
-            ) : sideTab === 'decisions' ? (
-              <p className="hint tight">Entscheidungs-Radar wird berechnet…</p>
+            ) : sideTab === 'decisions' && (decisionRadarLoading || decisionRadarError) ? (
+              <p className="hint tight" role="status">
+                {decisionRadarError
+                  ? `Entscheidungs-Radar nicht verfügbar: ${decisionRadarError}`
+                  : 'Entscheidungs-Radar wird berechnet…'}
+              </p>
             ) : sideTab === 'scenario' ? (
               <ScenarioPanel
                 matches={openMatches}

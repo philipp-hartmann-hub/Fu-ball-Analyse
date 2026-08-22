@@ -47,8 +47,9 @@ Build: `npm run build`
 src/
   leagues.ts
   api/openliga.ts / matchSchema.ts / dataSource.ts
-  hooks/useLeagueData.ts
+  hooks/useLeagueData.ts / useSeasonForecast.ts / useScheduleHardness.ts / useDecisionRadar.ts
   lib/table.ts / scenarios.ts / schedule.ts / reliability.ts / simulation.ts / thresholds.ts / decisions.ts / live.ts
+  workers/simulate.ts / scenarios.ts / decisions.ts
   components/…             # UI
   App.tsx
 ```
@@ -56,6 +57,29 @@ src/
 ---
 
 ## Änderungsprotokoll
+
+## Änderungsprotokoll
+
+### 2026-08-22 — Prompt 134
+
+**User:** Ja bitte (committen und mergen — Ladezeit-Optimierung).
+
+**Aktion:**
+- Branch `cursor/ladezeit-radar-haerte-deferred`, Commit, Fast-Forward-Merge nach `main`, Push auf `origin/main`
+
+**Status:** erledigt
+
+### 2026-08-22 — Prompt 133
+
+**User:** Lange Ladezeit beheben — Radar und Härte nicht blockierend beim Start.
+
+**Aktion:**
+- `useDecisionRadar`: nur bei Reiter Entscheidungen, Worker + Fingerprint auf `dataVersion`
+- `useScheduleHardness`: deferred nach Paint, `deriveTeamStrengths` einmal, Priorität für Verein/Vergleich
+- `App.tsx`: stabile `dataVersion` aus `matchesDataVersion`; Härte-Platzhalter in Tabelle
+- Tests für wiederverwendete Stärken in `schedule.test.ts`
+
+**Status:** erledigt
 
 ### 2026-08-22 — Prompt 132
 

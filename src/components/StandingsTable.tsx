@@ -30,6 +30,7 @@ interface Props {
   league: LeagueZoneId
   /** Restprogramm-Härte je Verein */
   hardnessByTeam?: Map<number, ScheduleHardness> | null
+  hardnessLoading?: boolean
   onExplain?: (topic: ExplainTopic) => void
 }
 
@@ -46,6 +47,7 @@ export function StandingsTable({
   highlightScenarios,
   league,
   hardnessByTeam,
+  hardnessLoading = false,
   onExplain,
 }: Props) {
   const rangeMap = new Map(ranges.map((r) => [r.teamId, r]))
@@ -160,6 +162,10 @@ export function StandingsTable({
                 <td className="col-hardness">
                   {hardness && hardness.remainingGames > 0 ? (
                     <HardnessCell hardness={hardness} clubName={row.shortName || row.teamName} />
+                  ) : hardnessLoading ? (
+                    <span className="hardness-pill tone-pending" aria-hidden>
+                      …
+                    </span>
                   ) : (
                     <span className="hardness-empty">–</span>
                   )}

@@ -18,6 +18,7 @@ import {
   hardnessGradeLabelForClub,
   type HardnessGrade,
 } from './schedule'
+import { deriveTeamStrengths } from './simulation'
 
 function row(
   team: { teamId: number; teamName: string; shortName: string },
@@ -171,6 +172,55 @@ describe('computeScheduleHardness (absolut / Vereinssicht)', () => {
     expect(k.grade).toBe('very-hard')
     expect(k.grade).not.toBe('easy')
     expect(k.grade).not.toBe('very-easy')
+  })
+
+  it('precomputedStrengths liefert dasselbe wie frischer deriveTeamStrengths-Lauf', () => {
+    const played = 10
+    const standings: StandingRow[] = [
+      row(TEAM_ALPHA, {
+        played,
+        points: 28,
+        goalsFor: 36,
+        goalsAgainst: 5,
+        rank: 1,
+      }),
+      row(TEAM_BETA, {
+        played,
+        points: 4,
+        goalsFor: 5,
+        goalsAgainst: 28,
+        rank: 4,
+      }),
+      row(TEAM_GAMMA, {
+        played,
+        points: 5,
+        goalsFor: 6,
+        goalsAgainst: 26,
+        rank: 3,
+      }),
+      row(TEAM_DELTA, {
+        played,
+        points: 6,
+        goalsFor: 7,
+        goalsAgainst: 24,
+        rank: 2,
+      }),
+    ]
+    const matches = [
+      openMatch(1, TEAM_ALPHA, TEAM_BETA),
+      openMatch(2, TEAM_GAMMA, TEAM_ALPHA),
+      openMatch(3, TEAM_ALPHA, TEAM_DELTA),
+    ]
+    const precomputed = deriveTeamStrengths(standings)
+    const baseline = computeScheduleHardness(matches, standings)
+    const reused = computeScheduleHardness(matches, standings, { precomputedStrengths: precomputed })
+    expect(reused).toEqual(baseline)
+    const partial = computeScheduleHardness(matches, standings, {
+      precomputedStrengths: precomputed,
+      onlyTeamIds: [TEAM_ALPHA.teamId],
+    })
+    expect(partial).toHaveLength(1)
+    expect(partial[0]).toEqual(baseline.find((r) => r.teamId === TEAM_ALPHA.teamId))
   })
 
   it('starkes Team gegen schwache Gegner → sehr leicht', () => {

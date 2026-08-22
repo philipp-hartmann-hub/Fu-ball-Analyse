@@ -96,19 +96,31 @@ export function clampGradeForLossMajority(
 /**
  * Einstufung je Verein aus dem Poisson-Modell (absolute Skala).
  * `matches` = Restfixtures, `standings` = aktuelle Tabelle für Stärken.
+ *
+ * Optional: vorberechnete Stärken und `onlyTeamIds` für partielle Berechnung
+ * (ein `deriveTeamStrengths`-Lauf, mehrere Aufrufe).
  */
 export function computeScheduleHardness(
   matches: Match[],
   standings: StandingRow[],
+  opts?: {
+    precomputedStrengths?: ReturnType<typeof deriveTeamStrengths>
+    onlyTeamIds?: readonly number[]
+  },
 ): ScheduleHardness[] {
   const reliable = hasEnoughData(standings)
-  const { strengths, avgDefense } = deriveTeamStrengths(standings)
+  const { strengths, avgDefense } =
+    opts?.precomputedStrengths ?? deriveTeamStrengths(standings)
+  const only = opts?.onlyTeamIds?.length
+    ? new Set(opts.onlyTeamIds)
+    : null
 
   const acc = new Map<
     number,
     { sum: number; n: number; lossLikely: number }
   >()
   for (const row of standings) {
+    if (only && !only.has(row.teamId)) continue
     acc.set(row.teamId, { sum: 0, n: 0, lossLikely: 0 })
   }
 
@@ -154,7 +166,9 @@ export function computeScheduleHardness(
     }
   }
 
-  return standings.map((row) => {
+  return standings
+    .filter((row) => !only || only.has(row.teamId))
+    .map((row) => {
     const bucket = acc.get(row.teamId) ?? { sum: 0, n: 0, lossLikely: 0 }
     const remainingGames = bucket.n
     const expectedRemainingPoints = bucket.sum
