@@ -62,7 +62,7 @@ src/
 **User:** Comitten und mergen.
 
 **Aktion:**
-- Branch `cursor/entscheidungen-ohne-spanne`, Commit `cd447f9`, Fast-Forward-Merge nach `main`, Push auf `origin/main`
+- Branch `cursor/entscheidungen-ohne-spanne`, Commit `cda4456`, Fast-Forward-Merge nach `main`, Push auf `origin/main`
 
 **Status:** erledigt
 
