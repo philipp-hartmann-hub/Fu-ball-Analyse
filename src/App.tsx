@@ -209,20 +209,17 @@ export default function App() {
 
   const decisionRadar = useMemo(
     () =>
-      sideTab === 'decisions'
-        ? buildDecisionRadar({
-            league: leagueId,
-            confirmedStandings,
-            liveStandings: baseStandings,
-            remainingConfirmed,
-            remainingLive: openMatches,
-            hasLive: liveMatches.length > 0 && includeLiveInTable,
-            includeTriggers: true,
-            priorScores: playedScores,
-          })
-        : null,
+      buildDecisionRadar({
+        league: leagueId,
+        confirmedStandings,
+        liveStandings: baseStandings,
+        remainingConfirmed,
+        remainingLive: openMatches,
+        hasLive: liveMatches.length > 0 && includeLiveInTable,
+        includeTriggers: true,
+        priorScores: playedScores,
+      }),
     [
-      sideTab,
       leagueId,
       confirmedStandings,
       baseStandings,
@@ -233,6 +230,13 @@ export default function App() {
       playedScores,
     ],
   )
+
+  const selectedDecisionRow = useMemo(() => {
+    if (selectedTeamId == null || !decisionRadar) return null
+    return (
+      decisionRadar.all.find((r) => r.teamId === selectedTeamId) ?? null
+    )
+  }, [decisionRadar, selectedTeamId])
 
   const projectedStandings = useMemo(
     () =>
@@ -741,6 +745,9 @@ export default function App() {
                 leagueTeamCount={baseStandings.length}
                 onExplain={openExplain}
                 onOpenDecisions={() => setSideTab('decisions')}
+                decisionRow={selectedDecisionRow}
+                decisionHasLive={decisionRadar?.hasLive ?? false}
+                decisionNextMatchday={decisionRadar?.nextMatchday ?? null}
                 onApplyConditions={(cond) => {
                   const added = scenariosFromConditions(cond)
                   setScenarios((prev) => {

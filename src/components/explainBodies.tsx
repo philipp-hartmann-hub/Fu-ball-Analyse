@@ -285,9 +285,10 @@ export function DecisionsExplainBody() {
         Partien — Tabellenführer, CL/EL/ECL bzw. Aufstieg/Relegation, Abstieg.
         Auch wer dort schon steht, erscheint (z. B. „bleibt CL-Platz möglich“).
         Ohne Chance fehlt der Verein in der Liste. Keine Saison-Gewissheit.{' '}
-        <strong>Saison</strong>: nur was die harten Grenzen (wie „Möglich“) über
-        alle Restspiele hergeben; Clinch-Zeilen nur wenn die Zone noch offen und
-        kippbar ist.
+        <strong>Saison</strong>: feststehende Status (Meister, gerettet, …) plus
+        Zonen-Hinweise über alle Restspiele — in der Bundesliga auch{' '}
+        <strong>EL- und ECL-Plätze</strong>, nicht nur CL und Abstieg. Clinch-
+        Zeilen nur wenn die Zone noch offen und kippbar ist.
       </p>
     </>
   )

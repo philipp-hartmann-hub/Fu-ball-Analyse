@@ -1897,6 +1897,16 @@ button.linkish.explain-inline {
   margin-bottom: 0;
 }
 
+.insight-decisions {
+  margin-top: 1rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--line);
+}
+
+.insight-decisions .decision-team-detail:not(.compact) {
+  margin-top: 0.35rem;
+}
+
 .insight-disclosure {
   margin-top: 0.55rem;
   border-radius: 0.5rem;

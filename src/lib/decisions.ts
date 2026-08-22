@@ -9,6 +9,7 @@ import {
   matchesOnMatchday,
   nextOpenMatchday,
   seasonExtremeOutcomes,
+  seasonOutcomesForTeam,
 } from './scenarios'
 import {
   deriveThresholdLines,
@@ -448,7 +449,7 @@ function matchdayPlaceLabel(zone: string, league: LeagueZoneId): string {
   )
 }
 
-function pushZoneMatchdayLines(
+function pushZoneLines(
   lines: ThresholdLine[],
   keyPrefix: string,
   placeLabel: string,
@@ -456,18 +457,20 @@ function pushZoneMatchdayLines(
   can: boolean,
   certain: boolean,
   nowIn: boolean,
+  horizon: 'matchday' | 'season',
 ): void {
+  const md = horizon === 'matchday'
   if (certain) {
     lines.push({
       key: `${keyPrefix}-safe`,
-      label: 'Nach diesem Spieltag',
+      label: md ? 'Nach diesem Spieltag' : 'Saison',
       primary: `${placeLabel} sicher`,
       tone: toneReach === 'bad' ? 'bad' : 'good',
     })
   } else if (can) {
     lines.push({
       key: `${keyPrefix}-possible`,
-      label: nowIn ? 'Diesen Spieltag' : 'Nach diesem Spieltag',
+      label: md ? (nowIn ? 'Diesen Spieltag' : 'Nach diesem Spieltag') : 'Saison',
       primary: nowIn
         ? `bleibt ${placeLabel} möglich`
         : `${placeLabel} möglich`,
@@ -476,11 +479,38 @@ function pushZoneMatchdayLines(
   } else if (nowIn) {
     lines.push({
       key: `${keyPrefix}-gone`,
-      label: 'Nach diesem Spieltag',
+      label: md ? 'Nach diesem Spieltag' : 'Saison',
       primary: `kein ${placeLabel} mehr`,
       tone: toneReach === 'bad' ? 'good' : 'bad',
     })
   }
+}
+
+/** Liegt der Rangbereich [hardBest, hardWorst] noch in dieser Zone? */
+export function zoneReachableInHardSpan(
+  hard: HardRange,
+  zone: string,
+  league: LeagueZoneId,
+): boolean {
+  for (let r = hard.hardBest; r <= hard.hardWorst; r++) {
+    if (zoneForRank(r, league) === zone) return true
+  }
+  return false
+}
+
+export function filterSeasonZoneLinesByHard(
+  lines: ThresholdLine[],
+  hard: HardRange,
+  currentRank: number,
+  league: LeagueZoneId,
+): ThresholdLine[] {
+  return lines.filter((line) => {
+    const m = line.key.match(/^season-(?:md-)?(.+?)-(safe|possible|gone)$/)
+    if (!m) return true
+    const zone = m[1]!
+    if (zoneForRank(currentRank, league) === zone) return true
+    return zoneReachableInHardSpan(hard, zone, league)
+  })
 }
 
 /**
@@ -589,7 +619,7 @@ export function deriveMatchdayPositionLines(
     const certain = outcomes.every((o) => inZone(o.rank, zone))
     const nowIn = inZone(currentRank, zone)
     const badZone = zone === 'relegation' || zone === 'direct-relegation'
-    pushZoneMatchdayLines(
+    pushZoneLines(
       lines,
       `md-${zone}`,
       placeLabel,
@@ -597,6 +627,46 @@ export function deriveMatchdayPositionLines(
       can,
       certain,
       nowIn,
+      'matchday',
+    )
+  }
+
+  return lines
+}
+
+/**
+ * Saison-Ebene: relevante Zonen (CL/EL/ECL, Relegation, …) über Restspiele.
+ * Unabhängig vom CL-only-Schwellen-Modell — wichtig für EL/ECL in der BL1.
+ */
+export function deriveSeasonZoneLines(
+  outcomes: PointRankOutcome[],
+  currentRank: number,
+  league: LeagueZoneId,
+): ThresholdLine[] {
+  const lines: ThresholdLine[] = []
+  const zones = zoneLegendFor(league)
+  const inZone = (rank: number, zone: string) =>
+    zoneForRank(rank, league) === zone
+
+  if (!outcomes.length) return lines
+
+  for (const { zone } of zones) {
+    if (league === 'bl1' && zone === 'champion') continue
+
+    const placeLabel = matchdayPlaceLabel(zone, league)
+    const can = outcomes.some((o) => inZone(o.rank, zone))
+    const certain = outcomes.every((o) => inZone(o.rank, zone))
+    const nowIn = inZone(currentRank, zone)
+    const badZone = zone === 'relegation' || zone === 'direct-relegation'
+    pushZoneLines(
+      lines,
+      `season-${zone}`,
+      placeLabel,
+      badZone ? 'bad' : 'neutral',
+      can,
+      certain,
+      nowIn,
+      'season',
     )
   }
 
@@ -749,6 +819,26 @@ export function buildDecisionRadar(input: {
             league,
           ),
         )
+      }
+
+      const seasonZoneOutcomes = seasonOutcomesForTeam(
+        standingsForHorizon,
+        remainingForHorizon,
+        row.teamId,
+        priorScores,
+      )
+      if (seasonZoneOutcomes?.length) {
+        const zoneLines = filterSeasonZoneLinesByHard(
+          deriveSeasonZoneLines(
+            seasonZoneOutcomes,
+            liveRow.rank,
+            league,
+          ),
+          seasonHard,
+          liveRow.rank,
+          league,
+        )
+        seasonTriggers = mergeTriggersByKey(seasonTriggers, zoneLines)
       }
 
       if (nextMatchday != null) {

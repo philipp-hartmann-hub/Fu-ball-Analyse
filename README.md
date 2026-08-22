@@ -23,7 +23,7 @@ Echtzeit-Analyse für die **1., 2. und 3. Liga**: Tabelle, Restprogramm und mög
 - **Ergebnisse**: Spieltag wählbar; Wappen; Live-Updates (laufende Spiele hervorgehoben als Zwischenstand); Tippen zeigt Torschützen und bei offenen/laufenden Spielen die Spielschätzung 1/X/2; Live-Zwischenstände standardmäßig in der Tabelle; 2 Tage nach letztem Spiel → nächster Spieltag als Default
 - Spalte **Möglich**: rechnerisch noch mögliche Plätze – **exakt** bei ≤12 relevanten Restspielen je Verein (nach Punkte-Pruning), sonst **harte Außengrenze** aus Punktemaxima (Badge pro Zeile); alternativ Monte-Carlo-**Prognose** (umschaltbar; unter `MIN_GAMES` Spielen ohne Prozentanzeige)
 - Spalte **Restprog.**: fünfstufige Einschätzung aus Vereinssicht (sehr leicht → sehr schwer, Poisson; immer in der Tabelle; auf schmalen Breiten ausgeblendet)
-- Seitenleiste: **Verein** (Kern sofort inkl. Saison-Prognose; Restprogramm klappbar mit Favoriten-Ausgang je Gegner; Wunschplatz/Härte hinter Klappen) · **Ergebnisse** · **Entscheidungen** (alleiniger Ort für feststehenden Saison-Status, Live-Delta und Punktschwellen/Auslöser) · **Szenario** · **Vergleich** (Restprogramm: Gegner-Kürzel + S/U/N)
+- Seitenleiste: **Verein** (Kern sofort inkl. Saison-Prognose; Restprogramm klappbar mit Favoriten-Ausgang je Gegner; **Entscheidungen** mit Status, Spieltag- und Saison-Auslösern inkl. EL/ECL; Wunschplatz/Härte hinter Klappen) · **Ergebnisse** · **Entscheidungen** (Radar für alle Vereine; Saison-Zonen inkl. EL/ECL in der BL1) · **Szenario** · **Vergleich** (Restprogramm: Gegner-Kürzel + S/U/N)
 - **Szenario-Simulator**: Partien mit Wappen; Grob (Sieg/Unentschieden) oder Fein-Tore
 - **Stand nach Spieltag**: Auswahl (Dropdown) für historischen Stand
 - Toolbar: **Zurücksetzen** (Szenarien + `?s=`)
@@ -56,6 +56,19 @@ src/
 ---
 
 ## Änderungsprotokoll
+
+### 2026-08-22 — Prompt 127
+
+**User:** Bundesliga: Europa League und Conference League in Entscheidungen berücksichtigen; Entscheidungs-Werte auch in der Vereinsansicht anzeigen.
+
+**Aktion:**
+- `decisions.ts`: Saison-Zonen (`deriveSeasonZoneLines`) für EL/ECL neben CL; `seasonOutcomesForTeam` in `scenarios.ts`
+- `DecisionTeamDetail.tsx`: gemeinsame Anzeige für Radar und Vereinsansicht
+- `TeamInsight.tsx` / `App.tsx`: Entscheidungs-Block in der Vereinsansicht; Radar immer berechnet
+- `explainBodies.tsx`: Erklärung Saison-Zonen inkl. EL/ECL
+- Tests + README
+
+**Status:** erledigt
 
 ### 2026-08-20 — Prompt 126
 

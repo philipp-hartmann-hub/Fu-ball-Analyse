@@ -1935,8 +1935,10 @@ export function enumerateMatchdayOutcomesByTeam(
   return byTeam
 }
 
-/** Best-/Schlechtfall-Outcomes für die Saison (exakt im Limit, sonst Heuristik). */
-export function seasonExtremeOutcomes(
+/**
+ * Alle Saison-Outcomes für Zonen (exakte Enumeration) oder Best/Schlecht (Heuristik).
+ */
+export function seasonOutcomesForTeam(
   baseStandings: StandingRow[],
   remaining: Match[],
   teamId: number,
@@ -1967,31 +1969,58 @@ export function seasonExtremeOutcomes(
     )
     if (!enumerated) return null
     const { ranksByMask, pointsByMask } = enumerated
-    let bestRank = baseStandings.length
-    let worstRank = 1
-    let bestPoints = -Infinity
-    let worstPoints = Infinity
+    const seen = new Set<string>()
+    const outcomes: PointRankOutcome[] = []
     for (let i = 0; i < ranksByMask.length; i++) {
       const rank = ranksByMask[i]!
-      const pts = pointsByMask[i]!
-      if (rank < bestRank || (rank === bestRank && pts > bestPoints)) {
-        bestRank = rank
-        bestPoints = pts
-      }
-      if (rank > worstRank || (rank === worstRank && pts < worstPoints)) {
-        worstRank = rank
-        worstPoints = pts
-      }
+      const points = pointsByMask[i]!
+      const key = `${rank}:${points}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      outcomes.push({ rank, points })
     }
-    return [
-      { points: bestPoints, rank: bestRank },
-      { points: worstPoints, rank: worstRank },
-    ]
+    return outcomes
   }
 
   return [
     simulateExtremeFinish(baseStandings, remaining, teamId, 'best', priorScores),
     simulateExtremeFinish(baseStandings, remaining, teamId, 'worst', priorScores),
+  ]
+}
+
+/** Best-/Schlechtfall-Outcomes für die Saison (exakt im Limit, sonst Heuristik). */
+export function seasonExtremeOutcomes(
+  baseStandings: StandingRow[],
+  remaining: Match[],
+  teamId: number,
+  priorScores: MatchScore[] = [],
+): PointRankOutcome[] | null {
+  const outcomes = seasonOutcomesForTeam(
+    baseStandings,
+    remaining,
+    teamId,
+    priorScores,
+  )
+  if (!outcomes?.length) return null
+  if (outcomes.length <= 2) return outcomes
+
+  let bestRank = baseStandings.length
+  let worstRank = 1
+  let bestPoints = -Infinity
+  let worstPoints = Infinity
+  for (const o of outcomes) {
+    if (o.rank < bestRank || (o.rank === bestRank && o.points > bestPoints)) {
+      bestRank = o.rank
+      bestPoints = o.points
+    }
+    if (o.rank > worstRank || (o.rank === worstRank && o.points < worstPoints)) {
+      worstRank = o.rank
+      worstPoints = o.points
+    }
+  }
+  return [
+    { points: bestPoints, rank: bestRank },
+    { points: worstPoints, rank: worstRank },
   ]
 }
 

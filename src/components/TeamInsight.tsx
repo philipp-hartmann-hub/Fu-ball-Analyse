@@ -31,6 +31,8 @@ import {
 } from '../lib/simulation'
 import { NOT_ENOUGH_DATA_LABEL } from '../lib/reliability'
 import type { ExplainTopic } from '../lib/modelExplanations'
+import type { DecisionTeamRow } from '../lib/decisions'
+import { DecisionTeamDetail } from './DecisionTeamDetail'
 import { ExplainLink } from './ExplainLink'
 import { MatchLeanChip } from './MatchLeanChip'
 import { MatchPredictionCard } from './MatchPredictionCard'
@@ -67,17 +69,70 @@ interface Props {
   onApplyConditions?: (conditions: CaseConditions) => void
   /** Wechselt zum Reiter Entscheidungen (Radar) */
   onOpenDecisions?: () => void
+  /** Entscheidungs-Zeilen für diesen Verein (Radar) */
+  decisionRow?: DecisionTeamRow | null
+  decisionHasLive?: boolean
+  decisionNextMatchday?: number | null
 }
 
 function DecisionsHint({ onOpen }: { onOpen?: () => void }) {
   if (!onOpen) return null
   return (
     <p className="hint tight decisions-hint">
-      Wann ist der Verein rechnerisch durch?{' '}
+      Mehr im Tab{' '}
       <button type="button" className="linkish" onClick={onOpen}>
-        → Entscheidungen
+        Entscheidungen
       </button>
+      .
     </p>
+  )
+}
+
+function DecisionInsightBlock({
+  row,
+  useLive,
+  nextMatchday,
+  onExplain,
+  onOpenDecisions,
+}: {
+  row: DecisionTeamRow
+  useLive: boolean
+  nextMatchday: number | null | undefined
+  onExplain?: (topic: ExplainTopic) => void
+  onOpenDecisions?: () => void
+}) {
+  return (
+    <div className="insight-decisions">
+      <div className="forecast-breakdown-head">
+        <span className="label">
+          Entscheidungen
+          {onExplain && (
+            <>
+              {' '}
+              <ExplainLink
+                topic="decisions"
+                onExplain={onExplain}
+                className="explain-inline"
+              >
+                Erklärung
+              </ExplainLink>
+            </>
+          )}
+        </span>
+      </div>
+      {nextMatchday != null && (
+        <p className="hint tight">
+          Spieltag {nextMatchday} und Saison — dieselben Hinweise wie im
+          Entscheidungs-Radar.
+        </p>
+      )}
+      <DecisionTeamDetail
+        row={row}
+        useLive={useLive}
+        highlightDelta={useLive}
+      />
+      <DecisionsHint onOpen={onOpenDecisions} />
+    </div>
   )
 }
 
@@ -727,7 +782,6 @@ function VariantPanel({
   matchup,
   matchPredictionSlot,
   targetSlot,
-  onOpenDecisions,
 }: {
   heading: string
   range: PositionRange | null
@@ -750,7 +804,6 @@ function VariantPanel({
   } | null
   matchPredictionSlot?: ReactNode
   targetSlot?: ReactNode
-  onOpenDecisions?: () => void
 }) {
   const [openCase, setOpenCase] = useState<'best' | 'worst' | null>(null)
 
@@ -913,8 +966,6 @@ function VariantPanel({
             </Disclosure>
           )}
 
-          <DecisionsHint onOpen={onOpenDecisions} />
-
           {range.bestRank === range.worstRank && (
             <p className="hint tight">Platz in dieser Sicht bereits fest.</p>
           )}
@@ -957,6 +1008,9 @@ export function TeamInsight({
   onExplain,
   onApplyConditions,
   onOpenDecisions,
+  decisionRow = null,
+  decisionHasLive = false,
+  decisionNextMatchday = null,
 }: Props) {
   const ownNextMatch = useMemo(() => {
     if (!team || !nextMatchday?.plays) return null
@@ -1222,7 +1276,6 @@ export function TeamInsight({
             onExplain={onExplain}
           />
         }
-        onOpenDecisions={onOpenDecisions}
         note={
           matchdayOutlookLoading
             ? 'Spieltag-Analyse wird berechnet…'
@@ -1251,7 +1304,6 @@ export function TeamInsight({
         league={league}
         focusTeam={team}
         onExplain={onExplain}
-        onOpenDecisions={onOpenDecisions}
         note={
           seasonOutlook?.range
             ? seasonOutlook.range.bestRank === seasonOutlook.range.worstRank
@@ -1263,6 +1315,16 @@ export function TeamInsight({
         }
         empty="Keine Saison-Spanne berechenbar."
       />
+
+      {decisionRow && (
+        <DecisionInsightBlock
+          row={decisionRow}
+          useLive={decisionHasLive}
+          nextMatchday={decisionNextMatchday}
+          onExplain={onExplain}
+          onOpenDecisions={onOpenDecisions}
+        />
+      )}
     </div>
   )
 }

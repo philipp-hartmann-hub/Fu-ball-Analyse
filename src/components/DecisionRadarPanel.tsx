@@ -1,7 +1,6 @@
 import { useEffect, useRef } from 'react'
+import { DecisionTeamDetail } from './DecisionTeamDetail'
 import type { DecisionRadar, DecisionTeamRow } from '../lib/decisions'
-import { triggersBeyondStatus } from '../lib/decisions'
-import type { ThresholdLine } from '../lib/thresholds'
 import type { ExplainTopic } from '../lib/modelExplanations'
 import { ExplainLink } from './ExplainLink'
 
@@ -30,67 +29,6 @@ function Crest({ url, name }: { url?: string; name: string }) {
   return <span className="crest-fallback" aria-hidden title={name} />
 }
 
-function StatusPills({
-  row,
-  useLive,
-}: {
-  row: DecisionTeamRow
-  useLive: boolean
-}) {
-  const statuses = useLive ? row.liveStatuses : row.confirmedStatuses
-  if (statuses.length === 0) {
-    const hard = useLive ? row.liveHard : row.confirmedHard
-    return (
-      <span className="decision-range" title="Mögliche Endplätze (Saison)">
-        {hard.hardBest === hard.hardWorst
-          ? `${hard.hardBest}.`
-          : `${hard.hardBest}.–${hard.hardWorst}.`}
-      </span>
-    )
-  }
-  return (
-    <span className="decision-pills">
-      {statuses.map((s) => (
-        <span
-          key={s.kind}
-          className={`decision-pill tone-${s.tone}`}
-          title={s.label}
-        >
-          {s.shortLabel}
-          <span className="decision-pill-horizon">Saison</span>
-        </span>
-      ))}
-    </span>
-  )
-}
-
-function TriggerList({
-  lines,
-  horizon,
-  approximate,
-}: {
-  lines: ThresholdLine[]
-  horizon: 'matchday' | 'season'
-  approximate: boolean
-}) {
-  if (lines.length === 0) return null
-  return (
-    <ul className={`decision-triggers horizon-${horizon}`}>
-      {lines.map((t) => (
-        <li key={`${horizon}-${t.key}`} className={`tone-${t.tone}`}>
-          <span className="horizon-tag">
-            {horizon === 'matchday' ? 'Spieltag' : 'Saison'}
-          </span>
-          <span className="label">{t.label}</span>
-          <span className="primary">{t.primary}</span>
-          {t.secondary && <span className="secondary">{t.secondary}</span>}
-          {approximate && <span className="approx">Näherung</span>}
-        </li>
-      ))}
-    </ul>
-  )
-}
-
 function TeamRow({
   row,
   useLive,
@@ -108,13 +46,6 @@ function TeamRow({
   selected: boolean
   onSelect: () => void
 }) {
-  const statuses = useLive ? row.liveStatuses : row.confirmedStatuses
-  const leftoverSeason = triggersBeyondStatus(statuses, row.seasonTriggers)
-  // Positions-Zeilen haben eigene Keys — Status-Filter nicht nötig, aber harmlos
-  const leftoverMatchday = showMatchdayTriggers
-    ? row.matchdayTriggers
-    : []
-
   return (
     <li
       data-decision-team={row.teamId}
@@ -130,32 +61,21 @@ function TeamRow({
         <span className="decision-rank">{row.rank}.</span>
         <Crest url={row.teamIconUrl} name={row.shortName} />
         <span className="decision-name">{row.shortName}</span>
-        <StatusPills row={row} useLive={useLive} />
+        <DecisionTeamDetail
+          row={row}
+          useLive={useLive}
+          showMatchday={false}
+          showSeason={false}
+          compact
+        />
       </button>
-      {highlightDelta &&
-        row.deltas.map((d) => (
-          <p
-            key={`${d.kind}-${d.status.kind}`}
-            className={`decision-delta tone-${d.status.tone}`}
-            role="status"
-          >
-            {d.message}
-          </p>
-        ))}
-      {leftoverMatchday.length > 0 && (
-        <TriggerList
-          lines={leftoverMatchday}
-          horizon="matchday"
-          approximate={!row.matchdayTriggersExact}
-        />
-      )}
-      {showSeasonTriggers && leftoverSeason.length > 0 && (
-        <TriggerList
-          lines={leftoverSeason}
-          horizon="season"
-          approximate
-        />
-      )}
+      <DecisionTeamDetail
+        row={row}
+        useLive={useLive}
+        showMatchday={showMatchdayTriggers}
+        showSeason={showSeasonTriggers}
+        highlightDelta={highlightDelta}
+      />
     </li>
   )
 }

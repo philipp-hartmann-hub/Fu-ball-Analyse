@@ -4,6 +4,7 @@ import {
   buildDecisionRadar,
   deriveDecisionStatuses,
   deriveMatchdayPositionLines,
+  deriveSeasonZoneLines,
   diffDecisionStatuses,
   filterMatchdayTriggersBySeasonHard,
   matchdayCanSecureTarget,
@@ -373,7 +374,7 @@ describe('buildDecisionRadar / Live-Delta', () => {
     }
   })
 
-  it('2. Spieltag: Saison leer, Spieltag mit Positions-Aussagen ohne Clinch-Sprache', () => {
+  it('2. Spieltag: Saison nur Zonen-Hinweise, Spieltag mit Positions-Aussagen ohne Clinch-Sprache', () => {
     const { standings, remaining } = earlySeasonFixture()
     const hard = computeHardRanges(standings, remaining)
     expect(hard.every((h) => seasonFateStillOpen(h, 'bl2'))).toBe(true)
@@ -390,10 +391,14 @@ describe('buildDecisionRadar / Live-Delta', () => {
     })
     expect(radar.showMatchdayHorizon).toBe(true)
     expect(radar.decided).toEqual([])
-    expect(radar.all.every((r) => r.seasonTriggers.length === 0)).toBe(true)
+    expect(radar.all.some((r) => r.seasonTriggers.length > 0)).toBe(true)
     expect(radar.all.some((r) => r.matchdayTriggers.length > 0)).toBe(true)
     for (const row of radar.all) {
       expect(row.confirmedStatuses).toEqual([])
+      const seasonBlob = row.seasonTriggers
+        .map((t) => `${t.label} ${t.primary}`)
+        .join(' ')
+      expect(seasonBlob).not.toMatch(/sicher ab|sicher$|Klassenerhalt/)
       const mdBlob = row.matchdayTriggers
         .map((t) => `${t.label} ${t.primary}`)
         .join(' ')
@@ -860,6 +865,25 @@ describe('triggersBeyondStatus', () => {
       },
     ]
     expect(triggersBeyondStatus([], lines)).toEqual(lines)
+  })
+})
+
+describe('deriveSeasonZoneLines', () => {
+  it('BL1: EL- und ECL-Plätze auf Saison-Ebene', () => {
+    const lines = deriveSeasonZoneLines(
+      [
+        { points: 60, rank: 5 },
+        { points: 58, rank: 6 },
+        { points: 55, rank: 7 },
+      ],
+      6,
+      'bl1',
+    )
+    const blob = lines.map((l) => l.primary).join(' ')
+    expect(blob).toMatch(/EL-Platz/)
+    expect(blob).toMatch(/ECL-Platz/)
+    expect(lines.some((l) => l.key.startsWith('season-el'))).toBe(true)
+    expect(lines.some((l) => l.key.startsWith('season-ecl'))).toBe(true)
   })
 })
 
