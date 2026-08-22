@@ -62,7 +62,7 @@ src/
 **User:** Ja bitte (committen und mergen).
 
 **Aktion:**
-- Branch `cursor/entscheidungen-status-einmal`, Commit, Fast-Forward-Merge nach `main`, Push auf `origin/main`
+- Branch `cursor/entscheidungen-status-einmal`, Commit `5771a3b`, Fast-Forward-Merge nach `main`, Push auf `origin/main`
 
 **Status:** erledigt
 
