@@ -32,10 +32,11 @@ function TriggerList({
 interface Props {
   row: DecisionTeamRow
   useLive: boolean
+  showStatus?: boolean
   showMatchday?: boolean
   showSeason?: boolean
   highlightDelta?: boolean
-  /** Kompakte Zeile im Radar-Header (Span statt Block) */
+  /** Kompakte Zeile im Radar-Header (nur Status-Pills) */
   compact?: boolean
 }
 
@@ -43,6 +44,7 @@ interface Props {
 export function DecisionTeamDetail({
   row,
   useLive,
+  showStatus = true,
   showMatchday = true,
   showSeason = true,
   highlightDelta = false,
@@ -56,7 +58,7 @@ export function DecisionTeamDetail({
 
   return (
     <div className={compact ? 'decision-team-detail compact' : 'decision-team-detail'}>
-      {statuses.length > 0 && (
+      {showStatus && statuses.length > 0 && (
         <span className="decision-pills">
           {statuses.map((s) => (
             <span
@@ -96,6 +98,7 @@ export function DecisionTeamDetail({
 
       {matchdayLines.length === 0 &&
         leftoverSeason.length === 0 &&
+        showStatus &&
         statuses.length === 0 &&
         !compact && (
           <p className="hint tight">Keine Entscheidungs-Hinweise.</p>

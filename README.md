@@ -57,6 +57,25 @@ src/
 
 ## Änderungsprotokoll
 
+### 2026-08-22 — Prompt 132
+
+**User:** Ja bitte (committen und mergen).
+
+**Aktion:**
+- Branch `cursor/entscheidungen-status-einmal`, Commit, Fast-Forward-Merge nach `main`, Push auf `origin/main`
+
+**Status:** erledigt
+
+### 2026-08-22 — Prompt 131
+
+**User:** Wieso erscheint das Label doppelt?
+
+**Aktion:**
+- Ursache: `DecisionTeamDetail` im Radar zweimal mit Status-Pills (Header + Detail)
+- Fix: `showStatus`-Prop — Status nur in der kompakten Kopfzeile, Auslöser darunter
+
+**Status:** erledigt
+
 ### 2026-08-22 — Prompt 130
 
 **User:** Comitten und mergen.

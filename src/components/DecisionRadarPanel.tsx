@@ -64,6 +64,7 @@ function TeamRow({
         <DecisionTeamDetail
           row={row}
           useLive={useLive}
+          showStatus
           showMatchday={false}
           showSeason={false}
           compact
@@ -72,6 +73,7 @@ function TeamRow({
       <DecisionTeamDetail
         row={row}
         useLive={useLive}
+        showStatus={false}
         showMatchday={showMatchdayTriggers}
         showSeason={showSeasonTriggers}
         highlightDelta={highlightDelta}
