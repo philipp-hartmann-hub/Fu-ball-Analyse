@@ -262,9 +262,8 @@ export function DecisionRadarPanel({
           <div className="decision-subblock">
             <h4 className="decision-sub-title">Noch offen</h4>
             <p className="hint tight">
-              Clinch-Hinweise nur wenn die harte Spanne die Zone noch offen lässt
-              und sie (ggf. diesen Spieltag) kippbar ist — als Näherung
-              gekennzeichnet.
+              Clinch-Hinweise nur wenn die Zone noch offen und (ggf. diesen
+              Spieltag) kippbar ist — als Näherung gekennzeichnet.
             </p>
             <ul className="decision-list">
               {seasonNear.map((row) => (

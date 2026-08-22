@@ -57,6 +57,25 @@ src/
 
 ## Änderungsprotokoll
 
+### 2026-08-22 — Prompt 130
+
+**User:** Comitten und mergen.
+
+**Aktion:**
+- Branch `cursor/entscheidungen-ohne-spanne`, Commit `cd447f9`, Fast-Forward-Merge nach `main`, Push auf `origin/main`
+
+**Status:** erledigt
+
+### 2026-08-22 — Prompt 129
+
+**User:** Die Spanne bei den Entscheidungen rausnehmen.
+
+**Aktion:**
+- `DecisionTeamDetail.tsx`: Anzeige „Möglich: 5.–12.“ / kompakte Platz-Spanne entfernt; nur noch Status-Pills und Auslöser
+- `DecisionRadarPanel.tsx`: Hinweistext ohne „harte Spanne“
+
+**Status:** erledigt
+
 ### 2026-08-22 — Prompt 128
 
 **User:** Comitten und mergen.

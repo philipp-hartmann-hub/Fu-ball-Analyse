@@ -49,30 +49,14 @@ export function DecisionTeamDetail({
   compact = false,
 }: Props) {
   const statuses = useLive ? row.liveStatuses : row.confirmedStatuses
-  const hard = useLive ? row.liveHard : row.confirmedHard
   const leftoverSeason = showSeason
     ? triggersBeyondStatus(statuses, row.seasonTriggers)
     : []
   const matchdayLines = showMatchday ? row.matchdayTriggers : []
 
-  const rangeLabel =
-    hard.hardBest === hard.hardWorst
-      ? `${hard.hardBest}.`
-      : `${hard.hardBest}.–${hard.hardWorst}.`
-
   return (
     <div className={compact ? 'decision-team-detail compact' : 'decision-team-detail'}>
-      {statuses.length === 0 ? (
-        compact ? (
-          <span className="decision-range" title="Mögliche Endplätze (Saison)">
-            {rangeLabel}
-          </span>
-        ) : (
-          <p className="decision-range-inline" title="Mögliche Endplätze (Saison)">
-            Möglich: {rangeLabel}
-          </p>
-        )
-      ) : (
+      {statuses.length > 0 && (
         <span className="decision-pills">
           {statuses.map((s) => (
             <span
@@ -112,8 +96,9 @@ export function DecisionTeamDetail({
 
       {matchdayLines.length === 0 &&
         leftoverSeason.length === 0 &&
-        statuses.length === 0 && (
-          <p className="hint tight">Keine weiteren Entscheidungs-Hinweise.</p>
+        statuses.length === 0 &&
+        !compact && (
+          <p className="hint tight">Keine Entscheidungs-Hinweise.</p>
         )}
     </div>
   )
