@@ -26,6 +26,53 @@ import {
   type LeagueZoneId,
 } from './table'
 
+/**
+ * „Ziel nicht mehr möglich“ nur, wenn hardBest (oder aktueller Rang) höchstens
+ * so viele Plätze hinter dem letzten Top-Ziel-Rang liegt — sonst trivial.
+ */
+export const TITLE_GONE_NEAR_PLACES = 4
+
+/** Letzter Rang der Top-Zielzone (BL1: CL ≤4, BL2/3: Direktaufstieg ≤2). */
+export function lastTopTargetRank(league: LeagueZoneId): number {
+  if (league === 'bl2' || league === 'bl3') return 2
+  return 4
+}
+
+/**
+ * Ob „CL/Aufstieg nicht mehr möglich“ inhaltlich relevant ist (nah an der Zone),
+ * nicht pauschal für jeden außerhalb der Zielzone.
+ */
+export function isTitleGoneRelevant(
+  hard: HardRange,
+  league: LeagueZoneId,
+  currentRank?: number,
+): boolean {
+  if (isRelegationRank(hard.hardBest, league)) return false
+  if (isTopTargetRank(hard.hardBest, league)) return false
+  const cutoff = lastTopTargetRank(league) + TITLE_GONE_NEAR_PLACES
+  if (hard.hardBest <= cutoff) return true
+  if (currentRank != null && currentRank <= cutoff) return true
+  return false
+}
+
+function parseSeasonZoneLine(
+  key: string,
+): { zone: string; kind: 'safe' | 'possible' | 'gone' } | null {
+  const m = key.match(/^season-(.+)-(safe|possible|gone)$/)
+  if (!m) return null
+  return { zone: m[1]!, kind: m[2] as 'safe' | 'possible' | 'gone' }
+}
+
+function isTopTargetZone(zone: string, league: LeagueZoneId): boolean {
+  if (league === 'bl1') return zone === 'champion' || zone === 'cl'
+  // BL2/3: Direktaufstieg = champion (Plätze 1–2)
+  return zone === 'champion'
+}
+
+function isRelegationZone(zone: string): boolean {
+  return zone === 'relegation' || zone === 'direct-relegation'
+}
+
 /** Feststehender Status aus harten Grenzen — immer eine Saison-Aussage. */
 export type DecisionStatusKind =
   | 'champion'
@@ -99,6 +146,7 @@ function withSeasonLabel(shortLabel: string): string {
 export function deriveDecisionStatuses(
   hard: HardRange,
   league: LeagueZoneId,
+  opts?: { currentRank?: number },
 ): DecisionStatus[] {
   const out: DecisionStatus[] = []
   const { hardBest, hardWorst } = hard
@@ -122,7 +170,11 @@ export function deriveDecisionStatuses(
     })
   }
 
-  if (!isTopTargetRank(hardBest, league) && hardWorst !== 1) {
+  if (
+    !isTopTargetRank(hardBest, league) &&
+    hardWorst !== 1 &&
+    isTitleGoneRelevant(hard, league, opts?.currentRank)
+  ) {
     const shortLabel = `${goal} nicht mehr möglich`
     out.push({
       kind: 'title_gone',
@@ -210,13 +262,21 @@ function sortTriggers(lines: ThresholdLine[]): ThresholdLine[] {
 
 /**
  * Schwellen, die der feststehende Status nicht schon sagt
- * (z. B. „CL möglich ab X“ obwohl schon gerettet).
+ * (Hart schlägt Näherung zur selben Zone).
  */
 export function triggersBeyondStatus(
   statuses: DecisionStatus[],
   lines: ThresholdLine[],
+  opts?: {
+    hard?: HardRange
+    league?: LeagueZoneId
+    currentRank?: number
+  },
 ): ThresholdLine[] {
   const kinds = new Set(statuses.map((s) => s.kind))
+  const league = opts?.league
+  const hard = opts?.hard
+
   return lines.filter((line) => {
     if (line.key === 'survive-safe' && kinds.has('safe')) return false
     if (line.key === 'releg-certain' && kinds.has('relegated')) return false
@@ -226,8 +286,83 @@ export function triggersBeyondStatus(
     ) {
       return false
     }
-    if (line.key === 'target-gone' && kinds.has('title_gone')) return false
+    // Triviale / doppelte „Ziel weg“-Zeilen
+    if (line.key === 'target-gone') {
+      if (kinds.has('title_gone') || kinds.has('relegated') || kinds.has('safe')) {
+        return false
+      }
+      if (
+        hard &&
+        league &&
+        !isTitleGoneRelevant(hard, league, opts?.currentRank)
+      ) {
+        return false
+      }
+    }
+
+    const zoneLine = parseSeasonZoneLine(line.key)
+    if (zoneLine) {
+      // Hart-Abstieg → keine Näherung „Abstiegsplatz sicher“
+      if (
+        kinds.has('relegated') &&
+        isRelegationZone(zoneLine.zone) &&
+        zoneLine.kind === 'safe'
+      ) {
+        return false
+      }
+      // Hart gerettet → keine Näherung „kein Abstiegsplatz“ / Abstieg-gone
+      if (
+        kinds.has('safe') &&
+        isRelegationZone(zoneLine.zone) &&
+        (zoneLine.kind === 'gone' || zoneLine.kind === 'safe')
+      ) {
+        return false
+      }
+      // Hart Meister / CL sicher → keine Näherung „… sicher“ zur Zielzone
+      if (
+        (kinds.has('champion') || kinds.has('title_secure')) &&
+        league &&
+        isTopTargetZone(zoneLine.zone, league) &&
+        zoneLine.kind === 'safe'
+      ) {
+        return false
+      }
+      // Triviale Ziel-gone-Näherung
+      if (
+        zoneLine.kind === 'gone' &&
+        league &&
+        isTopTargetZone(zoneLine.zone, league)
+      ) {
+        if (kinds.has('title_gone') || kinds.has('relegated') || kinds.has('safe')) {
+          return false
+        }
+        if (
+          hard &&
+          !isTitleGoneRelevant(hard, league, opts?.currentRank)
+        ) {
+          return false
+        }
+      }
+    }
+
     return true
+  })
+}
+
+/**
+ * Saison-Trigger bereinigen: Hart schlägt Näherung, triviale Ziel-Negativzeilen weg.
+ */
+export function pruneSeasonTriggers(
+  statuses: DecisionStatus[],
+  lines: ThresholdLine[],
+  hard: HardRange,
+  league: LeagueZoneId,
+  currentRank: number,
+): ThresholdLine[] {
+  return triggersBeyondStatus(statuses, lines, {
+    hard,
+    league,
+    currentRank,
   })
 }
 
@@ -781,14 +916,16 @@ export function buildDecisionRadar(input: {
       worstRank: ch.hardWorst,
       mode: 'hard' as const,
     }
-    const confirmedStatuses = deriveDecisionStatuses(ch, league)
+    const liveRow = liveRowById.get(row.teamId) ?? row
+    const confirmedStatuses = deriveDecisionStatuses(ch, league, {
+      currentRank: row.rank,
+    })
     const liveStatuses = hasLive
-      ? deriveDecisionStatuses(lh, league)
+      ? deriveDecisionStatuses(lh, league, { currentRank: liveRow.rank })
       : confirmedStatuses
     const deltas = hasLive
       ? diffDecisionStatuses(confirmedStatuses, liveStatuses)
       : []
-    const liveRow = liveRowById.get(row.teamId) ?? row
 
     let seasonTriggers: ThresholdLine[] = []
     let matchdayTriggers: ThresholdLine[] = []
@@ -799,6 +936,7 @@ export function buildDecisionRadar(input: {
     // gewählte Verein und hier nicht wiederverwendbar.
     if (includeTriggers) {
       const seasonHard = hasLive ? lh : ch
+      const statusForTriggers = hasLive ? liveStatuses : confirmedStatuses
       const seasonOutcomes = seasonExtremeOutcomes(
         standingsForHorizon,
         remainingForHorizon,
@@ -915,6 +1053,14 @@ export function buildDecisionRadar(input: {
           )
         }
       }
+
+      seasonTriggers = pruneSeasonTriggers(
+        statusForTriggers,
+        seasonTriggers,
+        seasonHard,
+        league,
+        liveRow.rank,
+      )
     }
 
     return {

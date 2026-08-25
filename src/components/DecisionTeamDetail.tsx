@@ -51,8 +51,13 @@ export function DecisionTeamDetail({
   compact = false,
 }: Props) {
   const statuses = useLive ? row.liveStatuses : row.confirmedStatuses
+  const hard = useLive ? row.liveHard : row.confirmedHard
   const leftoverSeason = showSeason
-    ? triggersBeyondStatus(statuses, row.seasonTriggers)
+    ? triggersBeyondStatus(statuses, row.seasonTriggers, {
+        hard,
+        // Liga steckt nicht in der Row — Pruning passiert schon in buildDecisionRadar;
+        // hier nur Hart-vs-Näherung-Statusfilter (ohne league-abhängige Zone-Keys).
+      })
     : []
   const matchdayLines = showMatchday ? row.matchdayTriggers : []
 

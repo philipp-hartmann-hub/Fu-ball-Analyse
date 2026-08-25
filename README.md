@@ -49,6 +49,8 @@ src/
   api/openliga.ts / matchSchema.ts / dataSource.ts
   hooks/useLeagueData.ts / useSeasonForecast.ts / useScheduleHardness.ts / useDecisionRadar.ts
   lib/table.ts / scenarios.ts / schedule.ts / trend.ts / reliability.ts / simulation.ts (Stärken: IPF+Shrinkage) / thresholds.ts / decisions.ts / live.ts
+  lib/consistency.test.ts   # modulübergreifende Invarianten (Spanne, Radar, Härte, Saisonstart)
+  lib/__fixtures__/…        # Mini-Liga + Konsistenz-Fixtures
   workers/simulate.ts / scenarios.ts / decisions.ts
   components/…             # UI
   App.tsx
@@ -57,6 +59,48 @@ src/
 ---
 
 ## Änderungsprotokoll
+
+### 2026-08-25 — Prompt 144
+
+**User:** Comitten und mergen.
+
+**Aktion:**
+- Branch `cursor/konsistenz-tabelle-radar`: Konsistenztests, Tabellen-Layout, Radar-Bereinigung
+- Fast-Forward-Merge nach `main`, Push auf `origin/main`
+
+**Status:** erledigt
+
+### 2026-08-25 — Prompt 143
+
+**User:** Entscheidungs-Radar bereinigen: triviale „nicht mehr möglich“-Zeilen und Hart/Näherung-Doppelungen entfernen.
+
+**Aktion:**
+- `decisions.ts`: `TITLE_GONE_NEAR_PLACES` / `isTitleGoneRelevant` — title_gone nur nahe der Zielzone; `triggersBeyondStatus`/`pruneSeasonTriggers` — Hart schlägt Näherung (gleiche Zone); Radar wendet Pruning an
+- Tests: title_gone weit weg / Abstieg; Hart vs. Näherung; Spätsaison Kiel/Bochum; Konsistenztests in `consistency.test.ts`
+
+**Status:** erledigt
+
+### 2026-08-25 — Prompt 142
+
+**User:** Tabellen-Layout einmal als System für Handy/Tablet/Desktop (kein Redesign): kein Zeichen-Umbruch, kein Horizontal-Scroll, Spaltenstaffelung, Ausrichtung.
+
+**Aktion:**
+- `StandingsTable.tsx`: `.team-inner` + Kurz-/Langname, Range-Zelle (Spanne + Badge), Tastatur-Fokus auf Zeilen
+- `App.css`: `table-layout: auto`, Container-Queries (≤429 / ≤819 / >819), Touch ~44px, `focus-visible`, `prefers-reduced-motion`; Panel-Grid schmaler, damit 1280+Analyse alle Spalten hat
+- Verifiziert: ~390 (Kernspalten + Kurzname), ~820 (alle Spalten), ~1280 mit Panel (alle Spalten, kein Scroll)
+
+**Status:** erledigt
+
+### 2026-08-25 — Prompt 141
+
+**User:** Integrations-Konsistenztests für wiederholte Fehlerklassen (Spanne, Radar⟷Spanne, Restprogramm⟷Spielschätzung, Saisonstart, Clinch-Sprache, einheitliche Stärke-Quelle); nur Tests, kein Produktivcode.
+
+**Aktion:**
+- Fixtures: `src/lib/__fixtures__/consistencyFixtures.ts` (0-Spiele, 2-Spiele, Mid-Season inkl. Köln/Bremen, schwaches Restprogramm)
+- Tests: `src/lib/consistency.test.ts` — Exact⊆Hart, Brute-Force-Soundness, Radar-Status vs. hard/Zonen, Härte vs. Match-Lean, Reliabilität aller vier Modell-Features, keine frühe Clinch-Sprache, `deriveTeamStrengths` als gemeinsame Quelle
+- Produktivcode unverändert; alle 14 Tests grün
+
+**Status:** erledigt
 
 ### 2026-08-25 — Prompt 140
 

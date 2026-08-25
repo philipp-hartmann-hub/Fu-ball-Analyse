@@ -1577,9 +1577,15 @@ button.linkish.explain-inline {
   animation: rise 0.75s ease-out 0.15s both;
 }
 
+.main-col {
+  min-width: 0;
+  max-width: 100%;
+}
+
 @media (min-width: 980px) {
   .layout {
-    grid-template-columns: 1.35fr 0.9fr;
+    /* Tabelle priorisieren: bei 1280px Container ~≥820 → alle Spalten */
+    grid-template-columns: minmax(0, 1fr) minmax(16rem, 18rem);
     align-items: start;
   }
 
@@ -2460,20 +2466,34 @@ button.range-btn.is-static {
 
 .table-wrap {
   overflow-x: hidden;
+  max-width: 100%;
   border: 1px solid var(--line);
   border-radius: 1rem;
   background: color-mix(in srgb, var(--bg-panel) 88%, black);
-  max-width: 100%;
   container-type: inline-size;
   container-name: standings;
 }
 
+/*
+  Standings-Layout (ein System):
+  - table-layout: auto → Zahlenspalten schmal am Inhalt, Verein + Möglich den Rest
+  - Spaltensichtbarkeit per Container-Query (geteilt mit Analyse-Panel)
+  - Schmal ≤429: # Verein(kurz) Tore Diff Pkt Möglich
+  - Mittel 430–820: +Δ
+  - Breit >820: alle Spalten inkl. Sp/S/U/N + Härte
+*/
 .standings {
   width: 100%;
+  max-width: 100%;
+  table-layout: auto;
   border-collapse: collapse;
   border-spacing: 0;
   font-size: 0.92rem;
-  /* table-layout: auto — Zahlenspalten schmal, Verein + Möglich bekommen den Rest */
+}
+
+.standings th,
+.standings td {
+  vertical-align: middle;
 }
 
 .standings th {
@@ -2485,22 +2505,36 @@ button.range-btn.is-static {
   letter-spacing: 0.04em;
   border-bottom: 1px solid color-mix(in srgb, var(--text) 22%, transparent);
   white-space: nowrap;
-  vertical-align: middle;
+}
+
+.standings td {
+  padding: 0.55rem 0.35rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--text) 16%, transparent);
+  /* Touch-Ziel ~44px */
+  min-height: 2.75rem;
 }
 
 .standings th.num,
 .standings td.num {
   text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  width: 1%;
 }
 
 .standings th.delta,
 .standings td.delta {
   text-align: center;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  width: 1%;
 }
 
 .standings th.team,
 .standings td.team {
   text-align: left;
+  width: auto;
+  /* Kein Flex auf dem td — nur .team-inner */
 }
 
 .standings th.range,
@@ -2516,15 +2550,10 @@ button.range-btn.is-static {
   border-left: 3px solid transparent;
 }
 
-.standings td {
-  padding: 0.45rem 0.35rem;
-  border-bottom: 1px solid color-mix(in srgb, var(--text) 16%, transparent);
-  vertical-align: middle;
-}
-
 .standings tbody tr {
   cursor: pointer;
   transition: background 0.15s;
+  height: 2.75rem; /* ~44px Touch-Ziel */
 }
 
 .standings tbody tr:hover td {
@@ -2533,6 +2562,15 @@ button.range-btn.is-static {
 
 .standings tbody tr.selected td {
   background: rgba(196, 240, 97, 0.1);
+}
+
+.standings tbody tr:focus {
+  outline: none;
+}
+
+.standings tbody tr:focus-visible td {
+  background: rgba(196, 240, 97, 0.12);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent) 70%, transparent);
 }
 
 .standings tbody tr.zone-champion td:first-child {
@@ -2551,6 +2589,12 @@ button.range-btn.is-static {
 .standings tbody tr.zone-relegation td:first-child,
 .standings tbody tr.zone-direct-relegation td:first-child {
   border-left-color: var(--releg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .standings tbody tr {
+    transition: none;
+  }
 }
 
 .num {
@@ -2645,9 +2689,12 @@ button.range-btn.is-static {
   font-weight: 700;
 }
 
-.team {
-  width: auto;
+.standings td.team {
+  /* Name darf bei Leerzeichen umbrechen; nie Zeichen-für-Zeichen */
   white-space: normal;
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: none;
 }
 
 .team-inner {
@@ -2655,42 +2702,62 @@ button.range-btn.is-static {
   align-items: center;
   gap: 0.45rem;
   min-width: 0;
+  max-width: 100%;
 }
 
-.team-inner .full,
-.team-inner .short {
+.team-inner .name {
   min-width: 0;
-  white-space: normal;
+  line-height: 1.3;
   overflow-wrap: normal;
   word-break: normal;
-  line-height: 1.3;
+  hyphens: none;
 }
 
-.team-inner img,
+/* Nur an Leerzeichen umbrechen — keine Mid-Word-Breaks */
+.team-inner .name.full {
+  white-space: normal;
+}
+
+.team-inner .name.short {
+  display: none;
+  white-space: nowrap;
+}
+
+.team-inner .crest-img,
 .team-inner .crest-fallback {
   width: 22px;
   height: 22px;
-  object-fit: contain;
   flex-shrink: 0;
+  object-fit: contain;
 }
 
-.team-inner .short {
-  display: none;
-}
-
-.range {
-  text-align: center;
-  min-width: 7rem;
+.standings td.range {
+  min-width: 7.25rem;
   white-space: normal;
+}
+
+.range-cell {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem 0.28rem;
+  max-width: 100%;
   vertical-align: middle;
+}
+
+.range-cell.locked .range-span {
+  background: rgba(168, 181, 168, 0.15);
+  color: var(--muted);
 }
 
 .standings .forecast-cell {
   width: 100%;
-  min-width: 7rem;
+  min-width: 6.5rem;
+  max-width: 100%;
 }
 
-.pill {
+.standings .pill {
   display: inline-block;
   padding: 0.15rem 0.35rem;
   border-radius: 0.35rem;
@@ -2698,44 +2765,48 @@ button.range-btn.is-static {
   color: var(--accent);
   font-size: 0.78rem;
   font-variant-numeric: tabular-nums;
-  max-width: 100%;
-  white-space: normal;
+  white-space: nowrap;
   line-height: 1.25;
+  max-width: 100%;
 }
 
-.range-mode {
+.standings .range-mode {
   display: inline-block;
-  margin-left: 0.28rem;
   padding: 0.05rem 0.28rem;
   border-radius: 0.25rem;
   font-size: 0.62rem;
   font-weight: 600;
   letter-spacing: 0.02em;
   text-transform: uppercase;
-  vertical-align: middle;
   line-height: 1.2;
+  white-space: nowrap;
   color: var(--muted);
   background: color-mix(in srgb, var(--text) 8%, transparent);
 }
 
-.range-mode.mode-exact {
+.standings .range-mode.mode-exact {
   color: var(--accent);
   background: rgba(196, 240, 97, 0.16);
 }
 
-.range-mode.mode-hard {
+.standings .range-mode.mode-hard {
   color: var(--muted);
 }
 
-/* Mittel (<780px Container): Sp/S/U/N + Härte aus; Δ/TORE/DIFF bleiben */
-@container standings (max-width: 779px) {
+/* Mittel (≤819): Sp/S/U/N + Härte aus; Δ/Tore/Diff bleiben.
+   Ab ~820 Containerbreite: alle Spalten. */
+@container standings (max-width: 819px) {
   .standings .col-form,
   .standings .col-hardness {
     display: none;
   }
+
+  .standings td.range {
+    min-width: 6.25rem;
+  }
 }
 
-/* Schmal (<430px): nur Sp/S/U/N, Δ, Härte weg; Kurzname; kompakt */
+/* Schmal (≤429): zusätzlich Δ weg; Kurzname; kompakt */
 @container standings (max-width: 429px) {
   .standings .col-delta {
     display: none;
@@ -2747,7 +2818,7 @@ button.range-btn.is-static {
 
   .standings th,
   .standings td {
-    padding: 0.38rem 0.22rem;
+    padding: 0.45rem 0.2rem;
   }
 
   .standings th:first-child,
@@ -2759,45 +2830,49 @@ button.range-btn.is-static {
     gap: 0.3rem;
   }
 
-  .team-inner img,
+  .team-inner .crest-img,
   .team-inner .crest-fallback {
     width: 18px;
     height: 18px;
   }
 
-  .team-inner .full {
+  .team-inner .name.full {
     display: none;
   }
 
-  .team-inner .short {
+  .team-inner .name.short {
     display: inline;
   }
 
-  .range,
+  .standings td.range {
+    min-width: 5rem;
+  }
+
   .standings .forecast-cell {
     min-width: 4.5rem;
   }
 }
 
-/* Fallback ohne Container-Queries */
+/* Fallback ohne Container-Queries — Viewport-Näherung für geteiltes Layout */
 @supports not (container-type: inline-size) {
-  @media (max-width: 779px) {
+  /* Desktop-Split ~980px: Tabelle oft ~55% → bei Viewport 1500px ≈ 820 Container */
+  @media (max-width: 1500px) {
     .standings .col-form,
     .standings .col-hardness {
       display: none;
     }
   }
 
-  @media (max-width: 429px) {
+  @media (max-width: 640px) {
     .standings .col-delta {
       display: none;
     }
 
-    .team-inner .full {
+    .team-inner .name.full {
       display: none;
     }
 
-    .team-inner .short {
+    .team-inner .name.short {
       display: inline;
     }
   }

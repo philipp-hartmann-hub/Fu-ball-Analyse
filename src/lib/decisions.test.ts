@@ -324,6 +324,24 @@ describe('deriveDecisionStatuses', () => {
     )
     expect(gone.some((s) => s.kind === 'title_gone')).toBe(true)
   })
+
+  it('kein title_gone für Vereine weit weg von der Zielzone', () => {
+    const far = deriveDecisionStatuses(
+      { teamId: 14, hardBest: 12, hardWorst: 15 },
+      'bl1',
+    )
+    expect(far.some((s) => s.kind === 'title_gone')).toBe(false)
+    expect(far.some((s) => s.kind === 'safe')).toBe(true)
+  })
+
+  it('kein title_gone für bereits Abgestiegene', () => {
+    const statuses = deriveDecisionStatuses(
+      { teamId: 18, hardBest: 17, hardWorst: 18 },
+      'bl1',
+    )
+    expect(statuses.some((s) => s.kind === 'relegated')).toBe(true)
+    expect(statuses.some((s) => s.kind === 'title_gone')).toBe(false)
+  })
 })
 
 describe('buildDecisionRadar / Live-Delta', () => {
@@ -834,7 +852,7 @@ describe('triggersBeyondStatus', () => {
     expect(leftover.map((l) => l.key)).toEqual(['target-possible-from'])
   })
 
-  it('blendet Abstieg-sicher aus, wenn Status bereits abgestiegen', () => {
+  it('blendet Abstieg-sicher und CL-gone aus, wenn Status bereits abgestiegen', () => {
     const leftover = triggersBeyondStatus(
       [relegated],
       [
@@ -845,14 +863,61 @@ describe('triggersBeyondStatus', () => {
           tone: 'bad',
         },
         {
+          key: 'season-direct-relegation-safe',
+          label: 'Saison',
+          primary: 'Abstiegsplatz sicher',
+          tone: 'bad',
+        },
+        {
           key: 'target-gone',
           label: 'CL',
           primary: 'nicht mehr möglich',
           tone: 'bad',
         },
+        {
+          key: 'season-cl-gone',
+          label: 'Saison',
+          primary: 'kein CL-Platz mehr',
+          tone: 'bad',
+        },
       ],
+      { league: 'bl1' },
     )
-    expect(leftover.map((l) => l.key)).toEqual(['target-gone'])
+    expect(leftover.map((l) => l.key)).toEqual([])
+  })
+
+  it('Hart CL sicher blendet Näherung CL-Platz sicher aus', () => {
+    const titleSecure = {
+      kind: 'title_secure' as const,
+      shortLabel: 'CL sicher',
+      label: 'CL sicher (Saison steht fest)',
+      tone: 'good' as const,
+    }
+    const leftover = triggersBeyondStatus(
+      [titleSecure, safe],
+      [
+        {
+          key: 'target-safe',
+          label: 'CL',
+          primary: 'rechnerisch sicher',
+          tone: 'good',
+        },
+        {
+          key: 'season-cl-safe',
+          label: 'Saison',
+          primary: 'CL-Platz sicher',
+          tone: 'good',
+        },
+        {
+          key: 'survive-safe',
+          label: 'Klassenerhalt',
+          primary: 'sicher',
+          tone: 'good',
+        },
+      ],
+      { league: 'bl1' },
+    )
+    expect(leftover.map((l) => l.key)).toEqual([])
   })
 
   it('lässt alle Zeilen, wenn kein Status feststeht', () => {
@@ -884,6 +949,114 @@ describe('deriveSeasonZoneLines', () => {
     expect(blob).toMatch(/ECL-Platz/)
     expect(lines.some((l) => l.key.startsWith('season-el'))).toBe(true)
     expect(lines.some((l) => l.key.startsWith('season-ecl'))).toBe(true)
+  })
+})
+
+describe('Radar-Bereinigung: Spätsaison Kiel/Bochum', () => {
+  /**
+   * Letzter Spieltag: Kiel & Bochum können die Abstiegsplätze nicht mehr verlassen
+   * (hardBest in direkter Abstiegszone). Restspiele nur unter den oberen Vereinen.
+   */
+  function kielBochumRelegatedFixture() {
+    const standings: StandingRow[] = []
+    for (let i = 1; i <= 18; i++) {
+      if (i === 17) {
+        standings.push(
+          standingRow({
+            teamId: 17,
+            teamName: 'Kiel',
+            shortName: 'KIE',
+            points: 22,
+            goalDiff: -28,
+            goalsFor: 28,
+            played: 33,
+            rank: 17,
+          }),
+        )
+      } else if (i === 18) {
+        standings.push(
+          standingRow({
+            teamId: 18,
+            teamName: 'Bochum',
+            shortName: 'BOC',
+            points: 20,
+            goalDiff: -32,
+            goalsFor: 24,
+            played: 33,
+            rank: 18,
+          }),
+        )
+      } else if (i === 16) {
+        standings.push(
+          standingRow({
+            teamId: 16,
+            teamName: 'Relegationsplatz',
+            points: 35,
+            goalDiff: -8,
+            goalsFor: 35,
+            played: 33,
+            rank: 16,
+          }),
+        )
+      } else {
+        standings.push(
+          standingRow({
+            teamId: i,
+            teamName: `Team ${i}`,
+            points: 70 - i,
+            goalDiff: 20 - i,
+            goalsFor: 50,
+            played: 33,
+            rank: i,
+          }),
+        )
+      }
+    }
+    // Nur ein Spiel oben — Kiel/Bochum haben keine Restspiele → Rang fix 17/18
+    const remaining = [
+      openMatch(3401, team(1, 'Team 1'), team(2, 'Team 2'), 34),
+    ]
+    return { standings, remaining, kielId: 17, bochumId: 18 }
+  }
+
+  it('Kiel/Bochum abgestiegen: nur „Abgestiegen“, keine CL-Zeile, keine Näherungs-Dopplung', () => {
+    const { standings, remaining, kielId, bochumId } =
+      kielBochumRelegatedFixture()
+    const hard = computeHardRanges(standings, remaining)
+    for (const id of [kielId, bochumId]) {
+      const h = hard.find((x) => x.teamId === id)!
+      expect(isRelegationRank(h.hardBest, 'bl1')).toBe(true)
+    }
+
+    const radar = buildDecisionRadar({
+      league: 'bl1',
+      confirmedStandings: standings,
+      liveStandings: standings,
+      remainingConfirmed: remaining,
+      remainingLive: remaining,
+      hasLive: false,
+      includeTriggers: true,
+    })
+
+    for (const id of [kielId, bochumId]) {
+      const row = radar.all.find((r) => r.teamId === id)!
+      expect(row.confirmedStatuses.map((s) => s.kind)).toEqual(['relegated'])
+      expect(row.confirmedStatuses[0]!.shortLabel).toBe('Abgestiegen')
+
+      const seasonBlob = row.seasonTriggers
+        .map((t) => `${t.key} ${t.primary}`)
+        .join(' | ')
+      expect(seasonBlob).not.toMatch(/CL|nicht mehr möglich|nicht mehr erreichbar/i)
+      expect(row.seasonTriggers.some((t) => t.key === 'target-gone')).toBe(false)
+      expect(
+        row.seasonTriggers.some(
+          (t) =>
+            t.key === 'releg-certain' ||
+            t.key === 'season-direct-relegation-safe' ||
+            t.key === 'season-relegation-safe',
+        ),
+      ).toBe(false)
+    }
   })
 })
 
