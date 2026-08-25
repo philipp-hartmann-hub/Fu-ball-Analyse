@@ -12,6 +12,7 @@ import {
   MatchLeanExplainBody,
   SpanExplainBody,
   ThresholdsExplainBody,
+  TrendExplainBody,
 } from './explainBodies'
 
 interface Props {
@@ -31,6 +32,8 @@ function ExplainContent({ topic }: { topic: ExplainTopic }) {
       return <HardnessExplainBody />
     case 'matchLean':
       return <MatchLeanExplainBody />
+    case 'trend':
+      return <TrendExplainBody />
     case 'conditions':
       return <ConditionsExplainBody />
     case 'decisions':

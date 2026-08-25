@@ -7,6 +7,7 @@ export type ExplainTopic =
   | 'conditions'
   | 'decisions'
   | 'matchLean'
+  | 'trend'
 
 export const EXPLAIN_TITLES: Record<ExplainTopic, string> = {
   forecast: 'So funktioniert die Prognose',
@@ -16,4 +17,5 @@ export const EXPLAIN_TITLES: Record<ExplainTopic, string> = {
   conditions: 'Was muss passieren?',
   decisions: 'So funktioniert das Entscheidungs-Radar',
   matchLean: 'Sieg möglich / wahrscheinlich – was heißt das?',
+  trend: 'So entsteht der Form-Trend',
 }

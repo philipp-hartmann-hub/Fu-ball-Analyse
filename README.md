@@ -23,7 +23,7 @@ Echtzeit-Analyse für die **1., 2. und 3. Liga**: Tabelle, Restprogramm und mög
 - **Ergebnisse**: Spieltag wählbar; Wappen; Live-Updates (laufende Spiele hervorgehoben als Zwischenstand); Tippen zeigt Torschützen und bei offenen/laufenden Spielen die Spielschätzung 1/X/2; Live-Zwischenstände standardmäßig in der Tabelle; 2 Tage nach letztem Spiel → nächster Spieltag als Default
 - Spalte **Möglich**: rechnerisch noch mögliche Plätze – **exakt** bei ≤12 relevanten Restspielen je Verein (nach Punkte-Pruning), sonst **harte Außengrenze** aus Punktemaxima (Badge pro Zeile); alternativ Monte-Carlo-**Prognose** (umschaltbar; unter `MIN_GAMES` Spielen ohne Prozentanzeige)
 - Spalte **Restprog.**: fünfstufige Einschätzung aus Vereinssicht (sehr leicht → sehr schwer, Poisson; immer in der Tabelle; auf schmalen Breiten ausgeblendet)
-- Seitenleiste: **Verein** (Kern sofort inkl. Saison-Prognose; Restprogramm klappbar mit Favoriten-Ausgang je Gegner; **Entscheidungen** mit Status, Spieltag- und Saison-Auslösern inkl. EL/ECL; Wunschplatz/Härte hinter Klappen) · **Ergebnisse** · **Entscheidungen** (Radar für alle Vereine; Saison-Zonen inkl. EL/ECL in der BL1) · **Szenario** · **Vergleich** (Restprogramm: Gegner-Kürzel + S/U/N)
+- Seitenleiste: **Verein** (Kern inkl. Saison-Prognose und **Form-Trend** relativ zur Gegnerstärke; Restprogramm klappbar; Entscheidungen; Wunschplatz/Härte) · **Ergebnisse** · **Entscheidungen** (Radar) · **Szenario** · **Vergleich** (Restprogramm + Form-Trend nebeneinander)
 - **Szenario-Simulator**: Partien mit Wappen; Grob (Sieg/Unentschieden) oder Fein-Tore
 - **Stand nach Spieltag**: Auswahl (Dropdown) für historischen Stand
 - Toolbar: **Zurücksetzen** (Szenarien + `?s=`)
@@ -48,7 +48,7 @@ src/
   leagues.ts
   api/openliga.ts / matchSchema.ts / dataSource.ts
   hooks/useLeagueData.ts / useSeasonForecast.ts / useScheduleHardness.ts / useDecisionRadar.ts
-  lib/table.ts / scenarios.ts / schedule.ts / reliability.ts / simulation.ts / thresholds.ts / decisions.ts / live.ts
+  lib/table.ts / scenarios.ts / schedule.ts / trend.ts / reliability.ts / simulation.ts / thresholds.ts / decisions.ts / live.ts
   workers/simulate.ts / scenarios.ts / decisions.ts
   components/…             # UI
   App.tsx
@@ -58,7 +58,25 @@ src/
 
 ## Änderungsprotokoll
 
-## Änderungsprotokoll
+### 2026-08-25 — Prompt 136
+
+**User:** Comitten und mergen.
+
+**Aktion:**
+- Branch `cursor/form-trend-gegnerstaerke`, Commit, Fast-Forward-Merge nach `main`, Push auf `origin/main`
+
+**Status:** erledigt
+
+### 2026-08-25 — Prompt 135
+
+**User:** Form-Trend (relativ zur Gegnerstärke) in Vereinsanalyse und Vergleich ergänzen.
+
+**Aktion:**
+- Neu: `lib/trend.ts` — Überperformance vs. Poisson-Erwartung (letzte N=5 Spiele), 5 Stufen
+- UI: `TrendBadge` in `TeamInsight` und `TeamCompare`; Erklärungsthema `trend`
+- Tests: `trend.test.ts` (starke Gegner, schwache Gegner, gleiche Punkte, zu wenig Spiele)
+
+**Status:** erledigt
 
 ### 2026-08-22 — Prompt 134
 

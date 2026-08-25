@@ -1783,6 +1783,54 @@ button.linkish.explain-inline {
   color: #f87171;
 }
 
+.compare-trend-row {
+  margin-top: -0.35rem;
+}
+
+.trend-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.trend-badge {
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.trend-badge .trend-arrow {
+  font-weight: 800;
+}
+
+.trend-badge.muted,
+.trend-badge.tone-pending {
+  font-weight: 500;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.trend-badge.tone-up,
+.trend-badge.tone-slight-up {
+  color: var(--accent);
+}
+
+.trend-badge.tone-stable {
+  color: #c8c4b8;
+}
+
+.trend-badge.tone-slight-down,
+.trend-badge.tone-down {
+  color: #f87171;
+}
+
+.trend-meta {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
 .compare-hardness-meta {
   font-weight: 500;
   font-size: 0.75rem;

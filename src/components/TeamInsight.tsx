@@ -32,10 +32,12 @@ import {
 import { NOT_ENOUGH_DATA_LABEL } from '../lib/reliability'
 import type { ExplainTopic } from '../lib/modelExplanations'
 import type { DecisionTeamRow } from '../lib/decisions'
+import type { TeamTrend } from '../lib/trend'
 import { DecisionTeamDetail } from './DecisionTeamDetail'
 import { ExplainLink } from './ExplainLink'
 import { MatchLeanChip } from './MatchLeanChip'
 import { MatchPredictionCard } from './MatchPredictionCard'
+import { TrendBadge } from './TrendBadge'
 
 interface Props {
   team: StandingRow | null
@@ -58,6 +60,8 @@ interface Props {
   onEnableMatchdayCutoff?: (matchday: number) => void
   suggestedCutoff?: number | null
   scheduleHardness?: ScheduleHardness | null
+  /** Form-Trend relativ zur Gegner-Erwartung */
+  teamTrend?: TeamTrend | null
   leagueTeamCount?: number
   /** Aktuelle Tabelle für Poisson-Spielschätzung */
   standings?: StandingRow[]
@@ -1001,6 +1005,7 @@ export function TeamInsight({
   onEnableMatchdayCutoff,
   suggestedCutoff,
   scheduleHardness = null,
+  teamTrend = null,
   leagueTeamCount = 18,
   standings = [],
   openMatches = [],
@@ -1169,6 +1174,24 @@ export function TeamInsight({
               )}
             </div>
           )}
+          <div>
+            <span className="label">
+              Form-Trend
+              {onExplain && (
+                <>
+                  {' '}
+                  <ExplainLink
+                    topic="trend"
+                    onExplain={onExplain}
+                    className="explain-inline"
+                  >
+                    Erklärung
+                  </ExplainLink>
+                </>
+              )}
+            </span>
+            <TrendBadge trend={teamTrend} onExplain={onExplain} />
+          </div>
         </div>
 
         <ForecastZoneBreakdown

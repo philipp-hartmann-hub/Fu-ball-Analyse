@@ -5,6 +5,7 @@ import {
 } from '../lib/simulation'
 import { FOCUS_EXTREME_MARGIN } from '../lib/scenarios'
 import { MIN_GAMES } from '../lib/reliability'
+import { TREND_WINDOW } from '../lib/trend'
 
 export function ForecastExplainBody() {
   const runsLabel = DEFAULT_SIMULATIONS.toLocaleString('de-DE')
@@ -289,6 +290,45 @@ export function DecisionsExplainBody() {
         Zonen-Hinweise über alle Restspiele — in der Bundesliga auch{' '}
         <strong>EL- und ECL-Plätze</strong>, nicht nur CL und Abstieg. Clinch-
         Zeilen nur wenn die Zone noch offen und kippbar ist.
+      </p>
+    </>
+  )
+}
+
+export function TrendExplainBody() {
+  return (
+    <>
+      <p className="modal-lead">
+        Der <strong>Form-Trend</strong> sagt, ob ein Verein zuletzt besser oder
+        schlechter performt hat als gegen genau diese Gegner zu erwarten war —
+        nicht nur „drei Siege in Folge“.
+      </p>
+      <h3>Rechnung</h3>
+      <p>
+        Für die letzten {TREND_WINDOW} abgeschlossenen Spiele: tatsächlich geholte
+        Punkte minus erwartete Punkte aus demselben Poisson-Modell wie
+        Spielschätzung und Restprogramm (P(Sieg)×3 + P(Remis)×1, Heim/Auswärts).
+        Der Mittelwert dieser Differenzen (jüngere Spiele etwas stärker) ergibt
+        den Trend-Score.
+      </p>
+      <h3>Warum Gegnerstärke?</h3>
+      <p>
+        Ein Remis beim Spitzenreiter kann Überperformance sein; drei Siege gegen
+        Kellerkinder können nur „stabil“ bedeuten. Der Mehrwert gegenüber nackter
+        S/U/N-Form liegt genau darin.
+      </p>
+      <h3>Stufen</h3>
+      <p>
+        Aufwärtstrend, leicht aufwärts, stabil, leicht abwärts, Abwärtstrend —
+        ohne Rohzahl in der Anzeige.
+      </p>
+      <h3>Wann der Trend fehlt</h3>
+      <p>
+        Am Saisonanfang (Liga-Median unter {MIN_GAMES} Spielen) oder wenn der
+        Verein weniger als {TREND_WINDOW} Spiele hat: „noch kein Trend“.
+      </p>
+      <p className="modal-footnote">
+        Modellschätzung wie Prognose, Härte und Spielschätzung – keine Vorhersage.
       </p>
     </>
   )

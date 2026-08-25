@@ -4,6 +4,7 @@ import {
   hardnessGradeLabelForClub,
   type ScheduleHardness,
 } from '../lib/schedule'
+import type { TeamTrend } from '../lib/trend'
 import {
   deriveMatchLean,
   predictFixture,
@@ -14,6 +15,7 @@ import { NOT_ENOUGH_DATA_LABEL } from '../lib/reliability'
 import { ExplainLink } from './ExplainLink'
 import { MatchLeanChip } from './MatchLeanChip'
 import { MatchPredictionCard } from './MatchPredictionCard'
+import { TrendBadge } from './TrendBadge'
 
 export interface RemainingFixture {
   matchId: number
@@ -30,6 +32,7 @@ interface Props {
   remaining: Match[]
   scenarios?: ScenarioResult[]
   hardnessByTeam: Map<number, ScheduleHardness>
+  trendByTeam?: Map<number, TeamTrend>
   teamAId: number | null
   teamBId: number | null
   onChangeTeamA: (id: number | null) => void
@@ -97,6 +100,7 @@ function TeamColumn({
   fixtures,
   fixtureLeans,
   hardness,
+  trend,
   nextPrediction,
   nextTitle,
   nextHomeName,
@@ -107,6 +111,7 @@ function TeamColumn({
   fixtures: RemainingFixture[]
   fixtureLeans: Map<number, MatchLean>
   hardness: ScheduleHardness | undefined
+  trend: TeamTrend | undefined
   nextPrediction: ReturnType<typeof predictFixture>
   nextTitle: string
   nextHomeName?: string
@@ -166,6 +171,25 @@ function TeamColumn({
           hardness={hardness}
           clubName={teamLabel(row)}
         />
+      </div>
+
+      <div className="compare-hardness-row compare-trend-row">
+        <span className="label">
+          Form-Trend
+          {onExplain && (
+            <>
+              {' '}
+              <ExplainLink
+                topic="trend"
+                onExplain={onExplain}
+                className="explain-inline"
+              >
+                Erklärung
+              </ExplainLink>
+            </>
+          )}
+        </span>
+        <TrendBadge trend={trend} compact onExplain={onExplain} />
       </div>
 
       {nextPrediction && (
@@ -228,6 +252,7 @@ export function TeamCompare({
   remaining,
   scenarios = [],
   hardnessByTeam,
+  trendByTeam,
   teamAId,
   teamBId,
   onChangeTeamA,
@@ -425,6 +450,7 @@ export function TeamCompare({
               fixtures={fixturesA}
               fixtureLeans={leansA}
               hardness={hardnessByTeam.get(teamA.teamId)}
+              trend={trendByTeam?.get(teamA.teamId)}
               nextPrediction={nextPredA}
               nextTitle={
                 nextA
@@ -456,6 +482,7 @@ export function TeamCompare({
               fixtures={fixturesB}
               fixtureLeans={leansB}
               hardness={hardnessByTeam.get(teamB.teamId)}
+              trend={trendByTeam?.get(teamB.teamId)}
               nextPrediction={nextPredB}
               nextTitle={
                 nextB

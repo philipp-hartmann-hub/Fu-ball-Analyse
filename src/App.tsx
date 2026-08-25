@@ -28,6 +28,7 @@ import {
 } from './lib/scenarios'
 import { hasEnoughData, NOT_ENOUGH_DATA_LABEL } from './lib/reliability'
 import { matchesDataVersion } from './lib/matchSignature'
+import { computeTeamTrend, computeTeamTrends } from './lib/trend'
 import {
   encodeShareState,
   loadShareStateFromSearch,
@@ -334,6 +335,25 @@ export default function App() {
       playedScores,
     )
   }, [baseStandings, openMatches, selectedTeamId, playedScores])
+
+  const selectedTeamTrend = useMemo(() => {
+    if (selectedTeamId == null || baseStandings.length === 0) return null
+    return computeTeamTrend(selectedTeamId, matches, baseStandings, {
+      maxMatchday: cutoff,
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- matches via matchesVersion
+  }, [selectedTeamId, matchesVersion, cutoff, baseStandings])
+
+  const compareTrends = useMemo(() => {
+    const ids = [compareA, compareB].filter((id): id is number => id != null)
+    if (ids.length === 0 || baseStandings.length === 0) {
+      return new Map()
+    }
+    return computeTeamTrends(ids, matches, baseStandings, {
+      maxMatchday: cutoff,
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- matches via matchesVersion
+  }, [compareA, compareB, matchesVersion, cutoff, baseStandings])
 
   const leaderPoints = projectedStandings[0]?.points ?? 0
   const relegCutoff = relegationCutoffRank(leagueId)
@@ -711,6 +731,7 @@ export default function App() {
                 remaining={openMatches}
                 scenarios={scenarios}
                 hardnessByTeam={hardnessByTeam}
+                trendByTeam={compareTrends}
                 teamAId={compareA}
                 teamBId={compareB}
                 onChangeTeamA={setCompareA}
@@ -761,6 +782,7 @@ export default function App() {
                     ? (hardnessByTeam.get(selectedTeamId) ?? null)
                     : null
                 }
+                teamTrend={selectedTeamTrend}
                 leagueTeamCount={baseStandings.length}
                 onExplain={openExplain}
                 onOpenDecisions={() => setSideTab('decisions')}
