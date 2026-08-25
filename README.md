@@ -63,7 +63,7 @@ src/
 **User:** Comitten und mergen.
 
 **Aktion:**
-- Branch `cursor/erklaertexte-aktualisieren`, Commit, Fast-Forward-Merge nach `main`, Push auf `origin/main`
+- Branch `cursor/erklaertexte-aktualisieren`, Commit `a23b6f5`, Fast-Forward-Merge nach `main`, Push auf `origin/main`
 
 **Status:** erledigt
 
