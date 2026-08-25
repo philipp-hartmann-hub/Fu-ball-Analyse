@@ -114,7 +114,7 @@ export function MatchPredictionCard({
             <>
               {' '}
               <ExplainLink
-                topic="forecast"
+                topic="matchPrediction"
                 onExplain={onExplain}
                 className="explain-inline"
               >

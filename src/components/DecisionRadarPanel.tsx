@@ -135,9 +135,6 @@ export function DecisionRadarPanel({
         {onExplain && (
           <span className="panel-head-links">
             <ExplainLink topic="decisions" onExplain={onExplain} />
-            <ExplainLink topic="thresholds" onExplain={onExplain}>
-              Punktschwellen
-            </ExplainLink>
           </span>
         )}
       </div>

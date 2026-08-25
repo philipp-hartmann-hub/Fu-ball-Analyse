@@ -376,7 +376,6 @@ function ConditionsPanel({
   focusTeam,
   ownOptions,
   onApply,
-  onExplain,
   onClose,
 }: {
   kind: 'best' | 'worst' | 'target'
@@ -385,7 +384,6 @@ function ConditionsPanel({
   focusTeam?: StandingRow | null
   ownOptions?: TargetOwnOption[]
   onApply?: (conditions: CaseConditions) => void
-  onExplain?: (topic: ExplainTopic) => void
   onClose: () => void
 }) {
   const [flexOpen, setFlexOpen] = useState(false)
@@ -414,13 +412,6 @@ function ConditionsPanel({
       <div className="conditions-head">
         <h3 className="conditions-title">{heading}</h3>
         <div className="conditions-head-actions">
-          {onExplain && (
-            <ExplainLink
-              topic="conditions"
-              onExplain={onExplain}
-              className="explain-inline"
-            />
-          )}
           <button type="button" className="ghost conditions-close" onClick={onClose}>
             Schließen
           </button>
@@ -646,7 +637,6 @@ function TargetWishBlock({
   onComparatorChange,
   focusTeam,
   onApplyConditions,
-  onExplain,
   showSimPercents = true,
 }: {
   scopeLabel: string
@@ -658,7 +648,6 @@ function TargetWishBlock({
   onComparatorChange: (c: TargetComparator) => void
   focusTeam: StandingRow
   onApplyConditions?: (conditions: CaseConditions) => void
-  onExplain?: (topic: ExplainTopic) => void
   showSimPercents?: boolean
 }) {
   const [open, setOpen] = useState(false)
@@ -762,7 +751,6 @@ function TargetWishBlock({
               focusTeam={focusTeam}
               ownOptions={outlook.ownOptions}
               onApply={onApplyConditions}
-              onExplain={onExplain}
               onClose={() => setOpen(false)}
             />
           )}
@@ -949,17 +937,16 @@ function VariantPanel({
 
           {openCase && openConditions && (
             <div id={`conditions-panel-${openCase}`}>
-              <ConditionsPanel
-                kind={openCase}
-                targetRank={
-                  openCase === 'best' ? range.bestRank : range.worstRank
-                }
-                conditions={openConditions}
-                focusTeam={focusTeam}
-                onApply={onApplyConditions}
-                onExplain={onExplain}
-                onClose={() => setOpenCase(null)}
-              />
+            <ConditionsPanel
+              kind={openCase}
+              targetRank={
+                openCase === 'best' ? range.bestRank : range.worstRank
+              }
+              conditions={openConditions}
+              focusTeam={focusTeam}
+              onApply={onApplyConditions}
+              onClose={() => setOpenCase(null)}
+            />
             </div>
           )}
 
@@ -1180,20 +1167,8 @@ export function TeamInsight({
           <div>
             <span className="label">
               Form-Trend
-              {onExplain && (
-                <>
-                  {' '}
-                  <ExplainLink
-                    topic="trend"
-                    onExplain={onExplain}
-                    className="explain-inline"
-                  >
-                    Erklärung
-                  </ExplainLink>
-                </>
-              )}
             </span>
-            <TrendBadge trend={teamTrend} onExplain={onExplain} />
+            <TrendBadge trend={teamTrend} />
           </div>
         </div>
 
@@ -1213,20 +1188,7 @@ export function TeamInsight({
             openLabel="Restprogramm ausblenden"
           >
             <p className="hint tight insight-remaining-hint">
-              Je Gegner der wahrscheinlichste Ausgang (Vereinssicht)
-              {onExplain && (
-                <>
-                  {' '}
-                  <ExplainLink
-                    topic="matchLean"
-                    onExplain={onExplain}
-                    className="explain-inline"
-                  >
-                    Einschätzung erklären
-                  </ExplainLink>
-                </>
-              )}
-              .
+              Je Gegner der wahrscheinlichste Ausgang (Vereinssicht).
             </p>
             <ul className="insight-remaining">
               {remainingFixtures.map((m) => {
@@ -1299,7 +1261,6 @@ export function TeamInsight({
             onComparatorChange={onMatchdayTargetComparatorChange}
             focusTeam={team}
             onApplyConditions={onApplyConditions}
-            onExplain={onExplain}
           />
         }
         note={

@@ -58,6 +58,26 @@ src/
 
 ## Änderungsprotokoll
 
+### 2026-08-25 — Prompt 140
+
+**User:** Comitten und mergen.
+
+**Aktion:**
+- Branch `cursor/erklaertexte-aktualisieren`, Commit, Fast-Forward-Merge nach `main`, Push auf `origin/main`
+
+**Status:** erledigt
+
+### 2026-08-25 — Prompt 139
+
+**User:** Alle „Modell erklären“-Texte auf vorgegebene, verständliche Formulierungen aktualisieren.
+
+**Aktion:**
+- `explainBodies.tsx` / `modelExplanations.ts`: feste Texte für Mögliche Plätze, Prognose, Restprogramm, Entscheidungen, Spielschätzung
+- Veraltete Topics (thresholds, conditions, matchLean, trend) und zugehörige Erklär-Links entfernt
+- `MatchPredictionCard` → Topic `matchPrediction`
+
+**Status:** erledigt
+
 ### 2026-08-25 — Prompt 138
 
 **User:** Comitten und mergen.

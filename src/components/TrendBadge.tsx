@@ -1,24 +1,20 @@
-import type { ExplainTopic } from '../lib/modelExplanations'
 import {
   TREND_WINDOW,
   trendGradeArrow,
   trendGradeLabel,
   type TeamTrend,
 } from '../lib/trend'
-import { ExplainLink } from './ExplainLink'
 
 interface Props {
   trend: TeamTrend | null | undefined
   /** Kurzform ohne Meta-Hinweis (Vergleich) */
   compact?: boolean
-  onExplain?: (topic: ExplainTopic) => void
   className?: string
 }
 
 export function TrendBadge({
   trend,
   compact = false,
-  onExplain,
   className = '',
 }: Props) {
   if (!trend) {
@@ -59,18 +55,6 @@ export function TrendBadge({
         <span className="trend-meta">
           Form der letzten {TREND_WINDOW} Spiele, gewichtet nach Gegnerstärke
           (Modellschätzung)
-          {onExplain && (
-            <>
-              {' '}
-              <ExplainLink
-                topic="trend"
-                onExplain={onExplain}
-                className="explain-inline"
-              >
-                Erklärung
-              </ExplainLink>
-            </>
-          )}
         </span>
       )}
     </span>

@@ -177,22 +177,8 @@ function TeamColumn({
       </div>
 
       <div className="compare-hardness-row compare-trend-row">
-        <span className="label">
-          Form-Trend
-          {onExplain && (
-            <>
-              {' '}
-              <ExplainLink
-                topic="trend"
-                onExplain={onExplain}
-                className="explain-inline"
-              >
-                Erklärung
-              </ExplainLink>
-            </>
-          )}
-        </span>
-        <TrendBadge trend={trend} compact onExplain={onExplain} />
+        <span className="label">Form-Trend</span>
+        <TrendBadge trend={trend} compact />
       </div>
 
       {nextPrediction && (
@@ -207,21 +193,7 @@ function TeamColumn({
         />
       )}
 
-      <h3 className="compare-list-title">
-        Restprogramm
-        {onExplain && fixtures.length > 0 && (
-          <>
-            {' '}
-            <ExplainLink
-              topic="matchLean"
-              onExplain={onExplain}
-              className="explain-inline"
-            >
-              Einschätzung erklären
-            </ExplainLink>
-          </>
-        )}
-      </h3>
+      <h3 className="compare-list-title">Restprogramm</h3>
       {fixtures.length === 0 ? (
         <p className="hint tight">Keine offenen Spiele.</p>
       ) : (

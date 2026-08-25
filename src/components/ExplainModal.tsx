@@ -5,14 +5,11 @@ import {
   type ExplainTopic,
 } from '../lib/modelExplanations'
 import {
-  ConditionsExplainBody,
   DecisionsExplainBody,
   ForecastExplainBody,
   HardnessExplainBody,
-  MatchLeanExplainBody,
+  MatchPredictionExplainBody,
   SpanExplainBody,
-  ThresholdsExplainBody,
-  TrendExplainBody,
 } from './explainBodies'
 
 interface Props {
@@ -26,18 +23,12 @@ function ExplainContent({ topic }: { topic: ExplainTopic }) {
       return <ForecastExplainBody />
     case 'span':
       return <SpanExplainBody />
-    case 'thresholds':
-      return <ThresholdsExplainBody />
     case 'hardness':
       return <HardnessExplainBody />
-    case 'matchLean':
-      return <MatchLeanExplainBody />
-    case 'trend':
-      return <TrendExplainBody />
-    case 'conditions':
-      return <ConditionsExplainBody />
     case 'decisions':
       return <DecisionsExplainBody />
+    case 'matchPrediction':
+      return <MatchPredictionExplainBody />
   }
 }
 
