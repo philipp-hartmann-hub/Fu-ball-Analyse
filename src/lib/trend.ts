@@ -167,7 +167,8 @@ export function computeTeamTrend(
   }
 
   const { strengths, avgDefense } =
-    opts?.precomputedStrengths ?? deriveTeamStrengths(standings)
+    opts?.precomputedStrengths ??
+    deriveTeamStrengths(standings, matches)
 
   const deltas: number[] = []
   for (const m of recent) {
@@ -217,7 +218,7 @@ export function computeTeamTrends(
   standings: StandingRow[],
   opts?: { window?: number; maxMatchday?: number | null },
 ): Map<number, TeamTrend> {
-  const precomputedStrengths = deriveTeamStrengths(standings)
+  const precomputedStrengths = deriveTeamStrengths(standings, matches)
   const map = new Map<number, TeamTrend>()
   for (const id of teamIds) {
     map.set(

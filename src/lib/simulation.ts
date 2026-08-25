@@ -2,6 +2,7 @@ import type { Match, ScenarioResult, StandingRow } from '../types'
 import { hasEnoughData } from './reliability'
 import {
   applyScore,
+  finalResult,
   rankStandings,
   zoneForRank,
   type LeagueZoneId,
@@ -60,6 +61,355 @@ export interface TeamStrength {
   attack: number
   /** Erwartete Gegentore je Spiel */
   defense: number
+}
+
+// ——— Stärkemodell (gegner-adjustiert + Shrinkage) ———
+
+/**
+ * Feature-Flag: true = IPF gegen Gegnerstärke + Shrinkage;
+ * false = rohe Tore/Spiele (Rollback).
+ * Optional per Env: VITE_USE_ADJUSTED_STRENGTH=0
+ */
+export const USE_ADJUSTED_STRENGTH: boolean = (() => {
+  try {
+    const env = (import.meta as { env?: Record<string, string> }).env
+    const raw = env?.VITE_USE_ADJUSTED_STRENGTH
+    if (raw === '0' || raw === 'false') return false
+    if (raw === '1' || raw === 'true') return true
+  } catch {
+    /* Node/Vitest ohne Vite-Env */
+  }
+  return true
+})()
+
+/** Shrinkage-Pseudo-Spiele: w = played / (played + K). */
+export const STRENGTH_SHRINK_K = 5
+
+/** Max. Iterationen für iterative proportional fitting. */
+export const STRENGTH_IPF_MAX_ITERS = 10
+
+/** Abbruch, wenn max. relative Änderung unter diesem Wert. */
+export const STRENGTH_IPF_EPSILON = 1e-6
+
+/**
+ * Minimale Spielzeile für die Stärkeschätzung (Heim/Auswärts + Endstand).
+ * MatchScore und gefilterte Matches lassen sich darauf abbilden.
+ */
+export interface StrengthPlayedMatch {
+  homeId: number
+  awayId: number
+  homeGoals: number
+  awayGoals: number
+}
+
+export interface DeriveStrengthOptions {
+  /** Überschreibt USE_ADJUSTED_STRENGTH für diesen Aufruf. */
+  adjusted?: boolean
+  /** Shrinkage-K (Default STRENGTH_SHRINK_K). */
+  shrinkK?: number
+  /**
+   * Prior pro Team (Andockpunkt Vorsaison/Elo).
+   * Fehlt ein Team → Ligamittel als Shrink-Ziel.
+   */
+  priorStrength?: ReadonlyMap<number, Pick<TeamStrength, 'attack' | 'defense'>>
+  maxIterations?: number
+  epsilon?: number
+}
+
+/**
+ * Multiplikativer Heimfaktor in der IPF-Schätzung —
+ * so skaliert, dass bei Ligamittel μ der Boost ≈ HOME_ADVANTAGE (additiv) entspricht:
+ * HOME_FACTOR = (μ + HOME_ADVANTAGE) / μ.
+ */
+export function strengthHomeFactor(leagueAvgGoals: number): number {
+  const mu = Math.max(MIN_LAMBDA, leagueAvgGoals)
+  return (mu + HOME_ADVANTAGE) / mu
+}
+
+function isMatchLike(
+  m: Match | StrengthPlayedMatch,
+): m is Match {
+  return 'team1' in m && 'matchResults' in m
+}
+
+/** Normalisiert Match[] oder StrengthPlayedMatch[] auf die IPF-Eingabe. */
+export function normalizePlayedMatchesForStrength(
+  playedMatches: readonly (Match | StrengthPlayedMatch)[],
+): StrengthPlayedMatch[] {
+  if (playedMatches.length === 0) return []
+  if (!isMatchLike(playedMatches[0]!)) {
+    return playedMatches as StrengthPlayedMatch[]
+  }
+  const out: StrengthPlayedMatch[] = []
+  for (const m of playedMatches as Match[]) {
+    if (!m.matchIsFinished) continue
+    const end = finalResult(m)
+    if (!end) continue
+    out.push({
+      homeId: m.team1.teamId,
+      awayId: m.team2.teamId,
+      homeGoals: end.pointsTeam1,
+      awayGoals: end.pointsTeam2,
+    })
+  }
+  return out
+}
+
+export function strengthMatchesFromScores(
+  scores: readonly MatchScore[],
+): StrengthPlayedMatch[] {
+  return scores.map((s) => ({
+    homeId: s.homeId,
+    awayId: s.awayId,
+    homeGoals: s.homeGoals,
+    awayGoals: s.awayGoals,
+  }))
+}
+
+/** Rohe Durchschnitte (Tore/Spiele) — bisheriges Modell / Flag false. */
+export function deriveTeamStrengthsRaw(standings: StandingRow[]): {
+  strengths: Map<number, TeamStrength>
+  avgDefense: number
+} {
+  const strengths = new Map<number, TeamStrength>()
+  let defSum = 0
+  let defN = 0
+
+  for (const row of standings) {
+    const attack =
+      row.played > 0 ? row.goalsFor / row.played : DEFAULT_ATTACK
+    const defense =
+      row.played > 0 ? row.goalsAgainst / row.played : DEFAULT_DEFENSE
+    strengths.set(row.teamId, { teamId: row.teamId, attack, defense })
+    defSum += defense
+    defN += 1
+  }
+
+  const avgDefense = defN > 0 ? defSum / defN : DEFAULT_DEFENSE
+  return { strengths, avgDefense }
+}
+
+/**
+ * Gegner-adjustierte Attack/Defense via iterative proportional fitting,
+ * danach Shrinkage zum Ligamittel (oder Prior).
+ *
+ * Identifizierbarkeit: nach jedem Schritt mean(attack) = mean(defense) = Ligamittel
+ * (Tore/Teamspiel), damit die Ratings nicht gemeinsam skalieren.
+ * Rückgabe in Tore/Spiel — expectedGoals bleibt unverändert.
+ */
+export function deriveTeamStrengthsAdjusted(
+  standings: StandingRow[],
+  playedMatches: readonly StrengthPlayedMatch[],
+  options?: Omit<DeriveStrengthOptions, 'adjusted'>,
+): {
+  strengths: Map<number, TeamStrength>
+  avgDefense: number
+} {
+  const shrinkK = options?.shrinkK ?? STRENGTH_SHRINK_K
+  const maxIters = options?.maxIterations ?? STRENGTH_IPF_MAX_ITERS
+  const eps = options?.epsilon ?? STRENGTH_IPF_EPSILON
+  const prior = options?.priorStrength
+
+  const teamIds = standings.map((s) => s.teamId)
+  const idSet = new Set(teamIds)
+  const playedById = new Map(standings.map((s) => [s.teamId, s.played] as const))
+
+  const relevant = playedMatches.filter(
+    (m) => idSet.has(m.homeId) && idSet.has(m.awayId),
+  )
+
+  let goalsSum = 0
+  let teamGames = 0
+  for (const row of standings) {
+    goalsSum += row.goalsFor
+    teamGames += row.played
+  }
+  const leagueAvg =
+    teamGames > 0 ? goalsSum / teamGames : (DEFAULT_ATTACK + DEFAULT_DEFENSE) / 2
+
+  if (relevant.length === 0 || teamIds.length === 0) {
+    return deriveTeamStrengthsRaw(standings)
+  }
+
+  const homeFactor = strengthHomeFactor(leagueAvg)
+
+  // Aggregierte Tore je Team (aus gespielten Zeilen — konsistent zur IPF)
+  const gf = new Map<number, number>()
+  const ga = new Map<number, number>()
+  const gamesPlayed = new Map<number, number>()
+  for (const id of teamIds) {
+    gf.set(id, 0)
+    ga.set(id, 0)
+    gamesPlayed.set(id, 0)
+  }
+  for (const m of relevant) {
+    gf.set(m.homeId, (gf.get(m.homeId) ?? 0) + m.homeGoals)
+    ga.set(m.homeId, (ga.get(m.homeId) ?? 0) + m.awayGoals)
+    gf.set(m.awayId, (gf.get(m.awayId) ?? 0) + m.awayGoals)
+    ga.set(m.awayId, (ga.get(m.awayId) ?? 0) + m.homeGoals)
+    gamesPlayed.set(m.homeId, (gamesPlayed.get(m.homeId) ?? 0) + 1)
+    gamesPlayed.set(m.awayId, (gamesPlayed.get(m.awayId) ?? 0) + 1)
+  }
+
+  const attack = new Map<number, number>()
+  const defense = new Map<number, number>()
+  for (const id of teamIds) {
+    const n = gamesPlayed.get(id) ?? 0
+    attack.set(
+      id,
+      n > 0 ? (gf.get(id) ?? 0) / n : leagueAvg,
+    )
+    defense.set(
+      id,
+      n > 0 ? (ga.get(id) ?? 0) / n : leagueAvg,
+    )
+  }
+
+  const normalize = () => {
+    let aSum = 0
+    let dSum = 0
+    let n = 0
+    for (const id of teamIds) {
+      aSum += attack.get(id) ?? leagueAvg
+      dSum += defense.get(id) ?? leagueAvg
+      n += 1
+    }
+    if (n === 0) return
+    const aMean = aSum / n
+    const dMean = dSum / n
+    const aScale = aMean > MIN_LAMBDA ? leagueAvg / aMean : 1
+    const dScale = dMean > MIN_LAMBDA ? leagueAvg / dMean : 1
+    for (const id of teamIds) {
+      attack.set(id, (attack.get(id) ?? leagueAvg) * aScale)
+      defense.set(id, (defense.get(id) ?? leagueAvg) * dScale)
+    }
+  }
+
+  normalize()
+
+  for (let iter = 0; iter < maxIters; iter++) {
+    let maxDelta = 0
+
+    const nextAttack = new Map<number, number>()
+    for (const id of teamIds) {
+      let denom = 0
+      for (const m of relevant) {
+        if (m.homeId === id) {
+          denom += (defense.get(m.awayId) ?? leagueAvg) * homeFactor
+        } else if (m.awayId === id) {
+          denom += defense.get(m.homeId) ?? leagueAvg
+        }
+      }
+      const scored = gf.get(id) ?? 0
+      const n = gamesPlayed.get(id) ?? 0
+      let value: number
+      if (n === 0 || denom < MIN_LAMBDA) {
+        value = attack.get(id) ?? leagueAvg
+      } else {
+        value = scored / denom
+      }
+      value = Math.max(MIN_LAMBDA, value)
+      const prev = attack.get(id) ?? leagueAvg
+      maxDelta = Math.max(maxDelta, Math.abs(value - prev) / Math.max(prev, MIN_LAMBDA))
+      nextAttack.set(id, value)
+    }
+    for (const id of teamIds) {
+      attack.set(id, nextAttack.get(id) ?? leagueAvg)
+    }
+
+    const nextDefense = new Map<number, number>()
+    for (const id of teamIds) {
+      let denom = 0
+      for (const m of relevant) {
+        if (m.homeId === id) {
+          // Gegner ist Auswärts → kein Heimfaktor auf deren Angriff
+          denom += attack.get(m.awayId) ?? leagueAvg
+        } else if (m.awayId === id) {
+          // Gegner ist Heim
+          denom += (attack.get(m.homeId) ?? leagueAvg) * homeFactor
+        }
+      }
+      const conceded = ga.get(id) ?? 0
+      const n = gamesPlayed.get(id) ?? 0
+      let value: number
+      if (n === 0 || denom < MIN_LAMBDA) {
+        value = defense.get(id) ?? leagueAvg
+      } else {
+        value = conceded / denom
+      }
+      value = Math.max(MIN_LAMBDA, value)
+      const prev = defense.get(id) ?? leagueAvg
+      maxDelta = Math.max(maxDelta, Math.abs(value - prev) / Math.max(prev, MIN_LAMBDA))
+      nextDefense.set(id, value)
+    }
+    for (const id of teamIds) {
+      defense.set(id, nextDefense.get(id) ?? leagueAvg)
+    }
+
+    normalize()
+
+    if (maxDelta < eps) break
+  }
+
+  const strengths = new Map<number, TeamStrength>()
+  let defSum = 0
+  let defN = 0
+
+  for (const row of standings) {
+    const id = row.teamId
+    const nPlayed = Math.max(
+      playedById.get(id) ?? 0,
+      gamesPlayed.get(id) ?? 0,
+    )
+    const priorRow = prior?.get(id)
+    const targetAttack = priorRow?.attack ?? leagueAvg
+    const targetDefense = priorRow?.defense ?? leagueAvg
+
+    let atk: number
+    let def: number
+    if (nPlayed <= 0) {
+      atk = priorRow?.attack ?? DEFAULT_ATTACK
+      def = priorRow?.defense ?? DEFAULT_DEFENSE
+    } else {
+      const w = nPlayed / (nPlayed + Math.max(0, shrinkK))
+      atk = w * (attack.get(id) ?? leagueAvg) + (1 - w) * targetAttack
+      def = w * (defense.get(id) ?? leagueAvg) + (1 - w) * targetDefense
+    }
+
+    atk = Math.max(MIN_LAMBDA, atk)
+    def = Math.max(MIN_LAMBDA, def)
+    strengths.set(id, { teamId: id, attack: atk, defense: def })
+    defSum += def
+    defN += 1
+  }
+
+  const avgDefense = defN > 0 ? defSum / defN : DEFAULT_DEFENSE
+  return { strengths, avgDefense }
+}
+
+/**
+ * Teamstärken für Poisson-Modell.
+ * Default: gegner-adjustiert + Shrinkage (USE_ADJUSTED_STRENGTH).
+ * playedMatches = abgeschlossene Spiele (Match[] oder StrengthPlayedMatch[]).
+ * Rückgabe unverändert: { strengths, avgDefense } in Tore/Spiel.
+ */
+export function deriveTeamStrengths(
+  standings: StandingRow[],
+  playedMatches: readonly (Match | StrengthPlayedMatch)[] = [],
+  options?: DeriveStrengthOptions,
+): {
+  strengths: Map<number, TeamStrength>
+  avgDefense: number
+} {
+  const useAdjusted = options?.adjusted ?? USE_ADJUSTED_STRENGTH
+  if (!useAdjusted) {
+    return deriveTeamStrengthsRaw(standings)
+  }
+  const played = normalizePlayedMatchesForStrength(playedMatches)
+  if (played.length === 0) {
+    return deriveTeamStrengthsRaw(standings)
+  }
+  return deriveTeamStrengthsAdjusted(standings, played, options)
 }
 
 export interface TeamForecast {
@@ -122,28 +472,6 @@ export function samplePoisson(lambda: number, rng: Rng): number {
     p *= rng()
   } while (p > L && k <= MAX_GOALS + 4)
   return Math.min(MAX_GOALS, k - 1)
-}
-
-export function deriveTeamStrengths(standings: StandingRow[]): {
-  strengths: Map<number, TeamStrength>
-  avgDefense: number
-} {
-  const strengths = new Map<number, TeamStrength>()
-  let defSum = 0
-  let defN = 0
-
-  for (const row of standings) {
-    const attack =
-      row.played > 0 ? row.goalsFor / row.played : DEFAULT_ATTACK
-    const defense =
-      row.played > 0 ? row.goalsAgainst / row.played : DEFAULT_DEFENSE
-    strengths.set(row.teamId, { teamId: row.teamId, attack, defense })
-    defSum += defense
-    defN += 1
-  }
-
-  const avgDefense = defN > 0 ? defSum / defN : DEFAULT_DEFENSE
-  return { strengths, avgDefense }
 }
 
 export function expectedGoals(
@@ -370,13 +698,21 @@ export function predictMatch(
 export function predictFixture(
   baseStandings: StandingRow[],
   match: Match,
-  options?: { scenarios?: ScenarioResult[] },
+  options?: {
+    scenarios?: ScenarioResult[]
+    /** Abgeschlossene Spiele für gegner-adjustierte Stärken */
+    playedMatches?: readonly (Match | StrengthPlayedMatch)[]
+    /** Optional vorberechnete Stärken (ein Lauf pro Datenstand) */
+    precomputedStrengths?: ReturnType<typeof deriveTeamStrengths>
+  },
 ): MatchPrediction | null {
   const homeRow = baseStandings.find((s) => s.teamId === match.team1.teamId)
   const awayRow = baseStandings.find((s) => s.teamId === match.team2.teamId)
   if (!homeRow || !awayRow) return null
 
-  const { strengths, avgDefense } = deriveTeamStrengths(baseStandings)
+  const { strengths, avgDefense } =
+    options?.precomputedStrengths ??
+    deriveTeamStrengths(baseStandings, options?.playedMatches ?? [])
   const homeStr =
     strengths.get(match.team1.teamId) ?? {
       teamId: match.team1.teamId,
@@ -442,11 +778,15 @@ export function runSeasonSimulation(
   const runs = Math.max(1, Math.floor(input.runs ?? DEFAULT_SIMULATIONS))
   const seed = input.seed ?? 1
   const rng = createRng(seed)
-  const { strengths, avgDefense } = deriveTeamStrengths(input.baseStandings)
+  const playedScores = input.playedScores ?? []
+  const playedForStrength = strengthMatchesFromScores(playedScores)
+  const { strengths, avgDefense } = deriveTeamStrengths(
+    input.baseStandings,
+    playedForStrength,
+  )
   const fixed = new Map(
     (input.fixedScenarios ?? []).map((s) => [s.matchId, s] as const),
   )
-  const playedScores = input.playedScores ?? []
   const teamIds = input.baseStandings.map((s) => s.teamId)
   const nTeams = teamIds.length
   const rankCounts = new Map<number, number[]>()

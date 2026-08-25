@@ -7,6 +7,7 @@ import {
 import type { TeamTrend } from '../lib/trend'
 import {
   deriveMatchLean,
+  deriveTeamStrengths,
   predictFixture,
   type MatchLean,
 } from '../lib/simulation'
@@ -31,6 +32,8 @@ interface Props {
   standings: StandingRow[]
   remaining: Match[]
   scenarios?: ScenarioResult[]
+  /** Abgeschlossene Spiele für Stärkemodell */
+  playedMatches?: Match[]
   hardnessByTeam: Map<number, ScheduleHardness>
   trendByTeam?: Map<number, TeamTrend>
   teamAId: number | null
@@ -251,6 +254,7 @@ export function TeamCompare({
   standings,
   remaining,
   scenarios = [],
+  playedMatches = [],
   hardnessByTeam,
   trendByTeam,
   teamAId,
@@ -287,9 +291,20 @@ export function TeamCompare({
     )
   }, [remaining, teamAId, teamBId])
 
+  const teamStrengths = useMemo(
+    () => deriveTeamStrengths(standings, playedMatches),
+    [standings, playedMatches],
+  )
+
   const h2hPrediction = useMemo(
-    () => (h2hMatch ? predictFixture(standings, h2hMatch, { scenarios }) : null),
-    [standings, h2hMatch, scenarios],
+    () =>
+      h2hMatch
+        ? predictFixture(standings, h2hMatch, {
+            scenarios,
+            precomputedStrengths: teamStrengths,
+          })
+        : null,
+    [standings, h2hMatch, scenarios, teamStrengths],
   )
 
   const nextA = fixturesA[0] ?? null
@@ -298,13 +313,23 @@ export function TeamCompare({
   const nextPredA = useMemo(() => {
     if (!nextA || nextA.isHeadToHead) return null
     const m = findMatchById(remaining, nextA.matchId)
-    return m ? predictFixture(standings, m, { scenarios }) : null
-  }, [nextA, remaining, standings, scenarios])
+    return m
+      ? predictFixture(standings, m, {
+          scenarios,
+          precomputedStrengths: teamStrengths,
+        })
+      : null
+  }, [nextA, remaining, standings, scenarios, teamStrengths])
   const nextPredB = useMemo(() => {
     if (!nextB || nextB.isHeadToHead) return null
     const m = findMatchById(remaining, nextB.matchId)
-    return m ? predictFixture(standings, m, { scenarios }) : null
-  }, [nextB, remaining, standings, scenarios])
+    return m
+      ? predictFixture(standings, m, {
+          scenarios,
+          precomputedStrengths: teamStrengths,
+        })
+      : null
+  }, [nextB, remaining, standings, scenarios, teamStrengths])
 
   const leansA = useMemo(() => {
     const map = new Map<number, MatchLean>()
@@ -312,7 +337,10 @@ export function TeamCompare({
     for (const f of fixturesA) {
       const m = findMatchById(remaining, f.matchId)
       if (!m) continue
-      const pred = predictFixture(standings, m, { scenarios })
+      const pred = predictFixture(standings, m, {
+        scenarios,
+        precomputedStrengths: teamStrengths,
+      })
       if (!pred) continue
       map.set(
         f.matchId,
@@ -320,7 +348,7 @@ export function TeamCompare({
       )
     }
     return map
-  }, [teamAId, fixturesA, remaining, standings, scenarios])
+  }, [teamAId, fixturesA, remaining, standings, scenarios, teamStrengths])
 
   const leansB = useMemo(() => {
     const map = new Map<number, MatchLean>()
@@ -328,7 +356,10 @@ export function TeamCompare({
     for (const f of fixturesB) {
       const m = findMatchById(remaining, f.matchId)
       if (!m) continue
-      const pred = predictFixture(standings, m, { scenarios })
+      const pred = predictFixture(standings, m, {
+        scenarios,
+        precomputedStrengths: teamStrengths,
+      })
       if (!pred) continue
       map.set(
         f.matchId,
@@ -336,7 +367,7 @@ export function TeamCompare({
       )
     }
     return map
-  }, [teamBId, fixturesB, remaining, standings, scenarios])
+  }, [teamBId, fixturesB, remaining, standings, scenarios, teamStrengths])
 
   const h2hCount = fixturesA.filter((f) => f.isHeadToHead).length
   const pointsGap =

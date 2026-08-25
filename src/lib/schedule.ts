@@ -105,12 +105,15 @@ export function computeScheduleHardness(
   standings: StandingRow[],
   opts?: {
     precomputedStrengths?: ReturnType<typeof deriveTeamStrengths>
+    /** Abgeschlossene Spiele für deriveTeamStrengths (falls nicht precomputed) */
+    playedMatches?: Match[]
     onlyTeamIds?: readonly number[]
   },
 ): ScheduleHardness[] {
   const reliable = hasEnoughData(standings)
   const { strengths, avgDefense } =
-    opts?.precomputedStrengths ?? deriveTeamStrengths(standings)
+    opts?.precomputedStrengths ??
+    deriveTeamStrengths(standings, opts?.playedMatches ?? [])
   const only = opts?.onlyTeamIds?.length
     ? new Set(opts.onlyTeamIds)
     : null

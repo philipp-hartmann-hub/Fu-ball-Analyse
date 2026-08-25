@@ -12,6 +12,7 @@ import {
   createRng,
   deriveMatchLean,
   deriveTeamStrengths,
+  deriveTeamStrengthsRaw,
   expectedGoals,
   forecastZoneBreakdown,
   predictFixture,
@@ -157,12 +158,281 @@ describe('runSeasonSimulation', () => {
     expect(alpha.rankCounts[0]).toBe(80)
   })
 
-  it('deriveTeamStrengths nutzt Tore/Spiele', () => {
-    const { strengths } = deriveTeamStrengths(base)
+  it('deriveTeamStrengths nutzt Tore/Spiele (Flag false = roh)', () => {
+    const { strengths } = deriveTeamStrengths(base, [], { adjusted: false })
     const alpha = strengths.get(TEAM_ALPHA.teamId)!
     const beta = strengths.get(TEAM_BETA.teamId)!
     expect(alpha.attack).toBeCloseTo(2, 5)
     expect(beta.defense).toBeCloseTo(2, 5)
+  })
+})
+
+describe('deriveTeamStrengths (gegner-adjustiert)', () => {
+  function team(id: number, name: string): import('../types').TeamInfo {
+    return {
+      teamId: id,
+      teamName: name,
+      shortName: name,
+      teamIconUrl: '',
+    }
+  }
+
+  function finished(
+    matchID: number,
+    day: number,
+    home: import('../types').TeamInfo,
+    away: import('../types').TeamInfo,
+    hg: number,
+    ag: number,
+  ): import('../types').Match {
+    return {
+      matchID,
+      matchDateTime: '2025-09-01T15:30:00',
+      matchDateTimeUTC: '2025-09-01T13:30:00Z',
+      leagueName: 'Test',
+      leagueSeason: 2025,
+      leagueShortcut: 't',
+      lastUpdateDateTime: '2025-09-01T17:00:00',
+      group: {
+        groupName: `${day}. Spieltag`,
+        groupOrderID: day,
+        groupID: day,
+      },
+      team1: home,
+      team2: away,
+      matchIsFinished: true,
+      matchResults: [
+        {
+          resultID: 2,
+          resultName: 'Endergebnis',
+          pointsTeam1: hg,
+          pointsTeam2: ag,
+          resultOrderID: 2,
+          resultTypeID: 2,
+        },
+      ],
+      goals: [],
+    }
+  }
+
+  /**
+   * Leverkusen-Fall: gleiche Rohtore, aber A nur gegen schwache Abwehr,
+   * B gegen starke — B muss höhere attack bekommen.
+   */
+  it('Leverkusen: gleiche Rohtore, stärkere Gegner → höhere attack', () => {
+    const A = team(1, 'Inflated')
+    const B = team(2, 'Solid')
+    const W = team(3, 'WeakDef')
+    const S = team(4, 'StrongDef')
+    const M = team(5, 'Mid')
+
+    const matches: import('../types').Match[] = []
+    let id = 1
+    let day = 1
+    // A schießt 3 pro Spiel nur gegen WeakDef (5 Spiele → 15 Tore)
+    for (let i = 0; i < 5; i++) {
+      matches.push(finished(id++, day++, A, W, 3, 0))
+    }
+    // B schießt 3 pro Spiel nur gegen StrongDef
+    for (let i = 0; i < 5; i++) {
+      matches.push(finished(id++, day++, B, S, 3, 0))
+    }
+    // WeakDef kassiert zusätzlich von Mid viele Tore → schwache Abwehr
+    for (let i = 0; i < 5; i++) {
+      matches.push(finished(id++, day++, M, W, 4, 0))
+    }
+    // StrongDef hält Mid klein → starke Abwehr
+    for (let i = 0; i < 5; i++) {
+      matches.push(finished(id++, day++, M, S, 0, 1))
+    }
+    // Mid vs Mid filler nicht nötig; Standings aus Matches
+    const standings = buildStandings(matches)
+    const { strengths } = deriveTeamStrengths(standings, matches, {
+      adjusted: true,
+      shrinkK: 0.5,
+    })
+    const atkA = strengths.get(A.teamId)!.attack
+    const atkB = strengths.get(B.teamId)!.attack
+    expect(standings.find((s) => s.teamId === A.teamId)!.goalsFor).toBe(
+      standings.find((s) => s.teamId === B.teamId)!.goalsFor,
+    )
+    expect(atkB).toBeGreaterThan(atkA)
+  })
+
+  it('Leverkusen analog defense: wenige Gegentore gegen schwache Angriffe ≠ Top-Abwehr', () => {
+    const Soft = team(1, 'Soft')
+    const Hard = team(2, 'Hard')
+    const WeakAtk = team(3, 'WeakAtk')
+    const StrongAtk = team(4, 'StrongAtk')
+    const M = team(5, 'Mid')
+
+    const matches: import('../types').Match[] = []
+    let id = 1
+    let day = 1
+    // Soft kassiert je 1 gegen WeakAtk (5×) — „gute“ Roh-Defense
+    for (let i = 0; i < 5; i++) {
+      matches.push(finished(id++, day++, Soft, WeakAtk, 1, 1))
+    }
+    // Hard kassiert je 1 gegen StrongAtk (5×) — gleiche Roh-GA
+    for (let i = 0; i < 5; i++) {
+      matches.push(finished(id++, day++, Hard, StrongAtk, 1, 1))
+    }
+    // WeakAtk schießt kaum gegen Mid
+    for (let i = 0; i < 5; i++) {
+      matches.push(finished(id++, day++, WeakAtk, M, 0, 2))
+    }
+    // StrongAtk schießt viel gegen Mid
+    for (let i = 0; i < 5; i++) {
+      matches.push(finished(id++, day++, StrongAtk, M, 3, 0))
+    }
+
+    const standings = buildStandings(matches)
+    const softRow = standings.find((s) => s.teamId === Soft.teamId)!
+    const hardRow = standings.find((s) => s.teamId === Hard.teamId)!
+    expect(softRow.goalsAgainst / softRow.played).toBeCloseTo(
+      hardRow.goalsAgainst / hardRow.played,
+      5,
+    )
+
+    const { strengths } = deriveTeamStrengths(standings, matches, {
+      adjusted: true,
+      shrinkK: 0.5,
+    })
+    // Niedrigerer defense-Wert = bessere Abwehr (weniger erwartete Gegentore)
+    expect(strengths.get(Hard.teamId)!.defense).toBeLessThan(
+      strengths.get(Soft.teamId)!.defense,
+    )
+  })
+
+  it('Determinismus und Konvergenz', () => {
+    const base = buildStandings(MINI_LEAGUE_MATCHES, { maxMatchday: 1 })
+    const played = MINI_LEAGUE_MATCHES.filter((m) => m.matchIsFinished)
+    const a = deriveTeamStrengths(base, played, { adjusted: true })
+    const b = deriveTeamStrengths(base, played, { adjusted: true })
+    expect(a).toEqual(b)
+    for (const s of a.strengths.values()) {
+      expect(Number.isFinite(s.attack)).toBe(true)
+      expect(Number.isFinite(s.defense)).toBe(true)
+      expect(s.attack).toBeGreaterThan(0)
+      expect(s.defense).toBeGreaterThan(0)
+    }
+  })
+
+  it('Normierung: mittlere attack/defense ≈ Ligamittel (vor Shrinkage, shrinkK=0)', () => {
+    const base = buildStandings(MINI_LEAGUE_MATCHES, { maxMatchday: 1 })
+    const played = MINI_LEAGUE_MATCHES.filter((m) => m.matchIsFinished)
+    const teamGames = base.reduce((s, r) => s + r.played, 0)
+    const leagueAvg =
+      teamGames > 0
+        ? base.reduce((s, r) => s + r.goalsFor, 0) / teamGames
+        : 0
+    const { strengths } = deriveTeamStrengths(base, played, {
+      adjusted: true,
+      shrinkK: 0,
+    })
+    let aSum = 0
+    let dSum = 0
+    let n = 0
+    for (const s of strengths.values()) {
+      aSum += s.attack
+      dSum += s.defense
+      n += 1
+    }
+    expect(aSum / n).toBeCloseTo(leagueAvg, 5)
+    expect(dSum / n).toBeCloseTo(leagueAvg, 5)
+  })
+
+  it('Shrinkage: wenige Spiele → nahe am Ligamittel; viele → Adjustierung', () => {
+    const A = team(1, 'A')
+    const B = team(2, 'B')
+    const C = team(3, 'C')
+    const D = team(4, 'D')
+    // Ein Spiel: A schießt 5 gegen B
+    const few = [
+      finished(1, 1, A, B, 5, 0),
+      finished(2, 1, C, D, 1, 1),
+    ]
+    const standingsFew = buildStandings(few)
+    const fewResult = deriveTeamStrengths(standingsFew, few, {
+      adjusted: true,
+      shrinkK: 20,
+    })
+    const leagueFew =
+      standingsFew.reduce((s, r) => s + r.goalsFor, 0) /
+      standingsFew.reduce((s, r) => s + r.played, 0)
+    const fewAtk = fewResult.strengths.get(A.teamId)!.attack
+    expect(Math.abs(fewAtk - leagueFew)).toBeLessThan(0.35)
+
+    // Viele Spiele A vs schwache B
+    const many: import('../types').Match[] = []
+    for (let i = 0; i < 20; i++) {
+      many.push(finished(100 + i, i + 1, A, B, 5, 0))
+      many.push(finished(200 + i, i + 1, C, D, 1, 1))
+    }
+    const standingsMany = buildStandings(many)
+    const manyResult = deriveTeamStrengths(standingsMany, many, {
+      adjusted: true,
+      shrinkK: 5,
+    })
+    const leagueMany =
+      standingsMany.reduce((s, r) => s + r.goalsFor, 0) /
+      standingsMany.reduce((s, r) => s + r.played, 0)
+    const manyAtk = manyResult.strengths.get(A.teamId)!.attack
+    // Mit vielen Spielen weiter vom Ligamittel als mit Shrinkage bei 1 Spiel
+    expect(Math.abs(manyAtk - leagueMany)).toBeGreaterThan(
+      Math.abs(fewAtk - leagueFew),
+    )
+    expect(manyAtk).toBeGreaterThan(fewAtk)
+  })
+
+  it('Prior-Andockpunkt: früh Richtung priorStrength statt Ligamittel', () => {
+    const A = team(1, 'A')
+    const B = team(2, 'B')
+    const C = team(3, 'C')
+    const D = team(4, 'D')
+    const matches = [
+      finished(1, 1, A, B, 1, 0),
+      finished(2, 1, C, D, 1, 1),
+    ]
+    const standings = buildStandings(matches)
+    const prior = new Map([
+      [A.teamId, { attack: 2.5, defense: 0.8 }],
+    ])
+    const withPrior = deriveTeamStrengths(standings, matches, {
+      adjusted: true,
+      shrinkK: 10,
+      priorStrength: prior,
+    })
+    const without = deriveTeamStrengths(standings, matches, {
+      adjusted: true,
+      shrinkK: 10,
+    })
+    expect(withPrior.strengths.get(A.teamId)!.attack).toBeGreaterThan(
+      without.strengths.get(A.teamId)!.attack,
+    )
+    expect(withPrior.strengths.get(A.teamId)!.attack).toBeGreaterThan(1.5)
+  })
+
+  it('Flag false reproduziert exakt die rohen Werte', () => {
+    const base = buildStandings(MINI_LEAGUE_MATCHES, { maxMatchday: 1 })
+    const played = MINI_LEAGUE_MATCHES.filter((m) => m.matchIsFinished)
+    const raw = deriveTeamStrengthsRaw(base)
+    const flagged = deriveTeamStrengths(base, played, { adjusted: false })
+    expect(flagged).toEqual(raw)
+  })
+
+  it('Interface: predictMatch/expectedGoals laufen mit adjustierten Stärken', () => {
+    const base = buildStandings(MINI_LEAGUE_MATCHES, { maxMatchday: 1 })
+    const played = MINI_LEAGUE_MATCHES.filter((m) => m.matchIsFinished)
+    const { strengths, avgDefense } = deriveTeamStrengths(base, played, {
+      adjusted: true,
+    })
+    const home = strengths.get(TEAM_ALPHA.teamId)!
+    const away = strengths.get(TEAM_BETA.teamId)!
+    const eg = expectedGoals(home, away, avgDefense)
+    expect(eg.homeLambda).toBeGreaterThan(0)
+    const pred = predictMatch(home, away, avgDefense)
+    expect(pred.pHome + pred.pDraw + pred.pAway).toBeCloseTo(1, 10)
   })
 })
 

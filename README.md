@@ -48,7 +48,7 @@ src/
   leagues.ts
   api/openliga.ts / matchSchema.ts / dataSource.ts
   hooks/useLeagueData.ts / useSeasonForecast.ts / useScheduleHardness.ts / useDecisionRadar.ts
-  lib/table.ts / scenarios.ts / schedule.ts / trend.ts / reliability.ts / simulation.ts / thresholds.ts / decisions.ts / live.ts
+  lib/table.ts / scenarios.ts / schedule.ts / trend.ts / reliability.ts / simulation.ts (Stärken: IPF+Shrinkage) / thresholds.ts / decisions.ts / live.ts
   workers/simulate.ts / scenarios.ts / decisions.ts
   components/…             # UI
   App.tsx
@@ -57,6 +57,26 @@ src/
 ---
 
 ## Änderungsprotokoll
+
+### 2026-08-25 — Prompt 138
+
+**User:** Comitten und mergen.
+
+**Aktion:**
+- Branch `cursor/staerken-ipf-shrinkage`, Commit, Fast-Forward-Merge nach `main`, Push auf `origin/main`
+
+**Status:** erledigt
+
+### 2026-08-25 — Prompt 137
+
+**User:** Stärkeberechnung gegner-adjustiert + regularisiert (IPF + Shrinkage), Feature-Flag, drop-in.
+
+**Aktion:**
+- `simulation.ts`: `deriveTeamStrengthsRaw` / `deriveTeamStrengthsAdjusted` / Flag `USE_ADJUSTED_STRENGTH`; Signatur + `playedMatches`
+- Aufrufer (Härte, Trend, Prognose, Spielschätzung, App) geben abgeschlossene Spiele mit
+- Tests: Leverkusen-Fall, Normierung, Shrinkage, Prior, Flag false = roh
+
+**Status:** erledigt
 
 ### 2026-08-25 — Prompt 136
 

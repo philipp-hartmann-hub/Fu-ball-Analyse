@@ -43,6 +43,7 @@ import {
   relegationCutoffRank,
   remainingMatches,
   resolveMatchScores,
+  finalResult,
 } from './lib/table'
 import type { ScenarioResult, TargetComparator } from './types'
 import './App.css'
@@ -221,6 +222,16 @@ export default function App() {
     [matchesVersion, cutoff],
   )
 
+  /** Abgeschlossene Spiele für Stärkemodell (Härte/Prognose/Trend/Spielschätzung). */
+  const playedMatchesForStrength = useMemo(() => {
+    return matches.filter((m) => {
+      if (!m.matchIsFinished) return false
+      if (cutoff != null && m.group.groupOrderID > cutoff) return false
+      return finalResult(m) != null
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [matchesVersion, cutoff])
+
   const {
     radar: decisionRadar,
     loading: decisionRadarLoading,
@@ -250,6 +261,7 @@ export default function App() {
     enabled: baseStandings.length > 0,
     dataVersion,
     openMatches,
+    playedMatches: playedMatchesForStrength,
     baseStandings,
     priorityTeamIds: hardnessPriorityTeamIds,
   })
@@ -699,6 +711,7 @@ export default function App() {
                 variant="panel"
                 standings={projectedStandings}
                 scenarios={scenarios}
+                playedMatches={playedMatchesForStrength}
                 onExplain={openExplain}
               />
             ) : sideTab === 'decisions' && decisionRadar ? (
@@ -732,6 +745,7 @@ export default function App() {
                 scenarios={scenarios}
                 hardnessByTeam={hardnessByTeam}
                 trendByTeam={compareTrends}
+                playedMatches={playedMatchesForStrength}
                 teamAId={compareA}
                 teamBId={compareB}
                 onChangeTeamA={setCompareA}
@@ -762,6 +776,7 @@ export default function App() {
                 onEnableMatchdayCutoff={enableMatchdayCutoff}
                 standings={projectedStandings}
                 openMatches={openMatches}
+                playedMatches={playedMatchesForStrength}
                 scenarios={scenarios}
                 pointsToFirst={
                   selectedTeam ? leaderPoints - selectedTeam.points : null

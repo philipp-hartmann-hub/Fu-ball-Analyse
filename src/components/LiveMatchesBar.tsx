@@ -23,6 +23,8 @@ interface Props {
   /** Für Spielschätzung 1/X/2 (wie Vereinsübersicht) */
   standings?: StandingRow[]
   scenarios?: ScenarioResult[]
+  /** Abgeschlossene Spiele für Stärkemodell */
+  playedMatches?: Match[]
   onExplain?: (topic: ExplainTopic) => void
 }
 
@@ -51,6 +53,7 @@ export function LiveMatchesBar({
   variant = 'panel',
   standings = [],
   scenarios = [],
+  playedMatches = [],
   onExplain,
 }: Props) {
   const allDays = useMemo(
@@ -234,6 +237,7 @@ export function LiveMatchesBar({
             }
             standings={standings}
             scenarios={scenarios}
+            playedMatches={playedMatches}
             onExplain={onExplain}
           />
         ))}
@@ -306,6 +310,7 @@ function FixtureRow({
   onToggle,
   standings,
   scenarios,
+  playedMatches,
   onExplain,
 }: {
   row: MatchdayFixtureView
@@ -315,6 +320,7 @@ function FixtureRow({
   onToggle: () => void
   standings: StandingRow[]
   scenarios: ScenarioResult[]
+  playedMatches: Match[]
   onExplain?: (topic: ExplainTopic) => void
 }) {
   const m = row.match
@@ -334,8 +340,8 @@ function FixtureRow({
 
   const prediction = useMemo(() => {
     if (!expanded || !showPrediction || standings.length === 0) return null
-    return predictFixture(standings, m, { scenarios })
-  }, [expanded, showPrediction, standings, m, scenarios])
+    return predictFixture(standings, m, { scenarios, playedMatches })
+  }, [expanded, showPrediction, standings, m, scenarios, playedMatches])
 
   return (
     <li

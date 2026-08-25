@@ -32,6 +32,8 @@ interface Args {
   /** Stabile Datenversion (Poll ohne Inhaltsänderung → kein Re-Run) */
   dataVersion: string
   openMatches: Match[]
+  /** Abgeschlossene Spiele für gegner-adjustierte Stärken */
+  playedMatches: Match[]
   baseStandings: StandingRow[]
   /** Zuerst nur diese Vereine (Vereins-/Vergleichsansicht) */
   priorityTeamIds?: readonly number[]
@@ -41,6 +43,7 @@ export function useScheduleHardness({
   enabled,
   dataVersion,
   openMatches,
+  playedMatches,
   baseStandings,
   priorityTeamIds = [],
 }: Args) {
@@ -55,17 +58,19 @@ export function useScheduleHardness({
       JSON.stringify({
         dataVersion,
         remaining: openMatches.map((m) => m.matchID).join(','),
+        played: playedMatches.map((m) => m.matchID).join(','),
         standings: standingsFingerprint(baseStandings),
       }),
-    [dataVersion, openMatches, baseStandings],
+    [dataVersion, openMatches, playedMatches, baseStandings],
   )
 
   const latest = useRef({
     openMatches,
+    playedMatches,
     baseStandings,
     priorityTeamIds,
   })
-  latest.current = { openMatches, baseStandings, priorityTeamIds }
+  latest.current = { openMatches, playedMatches, baseStandings, priorityTeamIds }
 
   useEffect(() => {
     if (!enabled || baseStandings.length === 0) {
@@ -80,15 +85,20 @@ export function useScheduleHardness({
     const cancelDefer = deferAfterPaint(() => {
       if (reqId.current !== id) return
 
-      const { openMatches: open, baseStandings: standings, priorityTeamIds: priority } =
-        latest.current
+      const {
+        openMatches: open,
+        playedMatches: played,
+        baseStandings: standings,
+        priorityTeamIds: priority,
+      } = latest.current
 
       try {
-        const precomputedStrengths = deriveTeamStrengths(standings)
+        const precomputedStrengths = deriveTeamStrengths(standings, played)
 
         if (priority.length > 0) {
           const partial = computeScheduleHardness(open, standings, {
             precomputedStrengths,
+            playedMatches: played,
             onlyTeamIds: priority,
           })
           if (reqId.current === id) {
@@ -102,6 +112,7 @@ export function useScheduleHardness({
 
         const full = computeScheduleHardness(open, standings, {
           precomputedStrengths,
+          playedMatches: played,
         })
         if (reqId.current === id) {
           setHardnessByTeam(new Map(full.map((h) => [h.teamId, h])))

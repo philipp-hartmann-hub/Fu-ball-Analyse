@@ -67,6 +67,8 @@ interface Props {
   standings?: StandingRow[]
   /** Offene Spiele (nächstes eigenes Spiel finden) */
   openMatches?: Match[]
+  /** Abgeschlossene Spiele für Stärkemodell */
+  playedMatches?: Match[]
   /** Gesetzte Szenarien — überschreiben die Spielschätzung */
   scenarios?: ScenarioResult[]
   onExplain?: (topic: ExplainTopic) => void
@@ -1009,6 +1011,7 @@ export function TeamInsight({
   leagueTeamCount = 18,
   standings = [],
   openMatches = [],
+  playedMatches = [],
   scenarios = [],
   onExplain,
   onApplyConditions,
@@ -1030,8 +1033,8 @@ export function TeamInsight({
 
   const ownMatchPrediction = useMemo(() => {
     if (!ownNextMatch || standings.length === 0) return null
-    return predictFixture(standings, ownNextMatch, { scenarios })
-  }, [standings, ownNextMatch, scenarios])
+    return predictFixture(standings, ownNextMatch, { scenarios, playedMatches })
+  }, [standings, ownNextMatch, scenarios, playedMatches])
 
   const remainingFixtures = useMemo(() => {
     if (!team) return []
@@ -1050,14 +1053,14 @@ export function TeamInsight({
     const map = new Map<number, ReturnType<typeof deriveMatchLean>>()
     if (!team || standings.length === 0) return map
     for (const m of remainingFixtures) {
-      const pred = predictFixture(standings, m, { scenarios })
+      const pred = predictFixture(standings, m, { scenarios, playedMatches })
       if (!pred) continue
       const perspective =
         m.team1.teamId === team.teamId ? ('home' as const) : ('away' as const)
       map.set(m.matchID, deriveMatchLean(pred, perspective))
     }
     return map
-  }, [remainingFixtures, standings, scenarios, team])
+  }, [remainingFixtures, standings, scenarios, playedMatches, team])
 
   if (!team) {
     return (

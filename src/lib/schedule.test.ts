@@ -211,9 +211,13 @@ describe('computeScheduleHardness (absolut / Vereinssicht)', () => {
       openMatch(2, TEAM_GAMMA, TEAM_ALPHA),
       openMatch(3, TEAM_ALPHA, TEAM_DELTA),
     ]
-    const precomputed = deriveTeamStrengths(standings)
-    const baseline = computeScheduleHardness(matches, standings)
-    const reused = computeScheduleHardness(matches, standings, { precomputedStrengths: precomputed })
+    const precomputed = deriveTeamStrengths(standings, [])
+    const baseline = computeScheduleHardness(matches, standings, {
+      playedMatches: [],
+    })
+    const reused = computeScheduleHardness(matches, standings, {
+      precomputedStrengths: precomputed,
+    })
     expect(reused).toEqual(baseline)
     const partial = computeScheduleHardness(matches, standings, {
       precomputedStrengths: precomputed,
