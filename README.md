@@ -63,7 +63,7 @@ src/
 **User:** Comitten und mergen.
 
 **Aktion:**
-- Branch `cursor/staerken-ipf-shrinkage`, Commit, Fast-Forward-Merge nach `main`, Push auf `origin/main`
+- Branch `cursor/staerken-ipf-shrinkage`, Commit `36e3e72`, Fast-Forward-Merge nach `main`, Push auf `origin/main`
 
 **Status:** erledigt
 
